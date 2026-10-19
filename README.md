@@ -15,6 +15,10 @@ Edit the templates under `entries/` and the application under `src/`, then run `
 
 ## Services and access
 
+Each HTML panel uses its own named Firebase Auth instance and sessionStorage persistence. Signing in or out on one panel does not sign the other panels in or out; each panel needs an explicit sign-in. Reloading the same panel in the same tab preserves its session. Closing that tab ends its session. Accounts, roles and Firestore data remain shared; this separates browser sessions, not accounts or permissions. Older shared sessions are not imported into the new panel instances.
+
+To test this locally, start the Auth emulator and the Vite dev server, then open `/tests/session-isolation.html`. This emulator-only browser test verifies four independent sessions, logout behavior and persistence across a full reload. It creates no production account or data.
+
 Firebase Hosting serves the static React app. Firebase Authentication provides Google and email/password sign-in. Firestore stores requests, offers, shop profiles, roles and added categories. No Sites/ChatGPT login, D1 or R2 dependency remains.
 
 The verified Google identity `suloanani1@gmail.com` is the preconfigured founder/superadmin. This is a trusted deployment allowlist, not a first-registrant privilege. Other users register as customers; a separate shop profile goes through admin approval. Editing shop specialties resets approval. New admins can only be assigned by superadmin. Changing the founder identity requires reviewing and deploying the rules and matching frontend configuration together. Email/password users with the founder email need to verify that address and refresh their token before receiving founder access; Google sign-in handles verification directly.
