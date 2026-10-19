@@ -1,11 +1,11 @@
 import {writeFileSync,readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import type {Plugin} from 'vite';
-const names:Record<string,string>={customer:'მომხმარებელი',shop:'ავტომაღაზია',admin:'ადმინი',superadmin:'სუპერადმინი'};
+const names:Record<string,string>={customer:'მომხმარებელი',shop:'ავტომაღაზია',admin:'ადმინი',superadmin:'სუპერადმინი','mobile-customer':'მობილური მომხმარებელი'};
 export function standaloneHTML():Plugin {
   let root='';
   return {name:'partflow-complete-html',enforce:'post',configResolved(c){root=c.root},
-    configureServer(server){server.middlewares.use((req,_res,next)=>{if(req.url&&/^\/(customer|shop|admin|superadmin|index)\.html(?:\?|$)/.test(req.url))req.url='/entries'+req.url;next();});},
+    configureServer(server){server.middlewares.use((req,_res,next)=>{if(req.url&&/^\/(customer|shop|admin|superadmin|mobile-customer|index)\.html(?:\?|$)/.test(req.url))req.url='/entries'+req.url;next();});},
     generateBundle(_options,bundle){
       const icon=readFileSync(resolve(root,'public/favicon.svg')).toString('base64');
       for(const [key,asset] of Object.entries(bundle)){

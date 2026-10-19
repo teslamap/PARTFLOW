@@ -5,22 +5,30 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite --host 127.0.0.1"
+    "dev": "vite --host 127.0.0.1",
+    "build:mobile": "vite build && node build-tools/mobile.mjs",
+    "android:sync": "npm run build:mobile && cap sync android",
+    "android:open": "cap open android",
+    "android:setup": "npm run build:mobile && cap add android && cap sync android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.3",
     "firebase": "latest",
     "firebase-admin": "latest",
+    "lucide-react": "^1.31.0",
     "react": "19.2.6",
-    "react-dom": "19.2.6",
-    "lucide-react": "^1.31.0"
+    "react-dom": "19.2.6"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "6.0.2",
-    "vite": "8.0.13",
-    "typescript": "5.9.3",
+    "@capacitor/cli": "^8.5.3",
     "@firebase/rules-unit-testing": "latest",
+    "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "@types/node": "22.19.19"
+    "@vitejs/plugin-react": "6.0.2",
+    "typescript": "5.9.3",
+    "vite": "8.0.13"
   }
 }

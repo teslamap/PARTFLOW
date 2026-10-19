@@ -7,21 +7,24 @@ const log=(s:string)=>{output.textContent+='\n'+s;};
 const check=(expected:boolean[],label:string)=>{const got=sessions.map(a=>!!a.currentUser);if(got.some((v,i)=>v!==expected[i]))throw Error(label+': '+JSON.stringify(got));log('PASS '+label+' '+JSON.stringify(got));};
 async function run(){button.disabled=true;await Promise.all(sessions.map(a=>a.authStateReady()));const phase=sessionStorage.getItem('partflow-test-phase');
 if(phase==='reload'){
-check([false,true,true,false],'panel-specific sessions survive reload');
+check([false,true,true,false,true],'panel-specific sessions survive reload');
 const saved=JSON.parse(sessionStorage.getItem('partflow-test-fixture')!);
-await signOut(sessions[1]);check([false,false,true,false],'shop logout preserves admin session');
-await signInWithEmailAndPassword(sessions[3],saved.email,saved.password);check([false,false,true,true],'superadmin login stays separate');
-await signOut(sessions[3]);check([false,false,true,false],'superadmin logout preserves admin session');
-await signOut(sessions[2]);check([false,false,false,false],'all sessions explicitly signed out');
+await signOut(sessions[1]);check([false,false,true,false,true],'shop logout preserves admin session');
+await signInWithEmailAndPassword(sessions[3],saved.email,saved.password);check([false,false,true,true,true],'superadmin login stays separate');
+await signOut(sessions[3]);check([false,false,true,false,true],'superadmin logout preserves admin session');
+await signOut(sessions[4]);
+await signOut(sessions[2]);check([false,false,false,false,false],'all sessions explicitly signed out');
 sessionStorage.removeItem('partflow-test-phase');sessionStorage.removeItem('partflow-test-fixture');log('ALL TESTS PASSED');return;
 }
 await Promise.all(sessions.map(a=>signOut(a)));
 const email='isolation-'+Date.now()+'@example.com',password='Local-only-'+crypto.randomUUID();
-await createUserWithEmailAndPassword(sessions[0],email,password);check([true,false,false,false],'customer login does not sign in other panels');
-await signInWithEmailAndPassword(sessions[1],email,password);check([true,true,false,false],'shop requires its own sign-in');
-await signOut(sessions[0]);check([false,true,false,false],'customer logout does not sign out shop');
-await signInWithEmailAndPassword(sessions[2],email,password);check([false,true,true,false],'admin login does not sign in superadmin');
+await createUserWithEmailAndPassword(sessions[0],email,password);check([true,false,false,false,false],'customer login does not sign in other panels');
+await signInWithEmailAndPassword(sessions[1],email,password);check([true,true,false,false,false],'shop requires its own sign-in');
+await signOut(sessions[0]);check([false,true,false,false,false],'customer logout does not sign out shop');
+await signInWithEmailAndPassword(sessions[4],email,password);check([false,true,false,false,true],'mobile requires separate login');
+await signInWithEmailAndPassword(sessions[2],email,password);check([false,true,true,false,true],'admin login does not sign in superadmin');
 sessionStorage.setItem('partflow-test-fixture',JSON.stringify({email,password}));sessionStorage.setItem('partflow-test-phase','reload');location.reload();
 }
 button.onclick=()=>run().catch(e=>{log('FAIL '+e.message);button.disabled=false;});
 if(sessionStorage.getItem('partflow-test-phase')==='reload')run().catch(e=>log('FAIL '+e.message));
+
