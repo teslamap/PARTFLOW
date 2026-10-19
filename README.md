@@ -9,7 +9,9 @@ Georgian automotive parts request platform on the existing `menio-8de8f` Firebas
 - `/admin.html` — shop approval/suspension and request moderation
 - `/superadmin.html` — admin roles and categories
 
-All four are independent HTML entry files. The default page opens the customer panel. `?demo=1` runs an isolated, clearly labeled in-memory demo without reading or writing Firebase data.
+All four root HTML files are complete, generated pages: visible HTML, the entire stylesheet and the complete React/Firebase JavaScript bundle are embedded in each file. They do not require separate `/src` or `/assets` files to run. Firebase network access is still required for real sign-in and data; Google fonts load online. The default page opens the customer panel. `?demo=1` runs an isolated, clearly labeled in-memory demo without reading or writing Firebase data.
+
+Edit the templates under `entries/` and the application under `src/`, then run `npm run build`. The build emits full pages into `dist/` and updates the four root HTML files committed to GitHub. `build-tools/standalone-html.ts` performs the embedding and fails if a future change introduces unembedded JavaScript chunks. Root HTML files are generated outputs; do not hand-edit them.
 
 ## Services and access
 
