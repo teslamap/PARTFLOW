@@ -1,69 +1,58 @@
-# PARTFLOW
+# PARTFLOW — Firebase
 
-Georgian automotive parts request platform. Customers describe a vehicle and part; approved shops see only requests matching one complete specialization (brand + model + category).
+Georgian automotive parts request platform on the existing `menio-8de8f` Firebase project.
 
-## Implemented
+## Pages
 
-## Separate HTML addresses
+- `/customer.html` — customer requests and received offers
+- `/shop.html` — shop registration, specializations, matching requests and offers
+- `/admin.html` — shop approval/suspension and request moderation
+- `/superadmin.html` — admin roles and categories
 
-- `/customer.html` — customer panel
-- `/shop.html` — shop panel
-- `/admin.html` — admin panel (server-authorized)
-- `/superadmin.html` — superadmin panel (server-authorized)
+All four are independent HTML entry files. The default page opens the customer panel. `?demo=1` runs an isolated, clearly labeled in-memory demo without reading or writing Firebase data.
 
-Each address returns its own rendered HTML page with a dedicated source entry under `app/<role>.html/page.tsx`. The interactive UI is shared in `app/partflow.tsx`; the original API and database remain shared. `/` redirects to `/customer.html`. Add `?demo=1` for an isolated demo of that panel. Sign-in returns to the requested panel. Direct admin URLs do not grant permissions.
+## Services and access
 
-- Customer dashboard, detailed requests, optional VIN, budget, condition, city and up to four photos.
-- Shop registration with multiple specialization rules and admin approval. Editing a shop requires approval again.
-- Offers with price, condition, delivery terms and notes; customers select an offer and close a request. Phone contact is available for the selected shop.
-- Admin shop approval/suspension and request moderation.
-- Superadmin account role management and category creation.
-- Persistent Cloudflare D1 records, private R2 photos, server authorization, atomic offer selection and duplicate-offer protection.
-- Clearly labeled in-memory demo mode for exploring every role. Demo changes never write to the database.
-- Responsive Georgian UI. Prices are in GEL.
+Firebase Hosting serves the static React app. Firebase Authentication provides Google and email/password sign-in. Firestore stores requests, offers, shop profiles, roles and added categories. No Sites/ChatGPT login, D1 or R2 dependency remains.
 
-## Access and initial setup
+The verified Google identity `suloanani1@gmail.com` is the preconfigured founder/superadmin. This is a trusted deployment allowlist, not a first-registrant privilege. Other users register as customers; a separate shop profile goes through admin approval. Editing shop specialties resets approval. New admins can only be assigned by superadmin. Changing the founder identity requires reviewing and deploying the rules and matching frontend configuration together. Email/password users with the founder email need to verify that address and refresh their token before receiving founder access; Google sign-in handles verification directly.
 
-This initial Sites deployment is **owner-private** and uses platform-managed ChatGPT sign-in. The first authenticated owner initializes the superadmin account. Complete this setup while owner-private, before widening access. The existing owner cannot be demoted in the app. New authenticated accounts receive the customer role; shop registration is a separate profile. Viewing another role in the sidebar does not grant server privileges.
+Each specialization combines brand, model and part category. An approved shop sees only a matching combination. Up to ten specializations per shop, with explicit wildcards for all models/categories. Year, engine and VIN are shown to shops and do not establish verified OEM compatibility. Offers are unique per shop/request and immutable. Request acceptance is transactional and selects a single offer. Admin moderation preserves open/closed status when restoring hidden requests.
 
-This release is a working private MVP, not a public launch. Public access, ordinary customer phone/email login, legal/privacy policies, rate limiting and abuse controls, production monitoring and an owner recovery procedure must be designed before a public rollout. No billing, payments, SMS/email/push notifications, chat, order fulfillment or inventory integration is implemented. Requests appear in matching shops' dashboard; external notifications are not sent. The starter vehicle list is curated and intentionally limited. Matching uses brand/model/category, not year, engine or verified OEM compatibility; these details are shown to shops for confirmation.
+No private email addresses are stored in shared account directory documents. Users cannot self-approve stores, promote their role, overwrite others' requests, or inspect unrelated offers. Legacy Menio collections are denied by the new rules.
+
+## Spark plan limits
+
+Cloud Storage requires a Blaze billing plan. This release keeps Spark and uses small, compressed JPEG attachments directly in request documents: maximum four, each under 180000 base64 characters. The photo field is excluded from indexes. This is suitable for the initial small MVP; move attachments to an object store when scaling. The source image selection limit is 4 MB, compressed in the browser before upload.
+
+List queries cap each result set at 300. Cursor pagination and query profiling are required for larger deployments. No chat, payments, SMS/email request alerts or fulfillment workflows are included. Shop dashboards load current matching requests on opening/refreshing.
 
 ## Development
 
-Node 22.13+ and npm:
-
 ```sh
-npm run install:ci
-npm run db:generate # only after changing db/schema.ts
-npm run build
-```
-
-Apply the committed SQL migrations in order to the local database (build first to generate Wrangler configuration):
-
-```sh
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_simple_roxanne_simpson.sql
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_perfect_rawhide_kid.sql
+npm ci
 npm run dev
-```
-
-On portable loopback development, `/signin-with-chatgpt?return_to=/` signs in as the starter's local test identity. This mock identity is not bundled into production. Real hosted identity headers are injected by Sites; do not expose a standalone Worker directly to untrusted callers without a trusted identity gateway.
-
-## Verification
-
-```sh
-node --test tests/core.test.mjs
+npm run build
 npx tsc --noEmit
 ```
 
-`tests/integration.mjs` is an opt-in local-only test using synthetic DB fixtures; it creates requests and a store, tests approval, mismatches, duplicates, ownership, origin protection and atomic acceptance. It requires the local development server, signed-in local owner and the documented fixture IDs. It must not run against production. The original implementation was verified with these fixtures; use a fresh disposable local DB and prepare equivalent fixture records before rerunning.
+Firebase config is public application configuration, not an admin credential. Security comes from Authentication and reviewed Firestore rules. Never commit CLI tokens, service account keys, password exports or user data.
 
-## Structure
+For local rules tests, Java 21+ is required:
 
-- `app/page.tsx`, `app/globals.css`: responsive UI and isolated demo mode.
-- `app/core.mjs`: catalog, matching, scope and input validation.
-- `app/api/route.ts`: authorized platform operations.
-- `app/api/media/`: photo upload and authorized reads.
-- `db/schema.ts`, `drizzle/`: schema and append-only migrations.
-- `.openai/hosting.json`: Sites identity and logical DB/BUCKET bindings.
+```sh
+npx -y firebase-tools@latest emulators:start --only firestore,auth --project demo-partflow
+node tests/rules.mjs
+```
 
-Do not commit credentials, `.wrangler`, `.sites-runtime`, `node_modules` or runtime records. Hosted database migrations apply through Sites publication. Local records and demo data are not production seed data.
+`tests/rules.mjs` uses only the local emulator and covers ownership, exact matching queries, role escalation denial, approval, duplicate offers, acceptance, moderation and denied legacy paths.
+
+## Deploy
+
+```sh
+npx -y firebase-tools@latest login
+npm run build
+npx -y firebase-tools@latest deploy --only hosting,firestore,auth --project menio-8de8f
+```
+
+Review Security Rules and the trusted founder allowlist before expanding access. Firestore database ID is `(default)`, edition STANDARD, location `eur3`. Firebase project ID remains `menio-8de8f`; the product brand is PARTFLOW.

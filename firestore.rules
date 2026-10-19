@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Data model: pf_members/{uid}: name(string 1..100), role(customer/admin/superadmin), createdAt(timestamp).
+    // pf_shops/{uid}: ownerId, name, city, business phone, status, rules(list), rulesMap(map), createdAt.
+    // pf_requests/{id}: immutable owner/vehicle/part/details/photos(0..4 small JPEG strings), status, previousStatus, acceptedOfferId, createdAt.
+    // pf_offers/{requestId_uid}: immutable requestId, ownerId(customer), shopId, shopName, positive price, condition, delivery, note, status, createdAt.
+    // pf_categories/{name}: name(string 1..80), createdAt(timestamp).
+    // Email/passwords are owned by Firebase Auth, never stored in shared Firestore documents.
+    function signed(){return request.auth != null;}
+    // Trusted bootstrap identity. A verified email is required; registration order never grants admin.
+    function founder(){return signed() && request.auth.token.email_verified == true && request.auth.token.email == 'suloanani1@gmail.com';}
+    function superadmin(){return founder() || (signed() && get(/databases/$(database)/documents/pf_members/$(request.auth.uid)).data.role == 'superadmin');}
+    function admin(){return superadmin() || (signed() && get(/databases/$(database)/documents/pf_members/$(request.auth.uid)).data.role == 'admin');}
+    function text(v,n){return v is string && v.size()>0 && v.size()<=n;}
+    function validMember(d){return d.keys().hasAll(['name','role','createdAt']) && d.keys().hasOnly(['name','role','createdAt']) && text(d.name,100) && d.role in ['customer','admin','superadmin'] && d.createdAt is timestamp;}
+    function validShop(d){return d.keys().hasAll(['ownerId','name','city','phone','status','rulesMap','createdAt']) && d.keys().hasOnly(['ownerId','name','city','phone','status','rulesMap','createdAt']) && text(d.ownerId,128) && text(d.name,100) && text(d.city,80) && text(d.phone,30) && d.phone.matches('[+0-9 ()-]{9,30}') && d.status in ['pending','approved','suspended'] && d.rulesMap is map && d.rulesMap.size()>0 && d.rulesMap.size()<=30 && d.rulesMap.values().hasOnly([true]) && d.createdAt is timestamp;}
+    function photo(p){return p is string && p.size()<=180000 && p.matches('data:image/jpeg;base64,.*');}
+    function validPhotos(p){return p is list && p.size()<=4 && (p.size()<1||photo(p[0])) && (p.size()<2||photo(p[1])) && (p.size()<3||photo(p[2])) && (p.size()<4||photo(p[3]));}
+    function validRequest(d){return d.keys().hasAll(['ownerId','brand','model','year','engine','vin','category','part','description','city','condition','budget','photos','status','previousStatus','acceptedOfferId','createdAt']) && d.keys().hasOnly(['ownerId','brand','model','year','engine','vin','category','part','description','city','condition','budget','photos','status','previousStatus','acceptedOfferId','createdAt']) && text(d.ownerId,128) && text(d.brand,60) && text(d.model,80) && d.year is int && d.year>=1950 && d.year<=request.time.year()+1 && text(d.engine,80) && d.vin is string && (d.vin==''||d.vin.matches('[A-HJ-NPR-Z0-9]{17}')) && text(d.category,80) && text(d.part,120) && text(d.description,2000) && text(d.city,80) && d.condition in ['ნებისმიერი','ახალი','მეორადი'] && (d.budget==null||(d.budget is number&&d.budget>0&&d.budget<=1000000)) && validPhotos(d.photos) && d.status in ['open','closed','hidden'] && d.previousStatus in ['open','closed'] && (d.acceptedOfferId==null||text(d.acceptedOfferId,300)) && d.createdAt is timestamp;}
+    function shopMatch(d){let s=get(/databases/$(database)/documents/pf_shops/$(request.auth.uid)).data;let m=s.rulesMap;return s.status=='approved' && (m.get(d.brand+'~'+d.model+'~'+d.category,false)==true || m.get(d.brand+'~*~'+d.category,false)==true || m.get('*~*~'+d.category,false)==true || m.get(d.brand+'~'+d.model+'~*',false)==true || m.get(d.brand+'~*~*',false)==true || m.get('*~*~*',false)==true);}
+    function requestRead(d,id){return signed() && (admin() || d.ownerId==request.auth.uid || (d.status in ['open','closed'] && shopMatch(d)) || exists(/databases/$(database)/documents/pf_offers/$(id+'_'+request.auth.uid)));}
+    function selectedOffer(d,id){let o=get(/databases/$(database)/documents/pf_offers/$(d.acceptedOfferId)).data;return o.requestId==id && o.ownerId==request.auth.uid;}
+    function validOffer(d){return d.keys().hasAll(['requestId','ownerId','shopId','shopName','price','condition','delivery','note','status','createdAt']) && d.keys().hasOnly(['requestId','ownerId','shopId','shopName','price','condition','delivery','note','status','createdAt']) && text(d.requestId,128) && text(d.ownerId,128) && text(d.shopId,128) && text(d.shopName,100) && d.price is number && d.price>0 && d.price<=1000000 && d.condition in ['ახალი','მეორადი'] && text(d.delivery,120) && text(d.note,1000) && d.status=='pending' && d.createdAt is timestamp;}
+    function validCategory(d){return d.keys().hasAll(['name','createdAt']) && d.keys().hasOnly(['name','createdAt']) && text(d.name,80) && d.createdAt is timestamp;}
+    match /pf_members/{uid} {
+      allow read: if signed() && (request.auth.uid==uid || superadmin());
+      allow create: if signed() && uid==request.auth.uid && validMember(request.resource.data) && request.resource.data.createdAt==request.time && (request.resource.data.role=='customer'||(founder()&&request.resource.data.role=='superadmin'));
+      allow update: if validMember(request.resource.data) && request.resource.data.createdAt==resource.data.createdAt && ((signed()&&uid==request.auth.uid&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])) || (superadmin()&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']) && ((uid!=request.auth.uid&&resource.data.role!='superadmin'&&request.resource.data.role in ['customer','admin'])||(founder()&&uid==request.auth.uid&&request.resource.data.role=='superadmin'))));
+    }
+    match /pf_shops/{uid} {
+      allow read: if signed() && (uid==request.auth.uid||resource.data.status=='approved'||admin());
+      allow create: if signed()&&uid==request.auth.uid&&validShop(request.resource.data)&&request.resource.data.ownerId==uid&&request.resource.data.status=='pending'&&request.resource.data.createdAt==request.time;
+      allow update: if validShop(request.resource.data)&&request.resource.data.ownerId==resource.data.ownerId&&request.resource.data.createdAt==resource.data.createdAt&&((signed()&&uid==request.auth.uid&&request.resource.data.status=='pending')||(admin()&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])));
+    }
+    match /pf_requests/{id} {
+      allow read: if requestRead(resource.data,id);
+      allow create: if signed()&&validRequest(request.resource.data)&&request.resource.data.ownerId==request.auth.uid&&request.resource.data.status=='open'&&request.resource.data.previousStatus=='open'&&request.resource.data.acceptedOfferId==null&&request.resource.data.createdAt==request.time;
+      allow update: if validRequest(request.resource.data) && ((signed()&&resource.data.ownerId==request.auth.uid&&resource.data.status=='open'&&request.resource.data.status=='closed'&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','acceptedOfferId'])&&(request.resource.data.acceptedOfferId==null||selectedOffer(request.resource.data,id))) || (admin()&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','previousStatus'])&&((request.resource.data.status=='hidden'&&resource.data.status!='hidden'&&request.resource.data.previousStatus==resource.data.status)||(resource.data.status=='hidden'&&request.resource.data.status==resource.data.previousStatus&&request.resource.data.previousStatus==resource.data.previousStatus))));
+    }
+    match /pf_offers/{id} {
+      allow read: if signed() && (admin()||resource.data.ownerId==request.auth.uid||resource.data.shopId==request.auth.uid);
+      allow create: if signed()&&validOffer(request.resource.data)&&id==request.resource.data.requestId+'_'+request.auth.uid&&request.resource.data.shopId==request.auth.uid&&request.resource.data.createdAt==request.time&&get(/databases/$(database)/documents/pf_requests/$(request.resource.data.requestId)).data.status=='open'&&get(/databases/$(database)/documents/pf_requests/$(request.resource.data.requestId)).data.ownerId==request.resource.data.ownerId&&request.resource.data.ownerId!=request.auth.uid&&shopMatch(get(/databases/$(database)/documents/pf_requests/$(request.resource.data.requestId)).data)&&request.resource.data.shopName==get(/databases/$(database)/documents/pf_shops/$(request.auth.uid)).data.name;
+    }
+    match /pf_categories/{id} {
+      allow read: if signed();
+      allow create,update: if superadmin()&&validCategory(request.resource.data);
+    }
+    match /{document=**} {allow read,write: if false;}
+  }
+}
