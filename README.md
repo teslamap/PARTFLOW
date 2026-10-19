@@ -1,6 +1,14 @@
-# PARTFLOW — Firebase
+# PARTFLOW — GitHub Pages + Firebase
 
-Georgian automotive parts request platform on the existing `menio-8de8f` Firebase project.
+Georgian automotive parts request platform. GitHub is the source of truth for code and GitHub Pages is the primary website host. The existing `menio-8de8f` Firebase project provides Authentication and Firestore; customer data is not stored in this public repository.
+
+Primary website: https://teslamap.github.io/PARTFLOW/
+
+- [Customer](https://teslamap.github.io/PARTFLOW/customer.html)
+- [Shop](https://teslamap.github.io/PARTFLOW/shop.html)
+- [Admin](https://teslamap.github.io/PARTFLOW/admin.html)
+- [Superadmin](https://teslamap.github.io/PARTFLOW/superadmin.html)
+- [Mobile customer](https://teslamap.github.io/PARTFLOW/mobile-customer.html)
 
 ## Pages
 
@@ -8,18 +16,19 @@ Georgian automotive parts request platform on the existing `menio-8de8f` Firebas
 - `/shop.html` — shop registration, specializations, matching requests and offers
 - `/admin.html` — shop approval/suspension and request moderation
 - `/superadmin.html` — admin roles and categories
+- `/mobile-customer.html` — independent mobile customer interface, prepared for Capacitor Android WebView
 
-All four root HTML files are complete, generated pages: visible HTML, the entire stylesheet and the complete React/Firebase JavaScript bundle are embedded in each file. They do not require separate `/src` or `/assets` files to run. Firebase network access is still required for real sign-in and data; Google fonts load online. The default page opens the customer panel. `?demo=1` runs an isolated, clearly labeled in-memory demo without reading or writing Firebase data.
+All five root HTML files are complete, generated pages: visible HTML, the entire stylesheet and the complete React/Firebase JavaScript bundle are embedded in each file. They do not require separate `/src` or `/assets` files to run. Firebase network access is still required for real sign-in and data; Google fonts load online. The default page opens the customer panel. `?demo=1` runs an isolated, clearly labeled in-memory demo without reading or writing Firebase data.
 
-Edit the templates under `entries/` and the application under `src/`, then run `npm run build`. The build emits full pages into `dist/` and updates the four root HTML files committed to GitHub. `build-tools/standalone-html.ts` performs the embedding and fails if a future change introduces unembedded JavaScript chunks. Root HTML files are generated outputs; do not hand-edit them.
+Edit the templates under `entries/` and the application under `src/`, then run `npm run build`. The build emits full pages into `dist/` and updates the five root HTML files committed to GitHub. Commit both source edits and generated root pages to `main`; the existing GitHub Pages branch deployment publishes them automatically. `build-tools/standalone-html.ts` performs the embedding and fails if a future change introduces unembedded JavaScript chunks. Root HTML files are generated outputs; do not hand-edit them.
 
 ## Services and access
 
-Each HTML panel uses its own named Firebase Auth instance and sessionStorage persistence. Signing in or out on one panel does not sign the other panels in or out; each panel needs an explicit sign-in. Reloading the same panel in the same tab preserves its session. Closing that tab ends its session. Accounts, roles and Firestore data remain shared; this separates browser sessions, not accounts or permissions. Older shared sessions are not imported into the new panel instances.
+Each HTML panel uses its own named Firebase Auth instance. The four desktop panels use sessionStorage; the mobile customer uses its own local persistence so its login survives app restart. Signing in or out on one panel does not sign the other panels in or out; each panel needs an explicit sign-in. Accounts, roles and Firestore data remain shared; this separates browser sessions, not accounts or permissions. Older shared sessions are not imported into the new panel instances. Sessions on GitHub Pages and Firebase Hosting are also separate browser origins.
 
-To test this locally, start the Auth emulator and the Vite dev server, then open `/tests/session-isolation.html`. This emulator-only browser test verifies four independent sessions, logout behavior and persistence across a full reload. It creates no production account or data.
+To test this locally, start the Auth emulator and the Vite dev server, then open `/tests/session-isolation.html`. This emulator-only browser test verifies five independent sessions, logout behavior and persistence across a full reload. It creates no production account or data.
 
-Firebase Hosting serves the static React app. Firebase Authentication provides Google and email/password sign-in. Firestore stores requests, offers, shop profiles, roles and added categories. No Sites/ChatGPT login, D1 or R2 dependency remains.
+GitHub Pages serves the static React app. Firebase Authentication provides Google and email/password sign-in. `teslamap.github.io` is an authorized Firebase Auth domain. Firestore stores requests, offers, shop profiles, roles and added categories. The Firebase Hosting copy remains available as a secondary URL; publishing code to GitHub is sufficient for the primary website. No Sites/ChatGPT login, D1 or R2 dependency remains.
 
 The verified Google identity `suloanani1@gmail.com` is the preconfigured founder/superadmin. This is a trusted deployment allowlist, not a first-registrant privilege. Other users register as customers; a separate shop profile goes through admin approval. Editing shop specialties resets approval. New admins can only be assigned by superadmin. Changing the founder identity requires reviewing and deploying the rules and matching frontend configuration together. Email/password users with the founder email need to verify that address and refresh their token before receiving founder access; Google sign-in handles verification directly.
 
@@ -54,6 +63,10 @@ node tests/rules.mjs
 `tests/rules.mjs` uses only the local emulator and covers ownership, exact matching queries, role escalation denial, approval, duplicate offers, acceptance, moderation and denied legacy paths.
 
 ## Deploy
+
+For the primary website: run `npm ci` and `npm run build`, then commit the updated source and generated root HTML files to `main`. The configured GitHub Pages deployment serves the repository root. No Firebase credentials are needed to publish these static pages. Keep runtime data and private credentials out of GitHub.
+
+Deploy to Firebase only when backend rules/auth settings change, or when explicitly updating the secondary Hosting copy:
 
 ```sh
 npx -y firebase-tools@latest login

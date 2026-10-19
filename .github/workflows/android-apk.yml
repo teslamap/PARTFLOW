@@ -1,0 +1,65 @@
+name: Android customer APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'entries/**'
+      - 'build-tools/**'
+      - 'android-overrides/**'
+      - 'capacitor.config.ts'
+      - 'package*.json'
+      - 'vite.config.ts'
+      - '.github/workflows/android-apk.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-customer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Use the runner's installed Android SDK
+        run: |
+          test -f "$ANDROID_HOME/platforms/android-36/android.jar"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/apksigner"
+      - run: npm ci --no-audit --no-fund
+      - name: Generate native WebView project and bundle mobile HTML
+        run: |
+          npm run android:setup
+          cp -R android-overrides/. android/
+          npx cap sync android
+          chmod +x android/gradlew
+      - name: Build installable debug APK
+        working-directory: android
+        run: ./gradlew --no-daemon -Pandroid.builder.sdkDownload=false assembleDebug
+      - name: Verify APK signature and package
+        run: |
+          mkdir -p apk-output
+          cp android/app/build/outputs/apk/debug/app-debug.apk apk-output/PARTFLOW-customer-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose apk-output/PARTFLOW-customer-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging apk-output/PARTFLOW-customer-debug.apk > apk-output/package-info.txt
+          grep "package: name='com.partflow.customer'" apk-output/package-info.txt
+          sha256sum apk-output/PARTFLOW-customer-debug.apk > apk-output/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PARTFLOW-customer-APK
+          path: apk-output/
+          if-no-files-found: error
+          retention-days: 14

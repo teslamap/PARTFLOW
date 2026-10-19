@@ -4,6 +4,10 @@ The independent `mobile-customer.html` uses the existing Firebase backend. Its n
 
 ## Build
 
+GitHub Actions workflow `.github/workflows/android-apk.yml` builds an installable debug APK on relevant pushes to `main` or a manual run. It uses the GitHub runner's already-installed Android SDK and publishes the verified APK plus checksum as the `PARTFLOW-customer-APK` artifact. No Firebase admin keys or release signing secrets are needed. This debug APK is for direct testing; store publication requires a separate release signing setup. Each fresh runner generates its own debug key, so APKs from different runs may require uninstalling the previous test app before installing.
+
+The workflow regenerates `android/` with Capacitor, then applies committed `android-overrides/` (PARTFLOW icon, splash and manifest). This keeps the native customizations reproducible without committing generated binaries. For local regeneration, copy `android-overrides/` into `android/` after `npm run android:setup`.
+
 Node 22+ and Android Studio with the Android SDK/JDK required by the installed Capacitor version are required. Install with `npm ci`, then:
 
 ```sh
