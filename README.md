@@ -4,6 +4,15 @@ Georgian automotive parts request platform. Customers describe a vehicle and par
 
 ## Implemented
 
+## Separate HTML addresses
+
+- `/customer.html` — customer panel
+- `/shop.html` — shop panel
+- `/admin.html` — admin panel (server-authorized)
+- `/superadmin.html` — superadmin panel (server-authorized)
+
+Each address returns its own rendered HTML page with a dedicated source entry under `app/<role>.html/page.tsx`. The interactive UI is shared in `app/partflow.tsx`; the original API and database remain shared. `/` redirects to `/customer.html`. Add `?demo=1` for an isolated demo of that panel. Sign-in returns to the requested panel. Direct admin URLs do not grant permissions.
+
 - Customer dashboard, detailed requests, optional VIN, budget, condition, city and up to four photos.
 - Shop registration with multiple specialization rules and admin approval. Editing a shop requires approval again.
 - Offers with price, condition, delivery terms and notes; customers select an offer and close a request. Phone contact is available for the selected shop.
