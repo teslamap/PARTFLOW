@@ -8,7 +8,7 @@ GitHub Actions workflow `.github/workflows/android-apk.yml` builds an installabl
 
 The workflow regenerates `android/` with Capacitor, then applies committed `android-overrides/` (PARTFLOW icon, splash and manifest). This keeps the native customizations reproducible without committing generated binaries. For local regeneration, copy `android-overrides/` into `android/` after `npm run android:setup`.
 
-Node 22+ and Android Studio with the Android SDK/JDK required by the installed Capacitor version are required. Install with `npm ci`, then:
+Node 24.12+ with npm 11.6.2 and Android Studio with the Android SDK/JDK required by the installed Capacitor version are required. Install with `npm ci`, then:
 
 ```sh
 npm run android:sync

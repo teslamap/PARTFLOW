@@ -26,12 +26,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
@@ -39,6 +39,7 @@ jobs:
         run: |
           test -f "$ANDROID_HOME/platforms/android-36/android.jar"
           test -x "$ANDROID_HOME/build-tools/35.0.0/apksigner"
+      - run: npm install --global npm@11.6.2 --no-audit --no-fund
       - run: npm ci --no-audit --no-fund
       - name: Generate native WebView project and bundle mobile HTML
         run: |
