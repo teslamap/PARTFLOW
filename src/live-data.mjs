@@ -39,8 +39,12 @@ export function subscribePanelData(db,identity,next,error,{panel='customer'}={})
   }
   function watch(key,c,filters,receive){
    pending.add(key);
-   const stop=onSnapshot(query(collection(db,'pf_'+c),...filters,orderBy('createdAt','desc'),limit(300)),s=>{if(!current())return;pending.delete(key);receive(s.docs.map(d=>row(d.id,d.data())));reconcile();emit()},e=>{if(current()){pending.delete(key);error(e)}});
-   children.push(stop);
+   let stop=()=>{},timer,attempt=0;
+   function connect(){
+    if(!current())return;pending.add(key);
+    stop=onSnapshot(query(collection(db,'pf_'+c),...filters,orderBy('createdAt','desc'),limit(300)),s=>{if(!current())return;attempt=0;pending.delete(key);receive(s.docs.map(d=>row(d.id,d.data())));reconcile();emit()},e=>{if(!current())return;pending.delete(key);error(e);if(['failed-precondition','unavailable','deadline-exceeded'].includes(e.code))timer=setTimeout(connect,Math.min(30000,1500*2**Math.min(attempt++,5)));});
+   }
+   connect();children.push(()=>{stop();clearTimeout(timer)});
   }
   const requests=(key,filters)=>watch('requests:'+key,'requests',filters,v=>requestSets.set(key,v));
   const offers=(key,filters)=>watch('offers:'+key,'offers',filters,v=>offerSets.set(key,v));

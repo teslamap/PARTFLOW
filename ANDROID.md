@@ -23,3 +23,4 @@ On Windows use gradlew.bat. If android/ already exists, use npm run android:sync
 The artifact is a debug/testing APK. Fresh GitHub runners generate different debug signing keys; replacing an older test build may require uninstalling it once. Subsequent website-only updates do not require installing another APK. Native permission/feature changes still require a new signed native build. Store publication requires persistent release signing keys and device testing.
 
 Photo file selection, TLS error cancellation, HTTPS-only navigation, safe insets, back-to-close-modal behavior, and retry after offline launch are implemented. Before public release, verify sign-in persistence, gallery upload, keyboard, offline recovery and back navigation on real Android devices.
+`nWebsite-only pushes publish GitHub Pages without rebuilding this APK. The Android workflow runs for native wrapper/dependency/config changes or a manual run.
