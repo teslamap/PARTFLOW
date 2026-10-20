@@ -42,7 +42,6 @@ jobs:
         run: |
           npm run android:setup
           node build-tools/prepare-live-android.mjs
-          npx cap sync android
           chmod +x android/gradlew
       - name: Build installable debug APK
         working-directory: android
@@ -54,6 +53,11 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose apk-output/PARTFLOW-customer-live.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging apk-output/PARTFLOW-customer-live.apk > apk-output/package-info.txt
           grep "package: name='com.partflow.customer'" apk-output/package-info.txt
+          python - <<'PY'
+          from zipfile import ZipFile
+          with ZipFile('apk-output/PARTFLOW-customer-live.apk') as apk:
+              assert not any(name.startswith('assets/public/') for name in apk.namelist()), 'Bundled web pages must not be packaged'
+          PY
           sha256sum apk-output/PARTFLOW-customer-live.apk > apk-output/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
