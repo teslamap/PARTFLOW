@@ -1,24 +1,25 @@
-# PARTFLOW customer Android
+# PARTFLOW live customer Android
 
-The independent `mobile-customer.html` uses the existing Firebase backend. Its named Firebase app has its own persistent login. Other HTML panel sessions remain separate. Requests and offers are filtered to the signed-in customer's UID even when that account also has admin rights.
+One APK, customer panel only. MainActivity opens exactly https://teslamap.github.io/PARTFLOW/mobile-customer.html in an Android WebView. It does not load bundled HTML or instantiate a Capacitor bridge. Shop/admin/superadmin URLs and other origins are blocked inside the app. No native JavaScript interface is exposed.
+
+Website changes reach this APK when the page is loaded again, without reinstalling it. Initial loading bypasses the WebView cache; reopening after more than one minute in the background also reloads the page unless a modal or focused form is active. Firestore snapshot listeners update requests, offers, acceptance and moderation while the page is open, without reloading or losing forms. This is not background push notification support. Internet is required; failed page loads show a retry screen.
+
+The customer has its own persistent Firebase Auth session. Web panels keep their independent sessions and have no cross-panel navigation links. Existing accounts and backend security roles remain shared in Firebase. Native WebView email/password sign-in is supported; Google popup sign-in is not used in the app.
 
 ## Build
 
-GitHub Actions workflow `.github/workflows/android-apk.yml` builds an installable debug APK on relevant pushes to `main` or a manual run. It uses the GitHub runner's already-installed Android SDK and publishes the verified APK plus checksum as the `PARTFLOW-customer-APK` artifact. No Firebase admin keys or release signing secrets are needed. This debug APK is for direct testing; store publication requires a separate release signing setup. Each fresh runner generates its own debug key, so APKs from different runs may require uninstalling the previous test app before installing.
+The GitHub Actions Android workflow uses the runner's existing SDK, Node 24 and Java 21. It generates the scaffold, applies android-overrides/ via build-tools/prepare-live-android.mjs, compiles and verifies PARTFLOW-customer-live.apk, then uploads PARTFLOW-customer-live-APK with checksums. No Firebase admin secrets are needed. Application ID: com.partflow.customer. Version: 2.0. Minimum Android: 7.0 (API 24).
 
-The workflow regenerates `android/` with Capacitor, then applies committed `android-overrides/` (PARTFLOW icon, splash and manifest). This keeps the native customizations reproducible without committing generated binaries. For local regeneration, copy `android-overrides/` into `android/` after `npm run android:setup`.
+For local setup use Node 24.12+, npm 11.6.2, JDK 21 and Android SDK 36:
 
-Node 24.12+ with npm 11.6.2 and Android Studio with the Android SDK/JDK required by the installed Capacitor version are required. Install with `npm ci`, then:
+    npm ci
+    npm run android:setup
+    node build-tools/prepare-live-android.mjs
+    cd android
+    ./gradlew assembleDebug
 
-```sh
-npm run android:sync
-npm run android:open
-```
+On Windows use gradlew.bat. If android/ already exists, use npm run android:sync before preparing the live wrapper instead of android:setup.
 
-For first setup only, if `android/` is absent, run `npm run build:mobile` then `npx cap add android` before sync. Android Studio can generate a debug APK or a signed release. Keep signing keys outside this repository. The application ID is `com.partflow.customer`; choose the final ID before publishing.
+The artifact is a debug/testing APK. Fresh GitHub runners generate different debug signing keys; replacing an older test build may require uninstalling it once. Subsequent website-only updates do not require installing another APK. Native permission/feature changes still require a new signed native build. Store publication requires persistent release signing keys and device testing.
 
-The build embeds the complete mobile HTML as `dist-mobile/index.html`; there is no remote `server.url`. Internet is needed for Firebase authentication, requests, offers and submission. The interface starts from bundled assets. Do not assume an offline mutation queue; send buttons are disabled when offline. Email/password login, registration, password reset and verification use Firebase. Native Google sign-in is deliberately absent until a native provider, Firebase Android app, SHA fingerprints and configuration are installed.
-
-Safe-area padding, keyboard-friendly form controls, file input photo selection/compression, Android back navigation and foreground data refresh are included. Offers refresh every 60 seconds while visible, on app resume, or by the refresh button. Photos use the existing Firestore compressed JPEG mechanism (four photos maximum); no paid Storage dependency was added.
-
-Before release: test on a real Android device (login survives restart, logout, requests, gallery/camera picker, offer acceptance, password reset deep links/external mail, offline recovery and back button), configure icons/splash, app signing, privacy policy and store listing. No signed APK is included in the source archive.
+Photo file selection, TLS error cancellation, HTTPS-only navigation, safe insets, back-to-close-modal behavior, and retry after offline launch are implemented. Before public release, verify sign-in persistence, gallery upload, keyboard, offline recovery and back navigation on real Android devices.

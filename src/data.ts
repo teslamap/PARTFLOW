@@ -2,7 +2,9 @@ import {auth,db} from './firebase';
 import {collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,query,where,limit,runTransaction,serverTimestamp,documentId} from 'firebase/firestore';
 import {CATEGORIES,CITIES,validateRequest,validateRules,cleanText} from './core.mjs';
 import {createOfferRecord} from './offer-write.mjs';
+import {subscribePanelData} from './live-data.mjs';
 type Row=Record<string,any>;
+export function watchData(next:(data:any)=>void,error:(e:any)=>void){let stopped=false,stop=()=>{};const uid=auth.currentUser?.uid;member().then(user=>{if(!stopped&&auth.currentUser?.uid===uid)stop=subscribePanelData(db,user,next,error,{panel:document.documentElement.dataset.role||'customer'})}).catch(e=>{if(!stopped)error(e)});return()=>{stopped=true;stop()};}
 const ref=(c:string,id:string)=>doc(db,'pf_'+c,id);
 const list=async(c:string,...filters:any[])=>{const s=await getDocs(query(collection(db,'pf_'+c),...filters,limit(300)));return s.docs.map(d=>row(d.id,d.data()));};
 function row(id:string,data:Row):Row{return {...data,...(data.rulesMap?{rules:Object.keys(data.rulesMap).filter(k=>data.rulesMap[k]===true).map(k=>{const [brand,model,category]=k.split('~');return {brand,model,category}})}:{}),id,createdAt:data.createdAt?.toDate?.().toISOString()||new Date().toISOString()};}

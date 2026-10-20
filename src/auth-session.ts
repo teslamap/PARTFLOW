@@ -8,7 +8,8 @@ export function createPanelSession(config:FirebaseOptions,role:string,emulatorUR
   // a different sessionStorage key, even on the same origin and in one tab.
   const name='partflow-panel-'+role;
   const app=getApps().find(a=>a.name===name)||initializeApp(config,name);
-  const auth=initializeAuth(app,{persistence:[role==='mobile-customer'?browserLocalPersistence:browserSessionPersistence,inMemoryPersistence],popupRedirectResolver:browserPopupRedirectResolver});
+  const nativeWebView=typeof navigator!=='undefined'&&navigator.userAgent.includes('PartflowAndroid/');
+  const auth=initializeAuth(app,{persistence:[role==='mobile-customer'||nativeWebView?browserLocalPersistence:browserSessionPersistence,inMemoryPersistence],popupRedirectResolver:browserPopupRedirectResolver});
   if(emulatorURL)connectAuthEmulator(auth,emulatorURL,{disableWarnings:true});
   return {app,auth};
 }

@@ -41,10 +41,10 @@ jobs:
           test -x "$ANDROID_HOME/build-tools/35.0.0/apksigner"
       - run: npm install --global npm@11.6.2 --no-audit --no-fund
       - run: npm ci --no-audit --no-fund
-      - name: Generate native WebView project and bundle mobile HTML
+      - name: Generate customer-only live WebView project
         run: |
           npm run android:setup
-          cp -R android-overrides/. android/
+          node build-tools/prepare-live-android.mjs
           npx cap sync android
           chmod +x android/gradlew
       - name: Build installable debug APK
@@ -53,14 +53,15 @@ jobs:
       - name: Verify APK signature and package
         run: |
           mkdir -p apk-output
-          cp android/app/build/outputs/apk/debug/app-debug.apk apk-output/PARTFLOW-customer-debug.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose apk-output/PARTFLOW-customer-debug.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging apk-output/PARTFLOW-customer-debug.apk > apk-output/package-info.txt
+          cp android/app/build/outputs/apk/debug/app-debug.apk apk-output/PARTFLOW-customer-live.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose apk-output/PARTFLOW-customer-live.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging apk-output/PARTFLOW-customer-live.apk > apk-output/package-info.txt
           grep "package: name='com.partflow.customer'" apk-output/package-info.txt
-          sha256sum apk-output/PARTFLOW-customer-debug.apk > apk-output/SHA256SUMS.txt
+          sha256sum apk-output/PARTFLOW-customer-live.apk > apk-output/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: PARTFLOW-customer-APK
+          name: PARTFLOW-customer-live-APK
           path: apk-output/
           if-no-files-found: error
           retention-days: 14
+

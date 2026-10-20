@@ -26,7 +26,7 @@ export function standaloneHTML():Plugin {
 <div id="root">
   <main class="auth-shell" style="margin:0;width:100%">
     <section class="auth-card" aria-busy="true">
-      <a class="auth-logo" href="customer.html">PART<span>FLOW</span></a>
+      <a class="auth-logo" href="${role}.html">PART<span>FLOW</span></a>
       <div class="eyebrow">${names[role]} / FIREBASE</div>
       <h1>კეთილი იყოს შენი დაბრუნება</h1>
       <p class="muted">შედი ან დარეგისტრირდი და იპოვე სასურველი ავტონაწილი.</p>
@@ -37,7 +37,7 @@ export function standaloneHTML():Plugin {
         <label>პაროლი<input type="password" name="password" disabled></label>
         <button class="primary" disabled>იტვირთება...</button>
       </form>
-      <nav class="auth-bottom">${Object.entries(names).map(([r,n])=>`<a href="${r}.html">${n}</a>`).join(' · ')}</nav>
+      <div class="auth-bottom">${names[role]} — დამოუკიდებელი პანელი</div>
       <noscript>PARTFLOW-ის გამოყენებისთვის ჩართე JavaScript.</noscript>
     </section>
   </main>
