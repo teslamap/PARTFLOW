@@ -46,6 +46,28 @@ service cloud.firestore {
       allow read: if signed();
       allow create,update: if superadmin()&&validCategory(request.resource.data);
     }
+    // Private archive markers: panel-local visibility only, no shared record edits.
+    // {type(enum), targetId(string <=300), label(string <=120), createdAt(timestamp)}.
+    function archiveScope(panel,type,id){
+
+      return (type=='requests' && ((panel in ['admin','superadmin'] && admin()) || (panel in ['customer','mobile-customer'] && get(/databases/$(database)/documents/pf_requests/$(id)).data.ownerId==request.auth.uid) || (panel=='shop' && requestRead(get(/databases/$(database)/documents/pf_requests/$(id)).data,id))))
+        || (type=='offers' && ((panel in ['admin','superadmin'] && admin()) || (panel in ['customer','mobile-customer'] && get(/databases/$(database)/documents/pf_offers/$(id)).data.ownerId==request.auth.uid) || (panel=='shop' && get(/databases/$(database)/documents/pf_offers/$(id)).data.shopId==request.auth.uid)))
+        || (type=='shops' && ((panel in ['admin','superadmin'] && admin()) || (panel=='shop' && id==request.auth.uid && exists(/databases/$(database)/documents/pf_shops/$(id)))))
+        || (type=='members' && panel=='superadmin' && superadmin() && exists(/databases/$(database)/documents/pf_members/$(id)))
+        || (type=='categories' && panel=='superadmin' && superadmin());
+    }
+    match /pf_archives/{uid}/panels/{panel}/items/{id} {
+      allow read,delete: if signed() && request.auth.uid==uid;
+      allow create,update: if signed() && request.auth.uid==uid
+        && panel in ['customer','mobile-customer','shop','admin','superadmin']
+        && request.resource.data.keys().hasAll(['type','targetId','label','createdAt'])
+        && request.resource.data.keys().hasOnly(['type','targetId','label','createdAt'])
+        && request.resource.data.type in ['requests','offers','shops','members','categories']
+        && text(request.resource.data.targetId,300) && text(request.resource.data.label,120)
+        && request.resource.data.createdAt==request.time
+        && id==request.resource.data.type+'_'+request.resource.data.targetId
+        && archiveScope(panel,request.resource.data.type,request.resource.data.targetId);
+    }
     match /{document=**} {allow read,write: if false;}
   }
 }

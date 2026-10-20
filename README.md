@@ -79,3 +79,12 @@ npx -y firebase-tools@latest deploy --only hosting,firestore,auth --project meni
 ```
 
 Review Security Rules and the trusted founder allowlist before expanding access. Firestore database ID is `(default)`, edition STANDARD, location `eur3`. Firebase project ID remains `menio-8de8f`; the product brand is PARTFLOW.
+
+
+## Panel archives
+
+Each signed-in account can hide records visible to that panel and restore them from Archive. Markers live only in `pf_archives/{uid}/panels/{panel}/items/{type_id}` with `type`, `targetId`, a short `label`, and server `createdAt`. Archive does not modify shared requests/offers, suspend a shop, disable sign-in, or grant access. User lists and categories retain their existing superadmin scope. The archive and its live listener are private to the owner; panel sessions and visibility remain independent. Mobile customer opens Archive through Profile.
+
+Permanent deletion, including Firebase Auth account deletion, is deferred at the owner’s request. No deletion backend or permanent-delete UI is deployed; existing shared documents cannot be deleted through client rules. No billing change is required for archives.
+
+Validation: run `node tests/rules.mjs`, `node tests/archive.mjs`, and `node tests/realtime.mjs` sequentially against the local demo-partflow Firestore emulator; each suite resets emulator data.
