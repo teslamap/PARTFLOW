@@ -31,6 +31,7 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      - run: npm install --global npm@11.6.2 --no-audit --no-fund
       - run: npm ci
       - run: npm run build
       - uses: actions/configure-pages@v5
