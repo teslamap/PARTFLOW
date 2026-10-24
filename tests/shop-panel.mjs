@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {shopPanelRequests} from '../src/core.mjs';
+const shop={status:'approved',rules:[{brand:'Toyota',model:'Prius',category:'engine'}]};
+const request={brand:'Toyota',model:'Prius',category:'engine',status:'open'};
+const rows=[{...request,id:'own',ownerId:'shop'},{...request,id:'customer',ownerId:'buyer'},{...request,id:'closed',status:'closed'},{...request,id:'hidden',status:'hidden'},{...request,id:'unmatched',brand:'BMW'}];
+assert.deepEqual(shopPanelRequests(rows,shop).map(r=>r.id),['own','customer','closed']);
+assert.deepEqual(shopPanelRequests(rows,{...shop,status:'pending'}),[]);
+assert.deepEqual(shopPanelRequests(rows,{...shop,status:'suspended'}),[]);
+assert.deepEqual(shopPanelRequests(rows,null),[]);
+console.log('PASS: shop shows own and customer matching requests, preserves approval and hidden/specialty restrictions.');

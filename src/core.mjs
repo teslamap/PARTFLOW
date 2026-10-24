@@ -2,6 +2,9 @@ export const VEHICLES={Toyota:['Prius','Camry','Corolla','RAV4','Land Cruiser'],
 export const CATEGORIES=['ძრავა და კომპონენტები','გადაცემათა კოლოფი','ძარის ნაწილები','განათება','სავალი ნაწილი','სამუხრუჭე სისტემა','ელექტროობა','სალონი','საბურავები და დისკები','გაგრილება და კონდიცირება'];
 export const CITIES=['თბილისი','ბათუმი','ქუთაისი','რუსთავი','გორი','ზუგდიდი','ფოთი','თელავი','სხვა'];
 export function matches(request,rules){return rules.some(r=>(r.brand==='*'||r.brand===request.brand)&&(r.model==='*'||r.model===request.model)&&(r.category==='*'||r.category===request.category));}
+// Own requests stay visible for accounts used in both customer and shop panels.
+// Sending an offer to oneself is separately prohibited by the form and rules.
+export function shopPanelRequests(requests,shop){return requests.filter(r=>shop?.status==='approved'&&r.status!=='hidden'&&matches(r,shop.rules));}
 export function visibleRequest(request,user,shop){return ['admin','superadmin'].includes(user.role)||request.ownerId===user.id||Boolean(shop&&shop.status==='approved'&&request.status!=='hidden'&&matches(request,shop.rules));}
 export function cleanText(v,max=200){if(typeof v!=='string'||!v.trim()||v.trim().length>max)throw Error('შეამოწმე სავალდებულო ველები');return v.trim();}
 export function validateRules(rules,categories=CATEGORIES){if(!Array.isArray(rules)||!rules.length||rules.length>10)throw Error('დაამატე მინიმუმ ერთი სპეციალიზაცია');return rules.map(r=>{if(!(r.brand==='*'||Object.hasOwn(VEHICLES,r.brand))||!(r.model==='*'||VEHICLES[r.brand]?.includes(r.model))||!(r.category==='*'||categories.includes(r.category)))throw Error('სპეციალიზაცია არასწორია');return {brand:r.brand,model:r.model,category:r.category};});}
