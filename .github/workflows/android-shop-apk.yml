@@ -5,6 +5,7 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/workflows/android-shop-apk.yml'
       - 'build-tools/prepare-live-android.mjs'
       - 'android-overrides/**'
       - 'capacitor.config.ts'
