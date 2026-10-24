@@ -8,7 +8,9 @@ The customer has its own persistent Firebase Auth session. Web panels keep their
 
 ## Build
 
-The GitHub Actions Android workflow uses the runner's existing SDK, Node 24 and Java 21. It generates the scaffold, applies android-overrides/ via build-tools/prepare-live-android.mjs, compiles and verifies PARTFLOW-customer-live.apk, then uploads PARTFLOW-customer-live-APK with checksums. No Firebase admin secrets are needed. Application ID: com.partflow.customer. Version: 2.0. Minimum Android: 7.0 (API 24).
+The GitHub Actions Android workflow uses the runner's existing SDK, Node 24 and Java 21. It generates the scaffold, applies android-overrides/ via build-tools/prepare-live-android.mjs, compiles and verifies PARTFLOW-customer-live.apk, then uploads PARTFLOW-customer-live-APK with checksums. No Firebase admin secrets are needed. Application ID: com.partflow.customer. Version: 3.0. Minimum Android: 7.0 (API 24).
+
+On customer web pages, Android Chrome checks for this package using `getInstalledRelatedApps()` and the reciprocal Digital Asset Links statement in the Android manifest. If the check is unavailable, the user can confirm installation in the prompt. The current unofficial APK is available as a GitHub Actions artifact; a stable public download URL requires publishing an APK release.
 
 For local setup use Node 24.12+, npm 11.6.2, JDK 21 and Android SDK 36:
 

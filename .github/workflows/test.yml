@@ -23,4 +23,5 @@ jobs:
       - run: npm run check
       - run: npm run build:mobile
       - run: npm run test:push
+      - run: npm run test:install
       - run: npx firebase-tools emulators:exec --only firestore --project demo-partflow "npm run test:rules"

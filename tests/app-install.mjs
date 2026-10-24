@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {ANDROID_PACKAGE_ID,detectInstallPlatform,isRelatedAndroidAppInstalled} from '../src/app-install.mjs';
+
+assert.equal(ANDROID_PACKAGE_ID,'com.partflow.customer');
+assert.equal(detectInstallPlatform('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36'),'android');
+assert.equal(detectInstallPlatform('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15'),'ios');
+assert.equal(detectInstallPlatform('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15',5),'ios');
+assert.equal(detectInstallPlatform('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'),'other');
+assert.equal(isRelatedAndroidAppInstalled([{platform:'play',id:ANDROID_PACKAGE_ID}]),true);
+assert.equal(isRelatedAndroidAppInstalled([{platform:'play',id:'com.other.app'}]),false);
+assert.equal(isRelatedAndroidAppInstalled([{platform:'webapp',id:ANDROID_PACKAGE_ID}]),false);
+assert.equal(isRelatedAndroidAppInstalled(null),false);
+const manifest=JSON.parse(await readFile(new URL('../public/manifest.webmanifest',import.meta.url),'utf8'));
+assert.equal(manifest.display,'standalone');
+assert.equal(manifest.related_applications[0].id,ANDROID_PACKAGE_ID);
+assert.equal(manifest.icons.some(icon=>icon.sizes==='192x192'),true);
+const androidManifest=await readFile(new URL('../android-overrides/app/src/main/AndroidManifest.xml',import.meta.url),'utf8');
+const androidStrings=await readFile(new URL('../android-overrides/app/src/main/res/values/strings.xml',import.meta.url),'utf8');
+assert.match(androidManifest,/android:name="asset_statements"/);
+assert.match(androidStrings,/https:\/\/teslamap\.github\.io/);
+console.log('PASS: install prompt targets mobile platforms and matches the Android package.');

@@ -1,0 +1,20 @@
+{
+  "id": "./mobile-customer.html",
+  "name": "PARTFLOW",
+  "short_name": "PARTFLOW",
+  "description": "ავტონაწილების მოთხოვნები, შეთავაზებები და ჩატი",
+  "lang": "ka",
+  "dir": "ltr",
+  "start_url": "./mobile-customer.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f8fa",
+  "theme_color": "#142332",
+  "icons": [
+    {"src": "./icons/partflow-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "./icons/partflow-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
+    {"src": "./favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}
+  ],
+  "related_applications": [{"platform": "play", "id": "com.partflow.customer"}],
+  "prefer_related_applications": false
+}
