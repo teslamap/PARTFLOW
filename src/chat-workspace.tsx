@@ -37,6 +37,16 @@ export function ChatWorkspace({data,uid,admin,targetOfferId,notificationReceipts
  useEffect(()=>{if(targetOfferId){const o=rows.find((o:Row)=>o.id===targetOfferId);if(o){setSelected(o.id);setExpanded(old=>new Set([...old,o.requestId]));setDetail(true)}}},[targetOfferId,rows]);
  useEffect(()=>{if(selected&&!rows.some((o:Row)=>o.id===selected)){setSelected('');setDetail(false)}},[rows,selected]);
  useEffect(()=>{const back=(e:Event)=>{if(narrow&&detail){e.preventDefault();setDetail(false)}};document.addEventListener('pf-chat-back',back);return()=>document.removeEventListener('pf-chat-back',back)},[narrow,detail]);
+ // The bridge-free Android WebView already uses web history for its back key.
+ // A same-page entry lets it return from the thread to the list without a new APK.
+ useEffect(()=>{
+  if(!narrow||!detail)return;
+  const marker=crypto.randomUUID();
+  history.pushState({...history.state,pfChat:marker},'');
+  const pop=(e:PopStateEvent)=>{if(e.state?.pfChat!==marker)setDetail(false)};
+  window.addEventListener('popstate',pop);
+  return()=>{window.removeEventListener('popstate',pop);if(history.state?.pfChat===marker)history.back()};
+ },[narrow,detail]);
  const offer=rows.find((o:Row)=>o.id===selected),request=data.requests.find((r:Row)=>r.id===offer?.requestId),a=summaries.get(selected),selectedCard=cards.get(selected);
  useEffect(()=>{
   if(!selected||narrow&&!detail||seenNotifications.has('offer_'+selected))return;

@@ -2,7 +2,7 @@
 
 The Chat tab now opens a conversation list rather than an offer selector. Each request is an independently collapsible group; its children are the individual shop conversations for that request. Customers see their requests and each responding shop. Shops see only their own offer conversations. Admin/superadmin panels can inspect the conversations they already have permission to monitor. Empty customer requests remain listed with an explanation until a shop offers.
 
-Desktop uses a list/conversation split view. Mobile opens the list first, then a selected conversation with a back arrow. The customer APK uses the live mobile page, so this interface update does not require a native plugin or a new APK. The mobile composer stays above bottom navigation, the conversation scrolls independently, and older messages can be loaded beyond the newest 60. The Chat, Orders and Notifications sections share the same workspace across panels.
+Desktop uses a list/conversation split view. Mobile opens the list first, then a selected conversation with a back arrow. Same-page browser history also supports the existing bridge-free Android WebView back key. The customer APK uses the live mobile page, so this interface update does not require a native plugin or a new APK. The mobile composer stays above bottom navigation, the conversation scrolls independently, and older messages can be loaded beyond the newest 60. The Chat, Orders and Notifications sections share the same workspace across panels.
 
 ## Shop confirmation and selection
 
