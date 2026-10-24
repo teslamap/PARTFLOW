@@ -65,7 +65,7 @@ jobs:
           cp android/app/build/outputs/apk/debug/app-debug.apk apk-output/PARTFLOW-shop-live.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose apk-output/PARTFLOW-shop-live.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging apk-output/PARTFLOW-shop-live.apk > apk-output/package-info.txt
-          grep "package: name='com.partflow.customer'" apk-output/package-info.txt
+          grep "package: name='com.partflow.shop'" apk-output/package-info.txt
           python - <<'PY'
           from zipfile import ZipFile
           with ZipFile('apk-output/PARTFLOW-shop-live.apk') as apk:
