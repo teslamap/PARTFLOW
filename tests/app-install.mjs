@@ -19,4 +19,6 @@ const androidManifest=await readFile(new URL('../android-overrides/app/src/main/
 const androidStrings=await readFile(new URL('../android-overrides/app/src/main/res/values/strings.xml',import.meta.url),'utf8');
 assert.match(androidManifest,/android:name="asset_statements"/);
 assert.match(androidStrings,/https:\/\/teslamap\.github\.io/);
+assert.match(androidStrings,/name="app_name">PARTFLOW/);
+assert.match(androidStrings,/name="title_activity_main">PARTFLOW/);
 console.log('PASS: install prompt targets mobile platforms and matches the Android package.');
