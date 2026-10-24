@@ -18,6 +18,12 @@ await assertSucceeds(setDoc(doc(owner,'pf_members/owner'),{...member,role:'super
 await assertSucceeds(setDoc(doc(alice,'pf_members/alice'),member));
 await assertSucceeds(setDoc(doc(shop,'pf_members/shop'),member));
 await assertSucceeds(setDoc(doc(wrong,'pf_members/wrong'),member));
+const garageVehicle={brand:'Toyota',model:'Prius',year:2018,engine:'1.8 ჰიბრიდი',vin:'JTDBR32E720123456',trim:'S Touring',fuel:'ჰიბრიდი',createdAt:serverTimestamp()};
+await assertSucceeds(setDoc(doc(alice,'pf_garage/alice/vehicles/prius'),garageVehicle));
+await assertSucceeds(getDocs(collection(alice,'pf_garage/alice/vehicles')));
+await assertFails(getDocs(collection(wrong,'pf_garage/alice/vehicles')));
+await assertFails(setDoc(doc(alice,'pf_garage/alice/vehicles/bad-vin'),{...garageVehicle,vin:'NOT-A-VALID-VIN'}));
+await assertFails(updateDoc(doc(alice,'pf_garage/alice/vehicles/prius'),{model:'Camry'}));
 await assertFails(updateDoc(doc(alice,'pf_members/alice'),{role:'admin'}));
 const unverified=env.authenticatedContext('forged',{email:'suloanani1@gmail.com',email_verified:false}).firestore();
 await assertFails(setDoc(doc(unverified,'pf_members/forged'),{...member,role:'superadmin'}));

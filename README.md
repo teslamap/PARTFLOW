@@ -18,6 +18,8 @@ Primary website: https://teslamap.github.io/PARTFLOW/
 - `/superadmin.html` — admin roles and categories
 - `/mobile-customer.html` — independent mobile customer interface, prepared for Capacitor Android WebView
 
+Customers have a private multi-vehicle garage on desktop and mobile. Each car can be added through the 17-character VIN wizard or entered manually. VIN lookup uses the public NHTSA vPIC decoder when available; vehicles for non-US markets can be completed manually. A request started from a saved car pre-fills its vehicle details and asks only for the part name; its category is inferred from that name.
+
 All five root HTML files are complete, generated pages: visible HTML, the entire stylesheet and the complete React/Firebase JavaScript bundle are embedded in each file. They do not require separate `/src` or `/assets` files to run. Firebase network access is still required for real sign-in and data; Google fonts load online. The default page opens the customer panel. `?demo=1` runs an isolated, clearly labeled in-memory demo without reading or writing Firebase data.
 
 Edit the templates under `entries/` and the application under `src/`, then run `npm run build`. The build emits full pages into `dist/` and updates the five root HTML files committed to GitHub. Commit both source edits and generated root pages to `main`; the existing GitHub Pages branch deployment publishes them automatically. `build-tools/standalone-html.ts` performs the embedding and fails if a future change introduces unembedded JavaScript chunks. Root HTML files are generated outputs; do not hand-edit them.

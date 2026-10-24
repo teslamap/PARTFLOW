@@ -16,6 +16,7 @@ service cloud.firestore {
     function deletingBySuperadmin(id){return superadmin() && get(/databases/$(database)/documents/pf_deletions/$(id)).data.status=='pending';}
     function text(v,n){return v is string && v.size()>0 && v.size()<=n;}
     function validMember(d){return d.keys().hasAll(['name','role','createdAt']) && d.keys().hasOnly(['name','role','createdAt']) && text(d.name,100) && d.role in ['customer','admin','superadmin'] && d.createdAt is timestamp;}
+    function validGarageVehicle(d){return d.keys().hasAll(['brand','model','year','engine','vin','trim','fuel','createdAt']) && d.keys().hasOnly(['brand','model','year','engine','vin','trim','fuel','createdAt']) && text(d.brand,60) && text(d.model,80) && d.year is int && d.year>=1950 && d.year<=request.time.year()+1 && text(d.engine,80) && d.vin is string && (d.vin==''||d.vin.matches('[A-HJ-NPR-Z0-9]{17}')) && d.trim is string && d.trim.size()<=80 && d.fuel is string && d.fuel.size()<=50 && d.createdAt is timestamp;}
     function validShop(d){return d.keys().hasAll(['ownerId','name','city','phone','status','rulesMap','createdAt']) && d.keys().hasOnly(['ownerId','name','city','phone','status','rulesMap','createdAt']) && text(d.ownerId,128) && text(d.name,100) && text(d.city,80) && text(d.phone,30) && d.phone.matches('[+0-9 ()-]{9,30}') && d.status in ['pending','approved','suspended'] && d.rulesMap is map && d.rulesMap.size()>0 && d.rulesMap.size()<=30 && d.rulesMap.values().hasOnly([true]) && d.createdAt is timestamp;}
     function photo(p){return p is string && p.size()<=180000 && p.matches('data:image/jpeg;base64,.*');}
     function validPhotos(p){return p is list && p.size()<=4 && (p.size()<1||photo(p[0])) && (p.size()<2||photo(p[1])) && (p.size()<3||photo(p[2])) && (p.size()<4||photo(p[3]));}
@@ -29,6 +30,13 @@ service cloud.firestore {
       allow read: if signed() && (request.auth.uid==uid || superadmin());
       allow create: if signed() && uid==request.auth.uid && validMember(request.resource.data) && request.resource.data.createdAt==request.time && (request.resource.data.role=='customer'||(founder()&&request.resource.data.role=='superadmin'));
       allow update: if validMember(request.resource.data) && request.resource.data.createdAt==resource.data.createdAt && ((signed()&&uid==request.auth.uid&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])) || (superadmin()&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']) && ((uid!=request.auth.uid&&resource.data.role!='superadmin'&&request.resource.data.role in ['customer','admin'])||(founder()&&uid==request.auth.uid&&request.resource.data.role=='superadmin'))));
+    }
+    // A user's garage is private to that signed-in account. Vehicle identity is immutable.
+    match /pf_garage/{uid}/vehicles/{vehicleId} {
+      allow read: if signed() && request.auth.uid==uid;
+      allow create: if signed() && request.auth.uid==uid && validGarageVehicle(request.resource.data) && request.resource.data.createdAt==request.time;
+      allow update: if false;
+      allow delete: if signed() && request.auth.uid==uid;
     }
     match /pf_shops/{uid} {
       allow read: if signed() && (uid==request.auth.uid||resource.data.status=='approved'||admin());
