@@ -12,6 +12,8 @@ service cloud.firestore {
     function founder(){return signed() && request.auth.token.email_verified == true && request.auth.token.email == 'suloanani1@gmail.com';}
     function superadmin(){return founder() || (signed() && get(/databases/$(database)/documents/pf_members/$(request.auth.uid)).data.role == 'superadmin');}
     function admin(){return superadmin() || (signed() && get(/databases/$(database)/documents/pf_members/$(request.auth.uid)).data.role == 'admin');}
+    function deleting(id){return exists(/databases/$(database)/documents/pf_deletions/$(id));}
+    function deletingBySuperadmin(id){return superadmin() && get(/databases/$(database)/documents/pf_deletions/$(id)).data.status=='pending';}
     function text(v,n){return v is string && v.size()>0 && v.size()<=n;}
     function validMember(d){return d.keys().hasAll(['name','role','createdAt']) && d.keys().hasOnly(['name','role','createdAt']) && text(d.name,100) && d.role in ['customer','admin','superadmin'] && d.createdAt is timestamp;}
     function validShop(d){return d.keys().hasAll(['ownerId','name','city','phone','status','rulesMap','createdAt']) && d.keys().hasOnly(['ownerId','name','city','phone','status','rulesMap','createdAt']) && text(d.ownerId,128) && text(d.name,100) && text(d.city,80) && text(d.phone,30) && d.phone.matches('[+0-9 ()-]{9,30}') && d.status in ['pending','approved','suspended'] && d.rulesMap is map && d.rulesMap.size()>0 && d.rulesMap.size()<=30 && d.rulesMap.values().hasOnly([true]) && d.createdAt is timestamp;}
@@ -35,12 +37,14 @@ service cloud.firestore {
     }
     match /pf_requests/{id} {
       allow read: if requestRead(resource.data,id);
-      allow create: if signed()&&validRequest(request.resource.data)&&request.resource.data.ownerId==request.auth.uid&&request.resource.data.status=='open'&&request.resource.data.previousStatus=='open'&&request.resource.data.acceptedOfferId==null&&request.resource.data.createdAt==request.time;
-      allow update: if validRequest(request.resource.data) && ((signed()&&resource.data.ownerId==request.auth.uid&&resource.data.status=='open'&&request.resource.data.status=='closed'&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','acceptedOfferId'])&&(request.resource.data.acceptedOfferId==null||selectedOffer(request.resource.data,id))) || (admin()&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','previousStatus'])&&((request.resource.data.status=='hidden'&&resource.data.status!='hidden'&&request.resource.data.previousStatus==resource.data.status)||(resource.data.status=='hidden'&&request.resource.data.status==resource.data.previousStatus&&request.resource.data.previousStatus==resource.data.previousStatus))));
+      allow delete: if deletingBySuperadmin(id);
+      allow create: if !deleting(id)&&signed()&&validRequest(request.resource.data)&&request.resource.data.ownerId==request.auth.uid&&request.resource.data.status=='open'&&request.resource.data.previousStatus=='open'&&request.resource.data.acceptedOfferId==null&&request.resource.data.createdAt==request.time;
+      allow update: if !deleting(id) && validRequest(request.resource.data) && ((signed()&&resource.data.ownerId==request.auth.uid&&resource.data.status=='open'&&request.resource.data.status=='closed'&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','acceptedOfferId'])&&(request.resource.data.acceptedOfferId==null||selectedOffer(request.resource.data,id))) || (admin()&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','previousStatus'])&&((request.resource.data.status=='hidden'&&resource.data.status!='hidden'&&request.resource.data.previousStatus==resource.data.status)||(resource.data.status=='hidden'&&request.resource.data.status==resource.data.previousStatus&&request.resource.data.previousStatus==resource.data.previousStatus))));
     }
     match /pf_offers/{id} {
       allow read: if signed() && (admin()||resource.data.ownerId==request.auth.uid||resource.data.shopId==request.auth.uid);
-      allow create: if signed()&&validOffer(request.resource.data)&&id==request.resource.data.requestId+'_'+request.auth.uid&&request.resource.data.shopId==request.auth.uid&&request.resource.data.createdAt==request.time&&get(/databases/$(database)/documents/pf_requests/$(request.resource.data.requestId)).data.status=='open'&&get(/databases/$(database)/documents/pf_requests/$(request.resource.data.requestId)).data.ownerId==request.resource.data.ownerId&&request.resource.data.ownerId!=request.auth.uid&&shopMatch(get(/databases/$(database)/documents/pf_requests/$(request.resource.data.requestId)).data)&&request.resource.data.shopName==get(/databases/$(database)/documents/pf_shops/$(request.auth.uid)).data.name;
+      allow create: if !deleting(request.resource.data.requestId)&&signed()&&validOffer(request.resource.data)&&id==request.resource.data.requestId+'_'+request.auth.uid&&request.resource.data.shopId==request.auth.uid&&request.resource.data.createdAt==request.time&&get(/databases/$(database)/documents/pf_requests/$(request.resource.data.requestId)).data.status=='open'&&get(/databases/$(database)/documents/pf_requests/$(request.resource.data.requestId)).data.ownerId==request.resource.data.ownerId&&request.resource.data.ownerId!=request.auth.uid&&shopMatch(get(/databases/$(database)/documents/pf_requests/$(request.resource.data.requestId)).data)&&request.resource.data.shopName==get(/databases/$(database)/documents/pf_shops/$(request.auth.uid)).data.name;
+      allow delete: if deletingBySuperadmin(resource.data.requestId);
     }
     match /pf_categories/{id} {
       allow read: if signed();
@@ -50,14 +54,16 @@ service cloud.firestore {
     // {type(enum), targetId(string <=300), label(string <=120), createdAt(timestamp)}.
     function archiveScope(panel,type,id){
 
-      return (type=='requests' && ((panel in ['admin','superadmin'] && admin()) || (panel in ['customer','mobile-customer'] && get(/databases/$(database)/documents/pf_requests/$(id)).data.ownerId==request.auth.uid) || (panel=='shop' && requestRead(get(/databases/$(database)/documents/pf_requests/$(id)).data,id))))
-        || (type=='offers' && ((panel in ['admin','superadmin'] && admin()) || (panel in ['customer','mobile-customer'] && get(/databases/$(database)/documents/pf_offers/$(id)).data.ownerId==request.auth.uid) || (panel=='shop' && get(/databases/$(database)/documents/pf_offers/$(id)).data.shopId==request.auth.uid)))
+      return (type=='requests' && !deleting(id) && ((panel in ['admin','superadmin'] && admin()) || (panel in ['customer','mobile-customer'] && get(/databases/$(database)/documents/pf_requests/$(id)).data.ownerId==request.auth.uid) || (panel=='shop' && requestRead(get(/databases/$(database)/documents/pf_requests/$(id)).data,id))))
+        || (type=='offers' && !deleting(get(/databases/$(database)/documents/pf_offers/$(id)).data.requestId) && ((panel in ['admin','superadmin'] && admin()) || (panel in ['customer','mobile-customer'] && get(/databases/$(database)/documents/pf_offers/$(id)).data.ownerId==request.auth.uid) || (panel=='shop' && get(/databases/$(database)/documents/pf_offers/$(id)).data.shopId==request.auth.uid)))
         || (type=='shops' && ((panel in ['admin','superadmin'] && admin()) || (panel=='shop' && id==request.auth.uid && exists(/databases/$(database)/documents/pf_shops/$(id)))))
         || (type=='members' && panel=='superadmin' && superadmin() && exists(/databases/$(database)/documents/pf_members/$(id)))
         || (type=='categories' && panel=='superadmin' && superadmin());
     }
+    function deletableArchive(d){return (d.type=='requests' && deletingBySuperadmin(d.targetId)) || (d.type=='offers' && deletingBySuperadmin(get(/databases/$(database)/documents/pf_offers/$(d.targetId)).data.requestId));}
     match /pf_archives/{uid}/panels/{panel}/items/{id} {
-      allow read,delete: if signed() && request.auth.uid==uid;
+      allow read: if signed() && (request.auth.uid==uid || deletableArchive(resource.data));
+      allow delete: if signed() && (request.auth.uid==uid || deletableArchive(resource.data));
       allow create,update: if signed() && request.auth.uid==uid
         && panel in ['customer','mobile-customer','shop','admin','superadmin']
         && request.resource.data.keys().hasAll(['type','targetId','label','createdAt'])
@@ -96,18 +102,21 @@ service cloud.firestore {
     match /pf_orders/{id} {
       allow get: if signed() && (admin() || (resource!=null && participant(resource.data)) || get(/databases/$(database)/documents/pf_requests/$(id)).data.ownerId==request.auth.uid);
       allow list: if signed() && (admin()||participant(resource.data));
-      allow create: if signed() && validOrder(request.resource.data) && isOwner(request.resource.data.ownerId) && orderSelection(id,request.resource.data) && request.resource.data.status=='confirmed' && request.resource.data.dispute=='none' && request.resource.data.version==0 && request.resource.data.createdAt==request.time && request.resource.data.updatedAt==request.time && matchingEvent(id,request.resource.data) && getAfter(/databases/$(database)/documents/pf_orders/$(id)/events/0).data.kind=='confirmed';
-      allow update: if signed() && (participant(resource.data)||admin()) && validOrder(request.resource.data) && validOrderChange(id,resource.data,request.resource.data);
+      allow create: if !deleting(id) && signed() && validOrder(request.resource.data) && isOwner(request.resource.data.ownerId) && orderSelection(id,request.resource.data) && request.resource.data.status=='confirmed' && request.resource.data.dispute=='none' && request.resource.data.version==0 && request.resource.data.createdAt==request.time && request.resource.data.updatedAt==request.time && matchingEvent(id,request.resource.data) && getAfter(/databases/$(database)/documents/pf_orders/$(id)/events/0).data.kind=='confirmed';
+      allow update: if !deleting(id) && signed() && (participant(resource.data)||admin()) && validOrder(request.resource.data) && validOrderChange(id,resource.data,request.resource.data);
+      allow delete: if deletingBySuperadmin(id);
       match /events/{version} {
+        allow delete: if deletingBySuperadmin(id);
         allow read: if signed() && (admin()||participant(get(/databases/$(database)/documents/pf_orders/$(id)).data));
-        allow create: if signed() && validEvent(request.resource.data) && request.resource.data.actorId==request.auth.uid && version==string(request.resource.data.version) && matchingEvent(id,getAfter(/databases/$(database)/documents/pf_orders/$(id)).data) && getAfter(/databases/$(database)/documents/pf_orders/$(id)).data.version==request.resource.data.version && (!exists(/databases/$(database)/documents/pf_orders/$(id)) || get(/databases/$(database)/documents/pf_orders/$(id)).data.version+1==request.resource.data.version);
+        allow create: if !deleting(id) && signed() && validEvent(request.resource.data) && request.resource.data.actorId==request.auth.uid && version==string(request.resource.data.version) && matchingEvent(id,getAfter(/databases/$(database)/documents/pf_orders/$(id)).data) && getAfter(/databases/$(database)/documents/pf_orders/$(id)).data.version==request.resource.data.version && (!exists(/databases/$(database)/documents/pf_orders/$(id)) || get(/databases/$(database)/documents/pf_orders/$(id)).data.version+1==request.resource.data.version);
       }
     }
     function validMessage(d){return d.keys().hasAll(['offerId','requestId','ownerId','shopId','senderId','recipientId','text','createdAt']) && d.keys().hasOnly(['offerId','requestId','ownerId','shopId','senderId','recipientId','text','createdAt']) && text(d.offerId,300) && text(d.requestId,128) && text(d.ownerId,128) && text(d.shopId,128) && text(d.senderId,128) && text(d.recipientId,128) && text(d.text,2000) && d.createdAt==request.time;}
     function messageOffer(d){let o=get(/databases/$(database)/documents/pf_offers/$(d.offerId)).data;return o.requestId==d.requestId && o.ownerId==d.ownerId && o.shopId==d.shopId && d.ownerId!=d.shopId && d.senderId==request.auth.uid && ((d.senderId==d.ownerId&&d.recipientId==d.shopId)||(d.senderId==d.shopId&&d.recipientId==d.ownerId));}
     match /pf_messages/{id} {
       allow read: if signed() && (admin() || participant(resource.data) || resource.data.recipientId==request.auth.uid);
-      allow create: if signed() && validMessage(request.resource.data) && participant(request.resource.data) && messageOffer(request.resource.data);
+      allow create: if !deleting(request.resource.data.requestId) && signed() && validMessage(request.resource.data) && participant(request.resource.data) && messageOffer(request.resource.data);
+      allow delete: if deletingBySuperadmin(resource.data.requestId);
     }
     match /pf_inbox/{uid}/receipts/{id} {
       allow read,delete: if isOwner(uid);
@@ -117,6 +126,13 @@ service cloud.firestore {
     match /pf_devices/{uid}/tokens/{id} {
       allow read,delete: if isOwner(uid);
       allow create,update: if isOwner(uid) && id.matches('[a-f0-9]{64}') && validDevice(request.resource.data);
+    }
+    // Content-free permanent deletion lock: blocks recreation and supports interrupted cascades.
+    function validDeletion(d){return d.keys().hasAll(['requestedBy','status','createdAt','updatedAt']) && d.keys().hasOnly(['requestedBy','status','createdAt','updatedAt']) && text(d.requestedBy,128) && d.status in ['pending','completed'] && d.createdAt is timestamp && d.updatedAt==request.time;}
+    match /pf_deletions/{id} {
+      allow read: if superadmin();
+      allow create: if superadmin() && text(id,128) && validDeletion(request.resource.data) && request.resource.data.requestedBy==request.auth.uid && request.resource.data.status=='pending' && request.resource.data.createdAt==request.time && exists(/databases/$(database)/documents/pf_requests/$(id));
+      allow update: if superadmin() && validDeletion(request.resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt']) && resource.data.status=='pending' && request.resource.data.status=='completed';
     }
     match /{document=**} {allow read,write: if false;}
   }

@@ -85,6 +85,6 @@ Review Security Rules and the trusted founder allowlist before expanding access.
 
 Each signed-in account can hide records visible to that panel and restore them from Archive. Markers live only in `pf_archives/{uid}/panels/{panel}/items/{type_id}` with `type`, `targetId`, a short `label`, and server `createdAt`. Archive does not modify shared requests/offers, suspend a shop, disable sign-in, or grant access. User lists and categories retain their existing superadmin scope. The archive and its live listener are private to the owner; panel sessions and visibility remain independent. Mobile customer opens Archive through Profile.
 
-Permanent deletion, including Firebase Auth account deletion, is deferred at the owner’s request. No deletion backend or permanent-delete UI is deployed; existing shared documents cannot be deleted through client rules. No billing change is required for archives.
+Superadmins can now permanently delete a request and its linked offers, chat, orders, history and archived labels from all panels after confirmation. See DELETION.md for the locked, resumable cascade. Firebase Auth account deletion and shop/profile deletion remain unavailable; archives remain private. No billing change is required.
 
 Validation: run `npm run test:rules` (rules, archive, realtime and commerce suites) sequentially against the local demo-partflow Firestore emulator; each suite resets emulator data.
