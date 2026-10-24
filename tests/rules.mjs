@@ -5,12 +5,13 @@ import assert from 'node:assert/strict';
 import {writeChatMessage,requestConfirmation} from '../src/chat-workflow.mjs';
 import {confirmOrder} from '../src/commerce.mjs';
 import {createOfferRecord} from '../src/offer-write.mjs';
-const env=await initializeTestEnvironment({projectId:'demo-partflow',firestore:{host:'127.0.0.1',port:8080,rules:readFileSync('firestore.rules','utf8')}});
+const env=await initializeTestEnvironment({projectId:'demo-partflow',firestore:{host:'127.0.0.1',port:Number(process.env.FIRESTORE_EMULATOR_PORT||8080),rules:readFileSync('firestore.rules','utf8')}});
 try{
 await env.clearFirestore();
 const owner=env.authenticatedContext('owner',{email:'suloanani1@gmail.com',email_verified:true}).firestore();
 const alice=env.authenticatedContext('alice',{email:'alice@example.com',email_verified:true}).firestore();
 const shop=env.authenticatedContext('shop',{email:'shop@example.com',email_verified:true}).firestore();
+const admin=env.authenticatedContext('administrator',{email:'admin@example.com',email_verified:true}).firestore();
 const wrong=env.authenticatedContext('wrong',{email:'wrong@example.com',email_verified:true}).firestore();
 const anon=env.unauthenticatedContext().firestore();
 const member={name:'Test',role:'customer',createdAt:serverTimestamp()};
@@ -18,6 +19,7 @@ await assertSucceeds(setDoc(doc(owner,'pf_members/owner'),{...member,role:'super
 await assertSucceeds(setDoc(doc(alice,'pf_members/alice'),member));
 await assertSucceeds(setDoc(doc(shop,'pf_members/shop'),member));
 await assertSucceeds(setDoc(doc(wrong,'pf_members/wrong'),member));
+await env.withSecurityRulesDisabled(async context=>{await setDoc(doc(context.firestore(),'pf_members/administrator'),{name:'Administrator',role:'admin',createdAt:Timestamp.now()})});
 const garageVehicle={brand:'Toyota',model:'Prius',year:2018,engine:'1.8 ჰიბრიდი',vin:'JTDBR32E720123456',trim:'S Touring',fuel:'ჰიბრიდი',createdAt:serverTimestamp()};
 await assertSucceeds(setDoc(doc(alice,'pf_garage/alice/vehicles/prius'),garageVehicle));
 await assertSucceeds(getDocs(collection(alice,'pf_garage/alice/vehicles')));
@@ -48,6 +50,12 @@ const o={requestId:'r1',ownerId:'alice',shopId:'shop',shopName:'Test Shop',price
 // nonexistent document has no participant fields authorizing a read.
 await assertFails(runTransaction(shop,async tx=>{const offer=doc(shop,'pf_offers/r1_shop');await tx.get(offer);tx.set(offer,o);}));
 await assertSucceeds(createOfferRecord(shop,'r1','shop',o));
+const serviceRequest=async id=>setDoc(doc(alice,'pf_requests',id),r);
+await serviceRequest('service-free');
+await assertSucceeds(createOfferRecord(shop,'service-free','shop',{...o,requestId:'service-free',serviceAvailable:true,servicePrice:0}));
+await serviceRequest('service-omitted');
+await assertSucceeds(createOfferRecord(shop,'service-omitted','shop',{...o,requestId:'service-omitted',serviceAvailable:false,servicePrice:0}));
+for(const [id,fields] of [['service-negative',{serviceAvailable:true,servicePrice:-1}],['service-overflow',{serviceAvailable:true,servicePrice:1000001}],['service-type',{serviceAvailable:'yes',servicePrice:0}],['service-missing',{serviceAvailable:true}],['service-unavailable-price',{serviceAvailable:false,servicePrice:20}]]){await serviceRequest(id);await assertFails(createOfferRecord(shop,id,'shop',{...o,requestId:id,...fields}));}
 await assertSucceeds(getDoc(doc(alice,'pf_offers/r1_shop')));
 await assertSucceeds(getDoc(doc(shop,'pf_offers/r1_shop')));
 await assertFails(getDoc(doc(wrong,'pf_offers/r1_shop')));
@@ -85,6 +93,8 @@ await assertFails(getDocs(collection(alice,'pf_members')));
 await assertSucceeds(getDocs(collection(owner,'pf_members')));
 await assertFails(setDoc(doc(alice,'pf_categories/test'),{name:'Test',createdAt:serverTimestamp()}));
 await assertSucceeds(setDoc(doc(owner,'pf_categories/test'),{name:'Test',createdAt:serverTimestamp()}));
+await assertSucceeds(setDoc(doc(admin,'pf_categories/admin-added'),{name:'Admin category',createdAt:serverTimestamp()}));
+await assertFails(setDoc(doc(admin,'pf_categories/admin-added'),{name:'Overwrite',createdAt:serverTimestamp()}));
 await assertFails(setDoc(doc(alice,'orders/legacy'),{open:true}));
 console.log('PASS: real offer-write helper, denied legacy transaction, participant-only reads, duplicate/concurrent offer denial, wrong specialty/suspended/self/closed/forged offer denial, ownership, matching queries, roles, acceptance and moderation');
 }finally{await env.cleanup()}

@@ -5,7 +5,7 @@ import {doc,setDoc,getDoc,getDocs,updateDoc,deleteDoc,collection,query,where,or,
 import {requestConfirmation} from '../src/chat-workflow.mjs';
 import {ensureMemberRecord} from '../src/member-write.mjs';
 import {confirmOrder,changeOrder,sendMessage,nextStatuses} from '../src/commerce.mjs';
-const env=await initializeTestEnvironment({projectId:'demo-partflow',firestore:{host:'127.0.0.1',port:8080,rules:readFileSync('firestore.rules','utf8')}});
+const env=await initializeTestEnvironment({projectId:'demo-partflow',firestore:{host:'127.0.0.1',port:Number(process.env.FIRESTORE_EMULATOR_PORT||8080),rules:readFileSync('firestore.rules','utf8')}});
 const db=id=>env.authenticatedContext(id).firestore(),alice=db('alice'),shop=db('shop'),outsider=db('outsider'),admin=db('admin'),anon=env.unauthenticatedContext().firestore();
 const r=(d,c,id)=>doc(d,'pf_'+c,id);
 async function observed(db,c,filters,action,predicate){

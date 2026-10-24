@@ -5,7 +5,7 @@ import {doc,setDoc,getDoc,getDocs,collection,query,where,deleteDoc,updateDoc,Tim
 import {deleteRequestFully} from '../src/delete-request.mjs';
 import {sendMessage,changeOrder} from '../src/commerce.mjs';
 import {subscribePanelData} from '../src/live-data.mjs';
-const env=await initializeTestEnvironment({projectId:'demo-partflow',firestore:{host:'127.0.0.1',port:8080,rules:readFileSync('firestore.rules','utf8')}});
+const env=await initializeTestEnvironment({projectId:'demo-partflow',firestore:{host:'127.0.0.1',port:Number(process.env.FIRESTORE_EMULATOR_PORT||8080),rules:readFileSync('firestore.rules','utf8')}});
 const client=id=>env.authenticatedContext(id).firestore(),sa=client('sa'),admin=client('admin'),buyer=client('buyer'),shop=client('shop'),anon=env.unauthenticatedContext().firestore();
 let stop=()=>{};
 try{

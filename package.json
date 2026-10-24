@@ -11,7 +11,7 @@
     "android:open": "cap open android",
     "android:setup": "npm run build:mobile && cap add android && cap sync android",
     "check": "tsc --noEmit",
-    "test:rules": "node tests/rules.mjs && node tests/archive.mjs && node tests/realtime.mjs && node tests/commerce.mjs && node tests/shop-panel.mjs && node tests/deletion.mjs && node tests/chat-workflow.mjs",
+    "test:rules": "node tests/catalog.mjs && node tests/rules.mjs && node tests/archive.mjs && node tests/realtime.mjs && node tests/commerce.mjs && node tests/shop-panel.mjs && node tests/deletion.mjs && node tests/chat-workflow.mjs",
     "test:push": "node tests/push.mjs",
     "android:push:setup": "npm run build:mobile && cap add android && cap sync android && node build-tools/prepare-push-android.mjs"
   },

@@ -1,5 +1,5 @@
 import {collection,doc,query,where,orderBy,limit,onSnapshot} from 'firebase/firestore';
-import {CATEGORIES} from './core.mjs';
+import {CATEGORIES,sortCategories} from './core.mjs';
 
 const row=(id,d)=>({...d,id,createdAt:d.createdAt?.toDate?.().toISOString()||'',...(d.rulesMap?{rules:Object.keys(d.rulesMap).filter(k=>d.rulesMap[k]===true).map(k=>{const [brand,model,category]=k.split('~');return {brand,model,category}})}:{})});
 const unique=values=>[...new Map(values.flat().map(v=>[v.id,v])).values()];
@@ -48,7 +48,7 @@ export function subscribePanelData(db,identity,next,error,{panel='customer'}={})
   }
   const requests=(key,filters)=>watch('requests:'+key,'requests',filters,v=>requestSets.set(key,v));
   const offers=(key,filters)=>watch('offers:'+key,'offers',filters,v=>offerSets.set(key,v));
-  watch('categories','categories',[],v=>{categories=[...new Set([...CATEGORIES,...v.map(r=>r.name)])]});
+  watch('categories','categories',[],v=>{categories=sortCategories([...CATEGORIES,...v.map(r=>r.name)])});
   pending.add('archives');
   children.push(onSnapshot(query(collection(db,'pf_archives',identity.id,'panels',panel,'items'),orderBy('createdAt','desc')),s=>{if(!current())return;archives=s.docs.map(d=>row(d.id,d.data()));pending.delete('archives');emit()},e=>{if(current()){pending.delete('archives');error(e);emit()}}));
   if(isAdmin||isCustomer)requests('own',isAdmin?[]:[where('ownerId','==',identity.id)]);

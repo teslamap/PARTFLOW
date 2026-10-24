@@ -21,8 +21,8 @@ export async function writeChatMessage(db,uid,offerId,text,{admin=false,join=fal
 }
 export const joinChat=(db,uid,offerId)=>writeChatMessage(db,uid,offerId,'ადმინისტრატორი შემოუერთდა ჩატს',{admin:true,join:true});
 export async function requestConfirmation(db,uid,offerId,terms){
- const price=Number(terms.price),delivery=String(terms.delivery||'').trim(),note=String(terms.note||'').trim();
- if(!Number.isFinite(price)||price<=0||price>1000000||!['ახალი','მეორადი'].includes(terms.condition)||!delivery||delivery.length>120||!note||note.length>1000)throw Error('შეამოწმე ფასი, მდგომარეობა და მიწოდების პირობები');
+ const price=Number(terms.price),serviceAvailable=terms.serviceAvailable===true||terms.serviceAvailable==='true',servicePrice=serviceAvailable?Number(terms.servicePrice??0):0,delivery=String(terms.delivery||'').trim(),note=String(terms.note||'').trim();
+ if(!Number.isFinite(price)||price<=0||price>1000000||!Number.isFinite(servicePrice)||servicePrice<0||servicePrice>1000000||!['ახალი','მეორადი'].includes(terms.condition)||!delivery||delivery.length>120||!note||note.length>1000)throw Error('შეამოწმე ნაწილის/მომსახურების ფასი, მდგომარეობა და მიწოდების პირობები');
  await runTransaction(db,async tx=>{
   const os=await tx.get(ref(db,'offers',offerId));if(!os.exists())throw Error('შეთავაზება ვერ მოიძებნა');const o=os.data();
   const rs=await tx.get(ref(db,'requests',o.requestId)),shop=await tx.get(ref(db,'shops',uid)),activity=await tx.get(ref(db,'chat_activity',offerId)),current=await tx.get(ref(db,'confirmations',offerId));
@@ -33,7 +33,7 @@ export async function requestConfirmation(db,uid,offerId,terms){
   if(!(activity.data()?.customerReplied&&activity.data()?.shopReplied)&&!proven)throw Error('დადასტურებამდე ორივე მხარემ უნდა დაწეროს ჩატში');
   if(current.data()?.status==='pending')throw Error('დადასტურების მოთხოვნა უკვე გაგზავნილია');
   const now=serverTimestamp();
-  tx.set(ref(db,'confirmations',offerId),{offerId,requestId:o.requestId,ownerId:o.ownerId,shopId:o.shopId,price,condition:terms.condition,delivery,note,...(proven?{customerMessageId:terms.customerMessageId,shopMessageId:terms.shopMessageId}:{}),status:'pending',version:(current.data()?.version||0)+1,createdAt:current.data()?.createdAt||now,updatedAt:now});
+  tx.set(ref(db,'confirmations',offerId),{offerId,requestId:o.requestId,ownerId:o.ownerId,shopId:o.shopId,price,serviceAvailable,servicePrice,condition:terms.condition,delivery,note,...(proven?{customerMessageId:terms.customerMessageId,shopMessageId:terms.shopMessageId}:{}),status:'pending',version:(current.data()?.version||0)+1,createdAt:current.data()?.createdAt||now,updatedAt:now});
  });
 }
 export async function declineConfirmation(db,uid,offerId,action){

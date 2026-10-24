@@ -4,7 +4,7 @@ import {initializeTestEnvironment,assertSucceeds,assertFails} from '@firebase/ru
 import {doc,setDoc,getDoc,getDocs,collection,query,where,updateDoc,Timestamp,serverTimestamp} from 'firebase/firestore';
 import {writeChatMessage,joinChat,requestConfirmation,declineConfirmation} from '../src/chat-workflow.mjs';
 import {confirmOrder} from '../src/commerce.mjs';
-const env=await initializeTestEnvironment({projectId:'demo-partflow',firestore:{host:'127.0.0.1',port:8080,rules:readFileSync('firestore.rules','utf8')}});
+const env=await initializeTestEnvironment({projectId:'demo-partflow',firestore:{host:'127.0.0.1',port:Number(process.env.FIRESTORE_EMULATOR_PORT||8080),rules:readFileSync('firestore.rules','utf8')}});
 const client=id=>env.authenticatedContext(id).firestore(),buyer=client('buyer'),shop=client('shop'),other=client('other'),admin=client('admin'),wrong=client('wrong');
 const terms={price:380,condition:'მეორადი',delivery:'დღეს · ადგილზე გატანა',note:'ორიგინალი'};
 try{
@@ -32,7 +32,9 @@ try{
  await assertFails(updateDoc(doc(shop,'pf_chat_activity','r_shop'),{lastText:'forged',version:5,updatedAt:serverTimestamp()}));
  await assertFails(setDoc(doc(buyer,'pf_chat_admins','r_shop_buyer'),{offerId:'r_shop',requestId:'r',ownerId:'buyer',shopId:'shop',adminId:'buyer',adminName:'Admin',messageId:'fake',createdAt:serverTimestamp()}));
  await assertFails(getDocs(collection(wrong,'pf_chat_activity')));await assertFails(getDocs(collection(wrong,'pf_confirmations')));await assertFails(getDocs(collection(wrong,'pf_chat_admins')));
- await assertSucceeds(requestConfirmation(shop,'shop','r_shop',terms));
+ await assert.rejects(requestConfirmation(shop,'shop','r_shop',{...terms,serviceAvailable:true,servicePrice:-1}));
+ await assertSucceeds(requestConfirmation(shop,'shop','r_shop',{...terms,serviceAvailable:true,servicePrice:0}));
+ const confirmation=await getDoc(doc(buyer,'pf_confirmations','r_shop'));assert.equal(confirmation.data().serviceAvailable,true);assert.equal(confirmation.data().servicePrice,0,'zero means free service');
  await assert.rejects(requestConfirmation(shop,'shop','r_shop',terms));
  await assert.rejects(declineConfirmation(other,'other','r_shop','declined'));
  await assertFails(updateDoc(doc(admin,'pf_confirmations','r_shop'),{status:'accepted',updatedAt:serverTimestamp()}));

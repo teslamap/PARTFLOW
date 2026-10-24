@@ -6,7 +6,7 @@ import {subscribePanelData} from '../src/live-data.mjs';
 import {writeChatMessage,requestConfirmation} from '../src/chat-workflow.mjs';
 import {confirmOrder} from '../src/commerce.mjs';
 import {createOfferRecord} from '../src/offer-write.mjs';
-const env=await initializeTestEnvironment({projectId:'demo-partflow',firestore:{host:'127.0.0.1',port:8080,rules:readFileSync('firestore.rules','utf8')}});
+const env=await initializeTestEnvironment({projectId:'demo-partflow',firestore:{host:'127.0.0.1',port:Number(process.env.FIRESTORE_EMULATOR_PORT||8080),rules:readFileSync('firestore.rules','utf8')}});
 const stops=[];
 function probe(db,id,panel){const p={data:null,history:[],errors:[],waiters:[]};const off=subscribePanelData(db,{id,email:id+'@example.com'},d=>{p.data=d;p.history.push(d);for(const w of [...p.waiters])if(w.test(d)){clearTimeout(w.timer);p.waiters.splice(p.waiters.indexOf(w),1);w.resolve(d)}},e=>p.errors.push(e),{panel});p.stop=off;stops.push(off);p.wait=(test,label)=>new Promise((resolve,reject)=>{if(p.data&&test(p.data)){resolve(p.data);return}const w={test,resolve,timer:setTimeout(()=>reject(new Error('Timed out: '+label+'; '+p.errors.map(e=>e.message).join('; '))),12000)};p.waiters.push(w)});return p;}
 try{

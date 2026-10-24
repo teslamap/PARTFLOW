@@ -5,9 +5,9 @@ import {doc,setDoc,deleteDoc,getDoc,getDocs,collection,serverTimestamp,updateDoc
 import {initializeApp,deleteApp} from 'firebase-admin/app';
 import {getFirestore,Timestamp} from 'firebase-admin/firestore';
 import {subscribePanelData} from '../src/live-data.mjs';
-process.env.FIRESTORE_EMULATOR_HOST='127.0.0.1:8080';
+process.env.FIRESTORE_EMULATOR_HOST='127.0.0.1:'+Number(process.env.FIRESTORE_EMULATOR_PORT||8080);
 const projectId='demo-partflow';
-const env=await initializeTestEnvironment({projectId,firestore:{host:'127.0.0.1',port:8080,rules:readFileSync('firestore.rules','utf8')}});
+const env=await initializeTestEnvironment({projectId,firestore:{host:'127.0.0.1',port:Number(process.env.FIRESTORE_EMULATOR_PORT||8080),rules:readFileSync('firestore.rules','utf8')}});
 const app=initializeApp({projectId},'archive-test'),db=getFirestore(app),stops=[];
 const client=(id,founder=false)=>env.authenticatedContext(id,{email:founder?'suloanani1@gmail.com':id+'@example.com',email_verified:true}).firestore();
 async function account(uid,email=uid+'@example.com',role='customer'){await db.doc('pf_members/'+uid).set({name:uid,role,createdAt:Timestamp.now()})}

@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {CATEGORIES,VEHICLES,sortCategories} from '../src/core.mjs';
+const collate=(a,b)=>a.localeCompare(b,'en',{sensitivity:'base',numeric:true});
+assert.deepEqual(Object.keys(VEHICLES),Object.keys(VEHICLES).toSorted(collate),'makes are alphabetized');
+for(const [brand,models] of Object.entries(VEHICLES))assert.deepEqual(models,[...models].sort(collate),`${brand} models are alphabetized`);
+assert.deepEqual(CATEGORIES,[...CATEGORIES].sort((a,b)=>a.localeCompare(b,'ka',{sensitivity:'base'})),'default categories are alphabetized');
+assert.equal(new Set(CATEGORIES).size,CATEGORIES.length,'default categories are unique');
+assert.deepEqual(sortCategories(['ბამპერი','ძრავი','ბამპერი']),['ბამპერი','ძრავი']);
+for(const existing of ['განათება','ძარის ნაწილები','სამუხრუჭე სისტემა'])assert.ok(CATEGORIES.includes(existing),`legacy category retained: ${existing}`);
+assert.ok(CATEGORIES.length>=18,'catalog covers the major automotive part systems');
+console.log(`PASS: ${Object.keys(VEHICLES).length} makes, sorted models and ${CATEGORIES.length} deduplicated, alphabetized categories.`);
