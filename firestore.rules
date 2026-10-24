@@ -7,6 +7,7 @@ service cloud.firestore {
     // pf_offers/{requestId_uid}: immutable requestId, ownerId(customer), shopId, shopName, positive part price, optional serviceAvailable/servicePrice quote, condition, delivery, note, status, createdAt.
     // pf_categories/{name}: name(string 1..80), createdAt(timestamp).
     // Email/passwords are owned by Firebase Auth, never stored in shared Firestore documents.
+    function validInfrastructure(d){return d.keys().hasAll(['requestDays','chatDays','garageDays','logoDays','updatedBy','updatedAt']) && d.keys().hasOnly(['requestDays','chatDays','garageDays','logoDays','updatedBy','updatedAt']) && d.requestDays is int && d.requestDays>=1 && d.requestDays<=3650 && d.chatDays is int && d.chatDays>=1 && d.chatDays<=3650 && d.garageDays is int && d.garageDays>=1 && d.garageDays<=3650 && d.logoDays is int && d.logoDays>=1 && d.logoDays<=3650 && d.updatedBy is string && d.updatedAt is timestamp;}
     function signed(){return request.auth != null;}
     // Trusted bootstrap identity. A verified email is required; registration order never grants admin.
     function founder(){return signed() && request.auth.token.email_verified == true && request.auth.token.email == 'suloanani1@gmail.com';}
@@ -183,6 +184,12 @@ service cloud.firestore {
     }
     // Content-free permanent deletion lock: blocks recreation and supports interrupted cascades.
     function validDeletion(d){return d.keys().hasAll(['requestedBy','status','createdAt','updatedAt']) && d.keys().hasOnly(['requestedBy','status','createdAt','updatedAt']) && text(d.requestedBy,128) && d.status in ['pending','completed'] && d.createdAt is timestamp && d.updatedAt==request.time;}
+    match /pf_settings/{id} {
+      allow read: if id == 'infrastructure' && superadmin();
+      allow create: if id == 'infrastructure' && superadmin() && validInfrastructure(request.resource.data) && request.resource.data.updatedAt == request.time && request.resource.data.updatedBy == request.auth.uid;
+      allow update: if id == 'infrastructure' && superadmin() && validInfrastructure(request.resource.data) && request.resource.data.updatedAt == request.time && request.resource.data.updatedBy == request.auth.uid;
+      allow delete: if false;
+    }
     match /pf_deletions/{id} {
       allow read: if superadmin();
       allow create: if superadmin() && text(id,128) && validDeletion(request.resource.data) && request.resource.data.requestedBy==request.auth.uid && request.resource.data.status=='pending' && request.resource.data.createdAt==request.time && exists(/databases/$(database)/documents/pf_requests/$(id));
