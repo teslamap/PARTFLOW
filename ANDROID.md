@@ -24,3 +24,7 @@ The artifact is a debug/testing APK. Fresh GitHub runners generate different deb
 
 Photo file selection, TLS error cancellation, HTTPS-only navigation, safe insets, back-to-close-modal behavior, and retry after offline launch are implemented. Before public release, verify sign-in persistence, gallery upload, keyboard, offline recovery and back navigation on real Android devices.
 Website-only pushes publish GitHub Pages without rebuilding this APK. The Android workflow runs for native wrapper/dependency/config changes or a manual run.
+
+## Optional native Push build
+
+The existing remote-only v2 APK cannot access native Push. The opt-in `npm run android:push:setup` builds the v3 bridge preparation path. See [COMMERCE.md](COMMERCE.md#android-push-readiness) for Firebase configuration, permissions, trusted sender and deployment prerequisites. Chat, orders and the in-app inbox work in the existing APK without Push.

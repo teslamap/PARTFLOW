@@ -9,12 +9,17 @@
     "build:mobile": "vite build && node build-tools/mobile.mjs",
     "android:sync": "npm run build:mobile && cap sync android",
     "android:open": "cap open android",
-    "android:setup": "npm run build:mobile && cap add android && cap sync android"
+    "android:setup": "npm run build:mobile && cap add android && cap sync android",
+    "check": "tsc --noEmit",
+    "test:rules": "node tests/rules.mjs && node tests/archive.mjs && node tests/realtime.mjs && node tests/commerce.mjs",
+    "test:push": "node tests/push.mjs",
+    "android:push:setup": "npm run build:mobile && cap add android && cap sync android && node build-tools/prepare-push-android.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",
     "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.5.3",
+    "@capacitor/push-notifications": "^8.1.3",
     "firebase": "latest",
     "firebase-admin": "latest",
     "lucide-react": "^1.31.0",

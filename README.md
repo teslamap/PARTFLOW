@@ -28,7 +28,7 @@ Each HTML panel uses its own named Firebase Auth instance. The four desktop pane
 
 The panels have no role switcher or links to other panels, including login/denied-access screens and the static HTML fallback. Open each panel's exact URL separately. The Android app is customer-only, blocks other panels and loads the live GitHub Pages customer URL, so future website changes do not require reinstalling the APK. See `ANDROID.md`.
 
-Opened panels use Firestore `onSnapshot` listeners instead of polling. Requests, offers, acceptance, moderation, shop approval/specializations, categories and administrative lists update automatically. Queries are scoped to the current panel and user, ordered newest first and limited to 300 per query. Permission/specialization changes rebuild subscriptions; logout/unmount detaches them. `tests/realtime.mjs` verifies cross-client updates and isolation in the emulator. Security Rules remain unchanged.
+Opened panels use Firestore `onSnapshot` listeners instead of polling. Requests, offers, acceptance, moderation, shop approval/specializations, categories and administrative lists update automatically. Queries are scoped to the current panel and user, ordered newest first and limited to 300 per query. Permission/specialization changes rebuild subscriptions; logout/unmount detaches them. `tests/realtime.mjs` verifies cross-client updates and isolation in the emulator. Commerce adds participant-scoped rules; existing request/offer schemas remain unchanged.
 
 To test this locally, start the Auth emulator and the Vite dev server, then open `/tests/session-isolation.html`. This emulator-only browser test verifies five independent sessions, logout behavior and persistence across a full reload. It creates no production account or data.
 
@@ -44,7 +44,7 @@ No private email addresses are stored in shared account directory documents. Use
 
 Cloud Storage requires a Blaze billing plan. This release keeps Spark and uses small, compressed JPEG attachments directly in request documents: maximum four, each under 180000 base64 characters. The photo field is excluded from indexes. This is suitable for the initial small MVP; move attachments to an object store when scaling. The source image selection limit is 4 MB, compressed in the browser before upload.
 
-List queries cap each result set at 300. Cursor pagination and query profiling are required for larger deployments. No chat, payments, SMS/email request alerts or fulfillment workflows are included. Shop dashboards load current matching requests on opening/refreshing.
+List queries cap each result set at 300. Cursor pagination and query profiling are required for larger deployments. Request-scoped real-time chat, an in-app inbox, versioned fulfillment orders, disputes and administrator monitoring are included. Payments and SMS/email alerts are excluded. See COMMERCE.md for flows, access rules, Android Push prerequisites and validation.
 
 ## Development
 
@@ -87,4 +87,4 @@ Each signed-in account can hide records visible to that panel and restore them f
 
 Permanent deletion, including Firebase Auth account deletion, is deferred at the owner’s request. No deletion backend or permanent-delete UI is deployed; existing shared documents cannot be deleted through client rules. No billing change is required for archives.
 
-Validation: run `node tests/rules.mjs`, `node tests/archive.mjs`, and `node tests/realtime.mjs` sequentially against the local demo-partflow Firestore emulator; each suite resets emulator data.
+Validation: run `npm run test:rules` (rules, archive, realtime and commerce suites) sequentially against the local demo-partflow Firestore emulator; each suite resets emulator data.
