@@ -2,6 +2,8 @@ import {readFileSync} from 'node:fs';
 import {initializeTestEnvironment,assertSucceeds,assertFails} from '@firebase/rules-unit-testing';
 import {doc,setDoc,getDoc,updateDoc,collection,query,where,getDocs,Timestamp,serverTimestamp,runTransaction} from 'firebase/firestore';
 import assert from 'node:assert/strict';
+import {writeChatMessage,requestConfirmation} from '../src/chat-workflow.mjs';
+import {confirmOrder} from '../src/commerce.mjs';
 import {createOfferRecord} from '../src/offer-write.mjs';
 const env=await initializeTestEnvironment({projectId:'demo-partflow',firestore:{host:'127.0.0.1',port:8080,rules:readFileSync('firestore.rules','utf8')}});
 try{
@@ -68,7 +70,8 @@ await assertSucceeds(updateDoc(doc(alice,'pf_requests/guards'),{status:'closed'}
 await assertFails(createOfferRecord(shop,'guards','shop',guarded));
 await assertFails(updateDoc(doc(shop,'pf_requests/r1'),{status:'closed',acceptedOfferId:'r1_shop'}));
 await assertFails(updateDoc(doc(alice,'pf_requests/r1'),{status:'closed',acceptedOfferId:'nonexistent'}));
-await assertSucceeds(updateDoc(doc(alice,'pf_requests/r1'),{status:'closed',acceptedOfferId:'r1_shop'}));
+await assertFails(updateDoc(doc(alice,'pf_requests/r1'),{status:'closed',acceptedOfferId:'r1_shop'}));
+await writeChatMessage(alice,'alice','r1_shop','hello');await writeChatMessage(shop,'shop','r1_shop','hello');await requestConfirmation(shop,'shop','r1_shop',o);await assertSucceeds(confirmOrder(alice,'alice','r1_shop',1));
 await assertFails(updateDoc(doc(alice,'pf_requests/r1'),{status:'open'}));
 await assertSucceeds(updateDoc(doc(owner,'pf_requests/r1'),{status:'hidden',previousStatus:'closed'}));
 await assertSucceeds(updateDoc(doc(owner,'pf_requests/r1'),{status:'closed',previousStatus:'closed'}));

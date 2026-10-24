@@ -5,5 +5,8 @@ assert.equal(pushTargets('message','m',d)[0].uid,'shop');
 assert.equal(pushTargets('offer','r_shop',d)[0].uid,'buyer');
 assert.deepEqual(pushTargets('order','r',d).map(t=>t.uid),['buyer','shop']);
 assert.equal(JSON.stringify(pushTargets('message','m',d)).includes('PRIVATE BODY'),false);
+assert.deepEqual(pushTargets('message','m',{...d,kind:'admin',recipientIds:['buyer','shop']}).map(t=>t.uid),['buyer','shop']);
+assert.equal(pushTargets('confirmation','c',{...d,status:'pending'})[0].uid,'buyer');
+assert.equal(pushTargets('confirmation','c',{...d,status:'accepted'})[0].uid,'shop');
 assert.throws(()=>pushTargets('forged','m',d));
 console.log('PASS: push recipients derive from source records; private text excluded.');

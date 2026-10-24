@@ -2,6 +2,7 @@ import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {initializeTestEnvironment,assertSucceeds,assertFails} from '@firebase/rules-unit-testing';
 import {doc,setDoc,getDoc,getDocs,updateDoc,deleteDoc,collection,query,where,or,and,orderBy,onSnapshot,serverTimestamp,writeBatch,Timestamp} from 'firebase/firestore';
+import {requestConfirmation} from '../src/chat-workflow.mjs';
 import {ensureMemberRecord} from '../src/member-write.mjs';
 import {confirmOrder,changeOrder,sendMessage,nextStatuses} from '../src/commerce.mjs';
 const env=await initializeTestEnvironment({projectId:'demo-partflow',firestore:{host:'127.0.0.1',port:8080,rules:readFileSync('firestore.rules','utf8')}});
@@ -19,6 +20,7 @@ try{
  await env.withSecurityRulesDisabled(async c=>{
   const d=c.firestore(),now=Timestamp.now();
   for(const [id,role] of [['alice','customer'],['shop','customer'],['admin','admin']])await setDoc(r(d,'members',id),{name:id,role,createdAt:now});
+  await setDoc(r(d,'shops','shop'),{ownerId:'shop',name:'Shop',city:'თბილისი',phone:'555000000',status:'approved',rulesMap:{'*~*~*':true},createdAt:now});
   const request={ownerId:'alice',brand:'Toyota',model:'Prius',year:2015,engine:'1.8',vin:'',category:'განათება',part:'ფარი',description:'ფარი',city:'თბილისი',condition:'მეორადი',budget:400,photos:[],status:'open',previousStatus:'open',acceptedOfferId:null,createdAt:now};
   for(const id of ['r1','r2','r3','r4']){
    await setDoc(r(d,'requests',id),request);
@@ -35,6 +37,7 @@ try{
  await assertFails(getDoc(doc(outsider,'pf_messages',msg.id)));
  const base={...msg.data(),createdAt:serverTimestamp()};
  for(const patch of [{senderId:'shop'},{recipientId:'outsider'},{ownerId:'outsider'},{requestId:'r2'},{text:'x'.repeat(2001)},{text:3},{extra:true},{createdAt:Timestamp.fromMillis(0)}])await assertFails(setDoc(r(alice,'messages','bad'),{...base,...patch}));
+ await requestConfirmation(shop,'shop','r1_shop',{price:300,condition:'მეორადი',delivery:'დღეს',note:'ტესტი'});
  await observed(shop,'orders',[where('shopId','==','shop')],()=>confirmOrder(alice,'alice','r1_shop'),rows=>rows.some(x=>x.status==='confirmed'));
  await assertSucceeds(confirmOrder(alice,'alice','r1_shop')); // retry is idempotent
  await assertFails(confirmOrder(outsider,'outsider','r2_shop'));
@@ -59,6 +62,7 @@ try{
  await assertFails(deleteDoc(r(admin,'orders','r1')));
  await assertFails(setDoc(doc(alice,'pf_orders','r1','events','100'),{...events.docs[0].data(),version:100,createdAt:serverTimestamp()}));
  for(const patch of [{ownerId:'shop'},{shopId:'alice'},{offerId:'r2_shop'},{createdAt:serverTimestamp()},{version:100},{status:4},{extra:'bad'}])await assertFails(updateDoc(r(alice,'orders','r1'),patch));
+ for(const id of ['r2_shop','r3_shop']){await sendMessage(alice,'alice',id,'hello');await sendMessage(shop,'shop',id,'hello');await requestConfirmation(shop,'shop',id,{price:300,condition:'მეორადი',delivery:'დღეს',note:'ტესტი'})}
  console.log('Starting cancellation order');await assertSucceeds(confirmOrder(alice,'alice','r2_shop'));
  await assertSucceeds(changeOrder(alice,'alice','r2','cancelled','აღარ მჭირდება'));
  await assertFails(changeOrder(shop,'shop','r2','preparing','cancelled'));

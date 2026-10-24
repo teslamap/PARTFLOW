@@ -35,3 +35,5 @@ export const orderPush=onDocumentWritten({...options,document:'pf_orders/{id}'},
  if(e.data.before.exists&&e.data.before.data().version===after.data().version)return;
  return deliver('order',e.params.id,after.data(),e.id);
 });
+
+export const confirmationPush=onDocumentWritten({...options,document:'pf_confirmations/{id}'},e=>{const after=e.data?.after;if(!after?.exists)return;const before=e.data.before;const d=after.data();if(before.exists&&before.data().version===d.version&&before.data().status===d.status)return;return deliver('confirmation',e.params.id,d,e.id)});

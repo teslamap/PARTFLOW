@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {initializeTestEnvironment} from '@firebase/rules-unit-testing';
 import {doc,setDoc,updateDoc,serverTimestamp} from 'firebase/firestore';
 import {subscribePanelData} from '../src/live-data.mjs';
+import {writeChatMessage,requestConfirmation} from '../src/chat-workflow.mjs';
+import {confirmOrder} from '../src/commerce.mjs';
 import {createOfferRecord} from '../src/offer-write.mjs';
 const env=await initializeTestEnvironment({projectId:'demo-partflow',firestore:{host:'127.0.0.1',port:8080,rules:readFileSync('firestore.rules','utf8')}});
 const stops=[];
@@ -28,7 +30,7 @@ try{
  assert.ok(founderCustomer.history.every(d=>d.requests.length===0&&d.users.length===0),'customer panel does not inherit admin data');
  await createOfferRecord(shop,'r1','store',{requestId:'r1',ownerId:'buyer',shopId:'store',shopName:'store',price:300,condition:'მეორადი',delivery:'დღეს',note:'ტესტი',status:'pending',createdAt:serverTimestamp()});
  await Promise.all([customer.wait(d=>d.offers.some(o=>o.id==='r1_store'),'new offer arrives without refresh'),seller.wait(d=>d.offers.some(o=>o.id==='r1_store'),'shop sees sent offer')]);
- await updateDoc(doc(buyer,'pf_requests/r1'),{status:'closed',acceptedOfferId:'r1_store'});
+ await writeChatMessage(buyer,'buyer','r1_store','hello');await writeChatMessage(shop,'store','r1_store','hello');await requestConfirmation(shop,'store','r1_store',{price:300,condition:'მეორადი',delivery:'დღეს',note:'ტესტი'});await confirmOrder(buyer,'buyer','r1_store',1);
  await Promise.all([customer.wait(d=>d.offers.some(o=>o.status==='accepted'),'customer live acceptance'),seller.wait(d=>d.offers.some(o=>o.status==='accepted')&&d.requests.some(r=>r.id==='r1'&&r.status==='closed'),'shop live acceptance')]);
  await setDoc(doc(buyer,'pf_requests/r2'),{...request,brand:'Honda',model:'Fit'});
  await updateDoc(doc(shop,'pf_shops/store'),{rulesMap:{'Honda~Fit~განათება':true},status:'pending'});

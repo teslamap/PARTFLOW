@@ -19,6 +19,7 @@ try{
   await setDoc(doc(d,'pf_offers','r_shop'),offer);
   for(let i=0;i<32;i++){const oid='r_extra'+i;await setDoc(doc(d,'pf_offers',oid),{...offer,shopId:'extra'+i});await setDoc(doc(d,'pf_archives','sa','panels','superadmin','items','offers_'+oid),{type:'offers',targetId:oid,label:'delete extra offer',createdAt:now})}await setDoc(doc(d,'pf_offers','keep_shop'),{...offer,requestId:'keep'});
   await setDoc(doc(d,'pf_orders','r'),{requestId:'r',offerId:'r_shop',ownerId:'buyer',shopId:'shop',status:'confirmed',dispute:'none',version:0,createdAt:now,updatedAt:now});
+  for(const c of ['pf_chat_activity','pf_confirmations','pf_chat_admins'])await setDoc(doc(d,c,'r_shop'),{requestId:'r',offerId:'r_shop',ownerId:'buyer',shopId:'shop',createdAt:now,updatedAt:now});
   for(let offset=0;offset<520;offset+=100){const b=writeBatch(d);for(let i=offset;i<Math.min(offset+100,520);i++)b.set(doc(d,'pf_messages','m'+i),{requestId:'r',offerId:'r_shop',ownerId:'buyer',shopId:'shop',senderId:'buyer',recipientId:'shop',text:'delete me',createdAt:now});await b.commit()}
   for(let i=0;i<105;i++)await setDoc(doc(d,'pf_orders','r','events',String(i)),{version:i,note:'delete history',createdAt:now});
   for(const uid of ['buyer','shop','admin','sa'])for(const panel of ['customer','mobile-customer','shop','admin','superadmin']){
@@ -53,6 +54,7 @@ try{
   for(const p of [['pf_requests','r'],['pf_orders','r'],['pf_offers','r_shop']])assert.equal((await getDoc(doc(d,...p))).exists(),false,p.join('/'));
   assert.equal((await getDocs(query(collection(d,'pf_messages'),where('requestId','==','r')))).size,0);
   assert.equal((await getDocs(collection(d,'pf_orders','r','events'))).size,0);
+  for(const c of ['pf_chat_activity','pf_confirmations','pf_chat_admins'])assert.equal((await getDocs(query(collection(d,c),where('requestId','==','r')))).size,0);
   for(const uid of ['buyer','shop','admin','sa'])for(const panel of ['customer','mobile-customer','shop','admin','superadmin']){
    const rows=await getDocs(collection(d,'pf_archives',uid,'panels',panel,'items'));assert.deepEqual(rows.docs.map(x=>x.id),['requests_keep']);
   }

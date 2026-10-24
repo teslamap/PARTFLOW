@@ -36,6 +36,7 @@ export async function deleteRequestFully(db,uid,id){
   }
   cursor=members.docs.at(-1);
  }while(cursor);
+ for(const c of ['pf_chat_admins','pf_chat_activity','pf_confirmations'])await drain([c],[where('requestId','==',id)]);
  await drain(['pf_messages'],[where('requestId','==',id)]);
  await drain(['pf_orders',id,'events']);
  await removeBatch([doc(db,'pf_orders',id)]);

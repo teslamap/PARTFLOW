@@ -4,9 +4,9 @@ No payment collection, checkout, ledger, financial transaction or billing-plan c
 
 ## User flows
 
-Desktop panels have a **ჩატი / შეკვეთები** menu. Mobile has the same bottom-navigation item, plus a link from Profile. The workspace has Orders, Chat and Notifications tabs. Conversations are scoped to an existing request/offer and its customer/shop, including before selection. Administrators monitor conversations without impersonating a participant or sending messages on their behalf.
+Desktop panels have a **ჩატი / შეკვეთები** menu. Mobile has the same bottom-navigation item, plus a link from Profile. The workspace has Orders, Chat and Notifications tabs. Conversations are scoped to an existing request/offer and its customer/shop, including before selection. Administrators start in monitoring mode and can explicitly join with a system entry visible to both participants. Their replies carry their verified name and administrator role; they cannot impersonate a participant. See CHAT.md.
 
-Selecting an offer atomically closes the request, creates `pf_orders/{requestId}`, and creates `events/0`. Repeating selection of the same offer returns the same order. Older selected offers have an explicit **create order from selected offer** action; no migration of existing records is required.
+Accepting the shop’s versioned confirmation card atomically closes the request, creates `pf_orders/{requestId}`, and creates `events/0`. Repeating selection of the same offer returns the same order. Older selected offers have an explicit **create order from selected offer** action; no migration of existing records is required.
 
 | Transition | Actor |
 | --- | --- |
@@ -22,11 +22,11 @@ Every change requires a comment and atomically creates a new, immutable versione
 
 ## Data, access and notifications
 
-- `pf_messages`: immutable, bounded plain text linked to an immutable offer; only the two participants and administrators may read. Admin chat is read-only. No HTML rendering or client-authored notification payloads.
+- `pf_messages`: immutable, bounded plain text linked to an immutable offer; only the two participants and administrators may read. Admin monitoring is read-only until an explicit, visibly logged join. No HTML rendering or client-authored notification payloads.
 - `pf_orders` and nested `events`: immutable participant/offer identifiers; monotonic version; server timestamps. Rules require the matching event in the same atomic write. Events cannot be edited. Deletion is restricted to the superadmin full-request cascade described in DELETION.md; ordinary administrators cannot delete history.
 - Notifications are derived from actual incoming messages, received offers, and the latest order state. Private `pf_inbox/{uid}/receipts/{sourceKey}` markers synchronize read state across sessions. Opening an item marks it read and opens its chat/order. The inbox is a bounded recent activity view (100 incoming messages / 300 orders and offers), not a permanent notification log. Full fulfillment history remains under each order.
 - `pf_devices/{uid}/tokens/{sha256}`: private Android tokens; only the owner can register, read or remove. Server SDK sends Push. Other users and client administrators cannot read tokens. Logout removes the stored device registration before signing out and unregisters native Push.
-- Queries have matching composite indexes. Chat uses offer ID plus participant filters; administrators use offer ID alone. Unmount/sign-out unsubscribes listeners; user/role changes remount the workspace and clear prior results. New text/token fields are excluded from indexing.
+- Queries have matching composite indexes. Chat uses request groups and offer ID plus participant filters; administrators use offer ID alone. Unmount/sign-out unsubscribes listeners; user/role changes remount the workspace and clear prior results. New text/token fields are excluded from indexing.
 
 Rules/index deployment is independent of GitHub Pages deployment. The commerce rules and indexes were deployed to the existing project; production user records were not migrated, seeded or deleted.
 

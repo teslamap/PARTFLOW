@@ -44,7 +44,7 @@ No private email addresses are stored in shared account directory documents. Use
 
 Cloud Storage requires a Blaze billing plan. This release keeps Spark and uses small, compressed JPEG attachments directly in request documents: maximum four, each under 180000 base64 characters. The photo field is excluded from indexes. This is suitable for the initial small MVP; move attachments to an object store when scaling. The source image selection limit is 4 MB, compressed in the browser before upload.
 
-List queries cap each result set at 300. Cursor pagination and query profiling are required for larger deployments. Request-scoped real-time chat, an in-app inbox, versioned fulfillment orders, disputes and administrator monitoring are included. Payments and SMS/email alerts are excluded. See COMMERCE.md for flows, access rules, Android Push prerequisites and validation.
+List queries cap each result set at 300. Cursor pagination and query profiling are required for larger deployments. Request-grouped, collapsible real-time chat with explicit admin joining and shop-to-customer confirmation cards, an in-app inbox, versioned fulfillment orders, disputes and administrator monitoring are included. Payments and SMS/email alerts are excluded. See CHAT.md and COMMERCE.md for flows, access rules, Android Push prerequisites and validation.
 
 ## Development
 
@@ -87,4 +87,4 @@ Each signed-in account can hide records visible to that panel and restore them f
 
 Superadmins can now permanently delete a request and its linked offers, chat, orders, history and archived labels from all panels after confirmation. See DELETION.md for the locked, resumable cascade. Firebase Auth account deletion and shop/profile deletion remain unavailable; archives remain private. No billing change is required.
 
-Validation: run `npm run test:rules` (rules, archive, realtime and commerce suites) sequentially against the local demo-partflow Firestore emulator; each suite resets emulator data.
+Validation: run `npm run test:rules` (rules, archive, realtime, commerce, deletion and grouped-chat suites) sequentially against the local demo-partflow Firestore emulator; each suite resets emulator data.
