@@ -57,6 +57,46 @@ service cloud.firestore {
           && request.resource.data.reviewedBy==request.auth.uid && request.resource.data.reviewedAt==request.time
           && (request.resource.data.status=='approved'?request.resource.data.reviewReason=='':text(request.resource.data.reviewReason,1000))));
     }
+    // Auto-service setup. Parent approval gates every public child read.
+    // catalog: name<=100, description<=1000, duration 15..480, active, timestamps.
+    // staff: public name/specialty, 1..8 local catalog IDs, weekly days, active, timestamps.
+    // hours/weekly: Asia/Tbilisi timezone, exactly seven weekly days, timestamps.
+    // closures: a real calendar day, staff ID or whole business, active, timestamps.
+    function serviceParent(uid){return get(/databases/$(database)/documents/pf_shops/$(uid)).data;}
+    function serviceOwner(uid){return signed() && request.auth.uid==uid && serviceBusiness(serviceParent(uid));}
+    function servicePublic(uid){let p=serviceParent(uid);return serviceBusiness(p) && p.status=='approved';}
+    function serviceInspect(uid){return serviceOwner(uid) || (signed() && admin() && serviceBusiness(serviceParent(uid)));}
+    function setupDay(d){return d is map && d.keys().hasOnly(['open','start','end']) && d.open is bool && d.start is int && d.end is int && d.start>=0 && d.start<=1439 && d.end>=0 && d.end<=1439 && (d.open?d.end>d.start:(d.start==0&&d.end==0));}
+    function setupWeek(w){return w is list && w.size()==7 && setupDay(w[0]) && setupDay(w[1]) && setupDay(w[2]) && setupDay(w[3]) && setupDay(w[4]) && setupDay(w[5]) && setupDay(w[6]);}
+    function setupTimes(d){return d.createdAt is timestamp && d.updatedAt==request.time;}
+    function validServiceItem(d){return d.keys().hasAll(['name','description','durationMinutes','active','createdAt','updatedAt']) && d.keys().hasOnly(['name','description','durationMinutes','active','createdAt','updatedAt']) && text(d.name,100) && d.description is string && d.description.size()<=1000 && d.durationMinutes is int && d.durationMinutes>=15 && d.durationMinutes<=480 && d.durationMinutes%15==0 && d.active is bool && setupTimes(d);}
+    function localService(uid,id){return id is string && id.matches('[-a-zA-Z0-9_]{1,128}') && exists(/databases/$(database)/documents/pf_shops/$(uid)/catalog/$(id));}
+    function staffServices(uid,s){return s is list && s.size()>=1 && s.size()<=8 && s.toSet().size()==s.size() && localService(uid,s[0]) && (s.size()<2||localService(uid,s[1])) && (s.size()<3||localService(uid,s[2])) && (s.size()<4||localService(uid,s[3])) && (s.size()<5||localService(uid,s[4])) && (s.size()<6||localService(uid,s[5])) && (s.size()<7||localService(uid,s[6])) && (s.size()<8||localService(uid,s[7]));}
+    function validServiceStaff(uid,d){return d.keys().hasAll(['name','specialty','serviceIds','days','active','createdAt','updatedAt']) && d.keys().hasOnly(['name','specialty','serviceIds','days','active','createdAt','updatedAt']) && text(d.name,100) && d.specialty is string && d.specialty.size()<=200 && staffServices(uid,d.serviceIds) && setupWeek(d.days) && d.active is bool && setupTimes(d);}
+    function validServiceHours(d){return d.keys().hasAll(['timezone','days','createdAt','updatedAt']) && d.keys().hasOnly(['timezone','days','createdAt','updatedAt']) && d.timezone=='Asia/Tbilisi' && setupWeek(d.days) && setupTimes(d);}
+    function twoDigits(n){return n<10?'0'+string(n):string(n);}
+    function validServiceClosure(uid,id,d){return d.keys().hasAll(['date','day','staffId','active','createdAt','updatedAt']) && d.keys().hasOnly(['date','day','staffId','active','createdAt','updatedAt']) && d.day is timestamp && d.day==timestamp.date(d.day.year(),d.day.month(),d.day.day()) && d.day.year()>=2020 && d.day.year()<=2100 && d.date is string && d.date.size()==10 && d.date==string(d.day.year())+'-'+twoDigits(d.day.month())+'-'+twoDigits(d.day.day()) && d.staffId is string && d.staffId.size()<=128 && (d.staffId==''||exists(/databases/$(database)/documents/pf_shops/$(uid)/staff/$(d.staffId))) && id==d.date+'_'+(d.staffId==''?'all':'staff_'+d.staffId) && d.active is bool && setupTimes(d);}
+    match /pf_shops/{uid}/catalog/{id} {
+      allow read: if serviceInspect(uid) || (servicePublic(uid) && resource.data.active==true);
+      allow create: if serviceOwner(uid) && validServiceItem(request.resource.data) && request.resource.data.createdAt==request.time;
+      allow update: if serviceOwner(uid) && validServiceItem(request.resource.data) && request.resource.data.createdAt==resource.data.createdAt;
+    }
+    match /pf_shops/{uid}/staff/{id} {
+      allow read: if serviceInspect(uid) || (servicePublic(uid) && resource.data.active==true);
+      allow create: if serviceOwner(uid) && validServiceStaff(uid,request.resource.data) && request.resource.data.createdAt==request.time;
+      allow update: if serviceOwner(uid) && validServiceStaff(uid,request.resource.data) && request.resource.data.createdAt==resource.data.createdAt;
+    }
+    match /pf_shops/{uid}/hours/{id} {
+      allow read: if id=='weekly' && (serviceInspect(uid) || servicePublic(uid));
+      allow create: if id=='weekly' && serviceOwner(uid) && validServiceHours(request.resource.data) && request.resource.data.createdAt==request.time;
+      allow update: if id=='weekly' && serviceOwner(uid) && validServiceHours(request.resource.data) && request.resource.data.createdAt==resource.data.createdAt;
+    }
+    match /pf_shops/{uid}/closures/{id} {
+      allow read: if serviceInspect(uid) || (servicePublic(uid) && resource.data.active==true);
+      allow create: if serviceOwner(uid) && validServiceClosure(uid,id,request.resource.data) && request.resource.data.createdAt==request.time;
+      allow update: if serviceOwner(uid) && validServiceClosure(uid,id,request.resource.data) && request.resource.data.createdAt==resource.data.createdAt && request.resource.data.date==resource.data.date && request.resource.data.staffId==resource.data.staffId;
+    }
+
     match /pf_requests/{id} {
       allow read: if requestRead(resource.data,id);
       allow delete: if deletingBySuperadmin(id);
