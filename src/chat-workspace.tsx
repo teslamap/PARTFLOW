@@ -22,7 +22,8 @@ export function ChatWorkspace({data,uid,admin,targetOfferId,notificationReceipts
  const confirmations=useRows(['pf_confirmations'],[...scope,orderBy('updatedAt','desc'),limit(300)],uid+':'+admin+':'+isShop+':confirmations');
  const reads=useRows(['pf_chat_reads',uid,'threads'],[],uid+':reads');
  const [expanded,setExpanded]=useState<Set<string>>(new Set()),[selected,setSelected]=useState(''),[detail,setDetail]=useState(false),[error,setError]=useState('');
- const [narrow,setNarrow]=useState(()=>matchMedia('(max-width: 760px)').matches);
+ const mobile=document.documentElement.dataset.role==='mobile-customer';
+ const [narrow,setNarrow]=useState(()=>mobile||matchMedia('(max-width: 760px)').matches);
  const rows=data.offers||[];
  const summaries=new Map(activity.rows.map(a=>[a.offerId,a])),cards=new Map(confirmations.rows.map(c=>[c.offerId,c])),readVersions=new Map(reads.rows.map(r=>[r.id,r.version]));
  const seenNotifications=new Set(notificationReceipts.map((r:Row)=>r.id));
@@ -32,7 +33,7 @@ export function ChatWorkspace({data,uid,admin,targetOfferId,notificationReceipts
   const latest=(r:Row)=>Math.max(millis(r.createdAt),...r.conversations.flatMap((o:Row)=>[millis(activity.rows.find(a=>a.offerId===o.id)?.updatedAt||o.createdAt),millis(confirmations.rows.find(c=>c.offerId===o.id)?.updatedAt)]));
   return latest(b)-latest(a);
  }),[data.requests,rows,activity.rows,confirmations.rows,isShop,admin,uid]);
- useEffect(()=>{const media=matchMedia('(max-width: 760px)'),change=()=>setNarrow(media.matches);media.addEventListener('change',change);return()=>media.removeEventListener('change',change)},[]);
+ useEffect(()=>{const media=matchMedia('(max-width: 760px)'),change=()=>setNarrow(mobile||media.matches);media.addEventListener('change',change);return()=>media.removeEventListener('change',change)},[]);
  useEffect(()=>{if(!selected&&groups.length){const firstGroup=groups.find((g:Row)=>g.conversations.length)||groups[0];setExpanded(new Set([firstGroup.id]));const first=firstGroup.conversations[0];if(first)setSelected(first.id)}},[groups,selected]);
  useEffect(()=>{if(targetOfferId){const o=rows.find((o:Row)=>o.id===targetOfferId);if(o){setSelected(o.id);setExpanded(old=>new Set([...old,o.requestId]));setDetail(true)}}},[targetOfferId,rows]);
  useEffect(()=>{if(selected&&!rows.some((o:Row)=>o.id===selected)){setSelected('');setDetail(false)}},[rows,selected]);
