@@ -10,6 +10,8 @@ Primary website: https://teslamap.github.io/PARTFLOW/
 - [Superadmin](https://teslamap.github.io/PARTFLOW/superadmin.html)
 - [Mobile customer](https://teslamap.github.io/PARTFLOW/mobile-customer.html)
 
+სამუშაო სია: [ROADMAP.md](ROADMAP.md) — დასრულებული და დარჩენილი ეტაპები.
+
 ## Pages
 
 - `/customer.html` — customer requests and received offers
