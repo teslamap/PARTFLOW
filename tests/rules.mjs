@@ -1,6 +1,7 @@
+import {DEFAULT_FLAGS} from '../src/feature-policy.mjs';
 import {readFileSync} from 'node:fs';
 import {initializeTestEnvironment,assertSucceeds,assertFails} from '@firebase/rules-unit-testing';
-import {doc,setDoc,getDoc,updateDoc,collection,query,where,getDocs,Timestamp,serverTimestamp,runTransaction} from 'firebase/firestore';
+import {doc,setDoc,getDoc,updateDoc,collection,query,where,getDocs,Timestamp,serverTimestamp,runTransaction,writeBatch} from 'firebase/firestore';
 import assert from 'node:assert/strict';
 import {writeChatMessage,requestConfirmation} from '../src/chat-workflow.mjs';
 import {confirmOrder} from '../src/commerce.mjs';
@@ -92,13 +93,13 @@ await assertSucceeds(updateDoc(doc(owner,'pf_requests/r1'),{status:'closed',prev
 await assertFails(getDocs(collection(alice,'pf_members')));
 await assertSucceeds(getDoc(doc(alice,'pf_settings/control')));
 await assertSucceeds(getDoc(doc(owner,'pf_settings/control')));
-const control={schemaVersion:1,flags:{godMode:'OFF',maintenance:'OFF',aiOrderAssistant:'OFF',anonymousApkAuth:'OFF',smsOtp:'OFF',phoneRecovery:'OFF',emailLinking:'OFF',referrals:'OFF',loyaltyPoints:'OFF',vouchers:'OFF'},message:'მიმდინარეობს ტექნიკური მომსახურება.',revision:1,updatedBy:'owner',updatedAt:serverTimestamp()};
+const control={schemaVersion:1,flags:{...DEFAULT_FLAGS},message:'მიმდინარეობს ტექნიკური მომსახურება.',revision:1,updatedBy:'owner',updatedAt:serverTimestamp()};
 await assertFails(setDoc(doc(alice,'pf_settings/control'),control));
 await assertFails(setDoc(doc(admin,'pf_settings/control'),{...control,updatedBy:'administrator'}));
-await assertSucceeds(setDoc(doc(owner,'pf_settings/control'),control));
+const batch=writeBatch(owner);batch.set(doc(owner,'pf_settings/control'),control);batch.set(doc(owner,'pf_control_audit/1'),{action:'update',revision:1,actorId:'owner',before:{},after:{flags:control.flags,message:control.message},createdAt:serverTimestamp()});await assertSucceeds(batch.commit());
 await assertFails(updateDoc(doc(owner,'pf_settings/control'),{revision:3,updatedAt:serverTimestamp()}));
 await assertFails(setDoc(doc(alice,'pf_control_audit/bogus'),{action:'update',revision:1,actorId:'alice',before:{},after:{},createdAt:serverTimestamp()}));
-await assertSucceeds(setDoc(doc(owner,'pf_control_audit/entry'),{action:'update',revision:1,actorId:'owner',before:{},after:{},createdAt:serverTimestamp()}));
+await assertFails(setDoc(doc(owner,'pf_control_audit/entry'),{action:'update',revision:1,actorId:'owner',before:{},after:{},createdAt:serverTimestamp()}));
 await assertFails(updateDoc(doc(owner,'pf_control_audit/entry'),{action:'rollback'}));
 await assertSucceeds(getDocs(collection(owner,'pf_members')));
 await assertFails(setDoc(doc(alice,'pf_categories/test'),{name:'Test',createdAt:serverTimestamp()}));
@@ -106,5 +107,12 @@ await assertSucceeds(setDoc(doc(owner,'pf_categories/test'),{name:'Test',created
 await assertSucceeds(setDoc(doc(admin,'pf_categories/admin-added'),{name:'Admin category',createdAt:serverTimestamp()}));
 await assertFails(setDoc(doc(admin,'pf_categories/admin-added'),{name:'Overwrite',createdAt:serverTimestamp()}));
 await assertFails(setDoc(doc(alice,'orders/legacy'),{open:true}));
+// Disabled features are denied even with a valid signed-in session.
+await assertFails(setDoc(doc(alice,'pf_devices/alice/tokens/'+'a'.repeat(64)),{token:'valid-token',platform:'android',updatedAt:serverTimestamp()}));
+await assertFails(setDoc(doc(alice,'pf_rewards/alice'),{points:100000}));
+await assertFails(setDoc(doc(alice,'pf_vouchers/forged'),{ownerId:'alice',status:'issued'}));
+await assertSucceeds(setDoc(doc(alice,'pf_contacts/alice'),{phone:'+995555123456',phoneVerified:false,updatedAt:serverTimestamp()}));
+await assertFails(setDoc(doc(alice,'pf_contacts/alice'),{phone:'+995555123456',phoneVerified:true,updatedAt:serverTimestamp()}));
+await assertFails(updateDoc(doc(owner,'pf_settings/control'),{flags:{...DEFAULT_FLAGS,phoneRecovery:'ON'},revision:2,updatedAt:serverTimestamp()}));
 console.log('PASS: real offer-write helper, denied legacy transaction, participant-only reads, duplicate/concurrent offer denial, wrong specialty/suspended/self/closed/forged offer denial, ownership, matching queries, roles, acceptance and moderation');
 }finally{await env.cleanup()}

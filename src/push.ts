@@ -1,5 +1,5 @@
 import {Capacitor,registerPlugin} from '@capacitor/core';
-import {doc,setDoc,deleteDoc,serverTimestamp} from 'firebase/firestore';
+import {doc,setDoc,deleteDoc,serverTimestamp,getDoc} from 'firebase/firestore';
 import {auth,db} from './firebase';
 // registerPlugin avoids loading a second web implementation in standalone HTML.
 const Push=registerPlugin<any>('PushNotifications');
@@ -20,6 +20,7 @@ export async function disableAndroidPush(){
  if(Capacitor.getPlatform()==='android')await Push.unregister();
 }
 export async function enableAndroidPush(uid:string){
+ if((await getDoc(doc(db,'pf_settings','control'))).data()?.flags?.pushNotifications!=='ON')throw Error('Push გამორთულია');
  if(Capacitor.getPlatform()!=='android')throw Error('Push-ის ჩართვა ხელმისაწვდომია Android აპში. შიდა შეტყობინებები აქაც მუშაობს.');
  let permission=await Push.checkPermissions();
  if(permission.receive==='prompt')permission=await Push.requestPermissions();

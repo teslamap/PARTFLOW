@@ -4,7 +4,7 @@ import {mutate,uploadPhoto,watchData} from './data';
 import {RecordActions,ArchiveView,isArchived} from './lifecycle';
 import {signOut} from 'firebase/auth';
 import {DeletionQueue} from './deletion-queue';
-import {Infrastructure,GodMode} from './infrastructure';
+import {Infrastructure,GodMode,RewardSettings} from './infrastructure';
 import {CommerceHub} from './commerce-ui';
 import {MobileChat} from './mobile-chat';
 import {GaragePanel} from './garage';
@@ -50,7 +50,7 @@ return <div className="app"><aside id="panel-navigation" className={mobile?'side
 {page==='services'&&<Services/>}
 {page==='garage'&&role==='customer'&&<GaragePanel uid={user?.id} demo={demo} onCreateRequest={(car:Row)=>{setRequestVehicle(car);setModal('request')}}/>}
 {!demo&&role==='superadmin'&&user?.role==='superadmin'&&<DeletionQueue act={act} busy={busy}/>}
-{page==='infrastructure'&&role==='superadmin'&&user?.role==='superadmin'&&<><GodMode userId={user.id} demo={demo}/><Infrastructure userId={user.id} demo={demo}/></>}
+{page==='infrastructure'&&role==='superadmin'&&user?.role==='superadmin'&&<><GodMode userId={user.id} demo={demo}/><Infrastructure userId={user.id} demo={demo}/><RewardSettings userId={user.id} demo={demo}/></>}
 {page==='commerce'&&role!=='shop'&&<CommerceHub target={chatTarget} data={rawData} admin={canAdmin&&['admin','superadmin'].includes(role)} demo={demo}/>}
 {page==='dashboard'&&<><section className="hero"><div><div className="hero-kicker"><span/> ნაწილები, რომლებიც გჭირდება</div><h2>{role==='customer'?<>შენ აღწერ ნაწილს.<br/>მაღაზიები გპასუხობენ.</>:role==='shop'?<>ნაკლები ძებნა.<br/>მეტი სწორი მომხმარებელი.</>:<>ყველა პროცესი.<br/>ერთი ხედვა.</>}</h2><p>{role==='customer'?'მიუთითე ავტომობილი და ნაწილი. შენს მოთხოვნას მხოლოდ შესაბამისი მაღაზიები მიიღებენ.':'ზუსტი სპეციალიზაცია აერთიანებს შესაბამის მოთხოვნებსა და მაღაზიებს.'}</p><button onClick={()=>role==='customer'?setModal('request'):setModal('how')}>{role==='customer'?'შექმენი პირველი მოთხოვნა':'როგორ მუშაობს სისტემა'} <ArrowRight size={17}/></button></div><div className="hero-art" aria-hidden="true"><div className="orbit one"/><div className="orbit two"/><div className="part-ring"><Settings size={132} strokeWidth={1.1}/><div className="ring-core"><Package size={38}/></div></div><div className="float-tag tag-one"><span className="tiny-icon"><Car size={16}/></span><div>Toyota Prius<small>2015 · ჰიბრიდი</small></div><CheckCircle2 size={16}/></div><div className="float-tag tag-two"><span className="tiny-icon green"><Check size={17}/></span><div>ზუსტი დამთხვევა<small>შესაბამისი მაღაზია</small></div></div><span className="art-plus">+</span></div></section><section className="stats">{stats.map(s=><button key={s.label} className="stat-card" onClick={()=>setPage(s.label.includes('მაღაზი')||s.label.includes('დასადასტურებელი')?'shops':s.label.includes('შეთავაზებ')?'offers':'requests')}><div><span>{s.label}</span><s.icon size={19}/></div><strong>{String(s.value).padStart(2,'0')}</strong><small><span className="dot"/>{s.sub}</small></button>)}</section></>}
 {page==='archive'&&<ArchiveView data={rawData} act={act} busy={busy}/>}

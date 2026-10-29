@@ -8,6 +8,7 @@ const db=getFirestore(),messaging=getMessaging();
 // Deploy separately only when FCM/server prerequisites are configured. No client can
 // write delivery receipts or invoke a sender with an arbitrary destination/payload.
 async function deliver(kind,id,data,eventId){
+ if((await db.collection('pf_settings').doc('control').get()).data()?.flags?.pushNotifications!=='ON')return;
  if((await db.collection('pf_deletions').doc(data.requestId||id).get()).exists)return;
  for(const target of pushTargets(kind,id,data)){
   const devices=await db.collection('pf_devices').doc(target.uid).collection('tokens').get();

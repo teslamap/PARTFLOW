@@ -22,9 +22,10 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: node tests/foundation.mjs
+      - run: node tests/features.mjs && node tests/api-features.mjs
       - run: npm run build:mobile
       - run: npm run test:business
       - run: npm run test:push
       - run: npm run test:install
       - run: npm run test:android-identity
-      - run: npx firebase-tools emulators:exec --only firestore --project demo-partflow "npm run test:rules"
+      - run: npx firebase-tools emulators:exec --only firestore --project demo-partflow "npm run test:rules && node tests/api-transactions.mjs && node tests/otp-transactions.mjs"

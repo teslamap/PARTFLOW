@@ -1,0 +1,6 @@
+export const OPTIONAL_FLAGS=['smsOtp','phoneRecovery','emailLinking','referrals','loyaltyPoints','vouchers','partnerPromotions','vip','pushNotifications'];
+export const DEFAULT_FLAGS=Object.freeze({godMode:'OFF',maintenance:'OFF',webAuthRequired:'ON',orders:'ON',offers:'ON',chat:'ON',garage:'ON',phoneContact:'ON',anonymousApkAuth:'OFF',aiOrderAssistant:'OFF',...Object.fromEntries(OPTIONAL_FLAGS.map(k=>[k,'OFF']))});
+export const DEPENDENCIES=Object.freeze({phoneRecovery:['smsOtp'],loyaltyPoints:['referrals'],vouchers:['loyaltyPoints','partnerPromotions']});
+export function enabled(flags,key){return Object.hasOwn(DEFAULT_FLAGS,key)&&flags?.[key]==='ON'&&(DEPENDENCIES[key]||[]).every(k=>enabled(flags,k));}
+export function validateFlags(flags){if(!flags||Object.keys(flags).length!==Object.keys(DEFAULT_FLAGS).length||Object.keys(DEFAULT_FLAGS).some(k=>!['OFF','TEST','LIMITED','ON'].includes(flags[k])))throw Error('Invalid feature flags');if(flags.webAuthRequired!=='ON')throw Error('Web authentication is mandatory');for(const key of Object.keys(DEPENDENCIES))if(flags[key]==='ON'&&!enabled(flags,key))throw Error('Missing dependencies: '+key);return flags;}
+export const DEFAULT_REWARDS=Object.freeze({referralPoints:100,voucherPoints:500,voucherValue:10});

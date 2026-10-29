@@ -35,7 +35,7 @@ import java.util.Collections;
 /** Remote customer-only WebView with an origin-restricted App Check token channel. */
 public class MainActivity extends AppCompatActivity {
     private static final String HOST = "teslamap.github.io";
-    private static final String PATH = "/PARTFLOW/mobile-customer.html";
+    private static final String PATH = "/PARTFLOW/app.html";
     private WebView web;
     private LinearLayout failure;
     private ValueCallback<Uri[]> files;

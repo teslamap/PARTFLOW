@@ -73,6 +73,7 @@ try{
  await assertSucceeds(setDoc(receipt,{createdAt:serverTimestamp()}));
  await assertFails(getDocs(collection(shop,'pf_inbox','alice','receipts')));
  await assertFails(setDoc(receipt,{createdAt:serverTimestamp(),role:'admin'}));
+ await env.withSecurityRulesDisabled(async c=>setDoc(doc(c.firestore(),'pf_settings/control'),{flags:{pushNotifications:'ON'}}));
  const tokenPath=['pf_devices','alice','tokens','a'.repeat(64)];
  await assertSucceeds(setDoc(doc(alice,...tokenPath),{token:'fcm-token',platform:'android',updatedAt:serverTimestamp()}));
  await assertFails(getDoc(doc(admin,...tokenPath)));

@@ -11,7 +11,7 @@ for (const page of [RUNTIME_CONFIG.customerPage, RUNTIME_CONFIG.mobileCustomerPa
 }
 for (const key of Object.keys(FEATURE_DEFAULTS)) {
   assert.ok(FEATURE_STATES.includes(featureState(key)));
-  assert.equal(isFeatureEnabled(key), false, 'unimplemented V2 features stay disabled');
+  assert.equal(isFeatureEnabled(key), ['webAuthRequired','orders','offers','chat','garage','phoneContact'].includes(key));
 }
 for (const key of ['missing', '__proto__', 'constructor', 'toString', null, undefined]) {
   assert.equal(featureState(key), 'OFF');

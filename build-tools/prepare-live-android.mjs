@@ -13,4 +13,4 @@ const androidRoot=realpathSync('android'),assets=realpathSync('android/app/src/m
 if(!assets.startsWith(androidRoot+sep))throw Error('Android asset directory is outside the project');
 rmSync(join(assets,'public'),{recursive:true,force:true});
 for(const name of ['capacitor.config.json','capacitor.plugins.json'])rmSync(join(assets,name),{force:true});
-console.log('Prepared remote customer-only WebView: https://teslamap.github.io/PARTFLOW/mobile-customer.html');
+console.log('Prepared remote customer-only WebView: https://teslamap.github.io/PARTFLOW/app.html');

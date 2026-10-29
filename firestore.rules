@@ -8,7 +8,8 @@ service cloud.firestore {
     // pf_categories/{name}: name(string 1..80), createdAt(timestamp).
     // Email/passwords are owned by Firebase Auth, never stored in shared Firestore documents.
     function validInfrastructure(d){return d.keys().hasAll(['requestDays','chatDays','garageDays','logoDays','updatedBy','updatedAt']) && d.keys().hasOnly(['requestDays','chatDays','garageDays','logoDays','updatedBy','updatedAt']) && d.requestDays is int && d.requestDays>=1 && d.requestDays<=3650 && d.chatDays is int && d.chatDays>=1 && d.chatDays<=3650 && d.garageDays is int && d.garageDays>=1 && d.garageDays<=3650 && d.logoDays is int && d.logoDays>=1 && d.logoDays<=3650 && d.updatedBy is string && d.updatedAt is timestamp;}
-    function signed(){return request.auth != null;}
+    function flag(key,fallback){return exists(/databases/$(database)/documents/pf_settings/control)?get(/databases/$(database)/documents/pf_settings/control).data.flags.get(key,fallback)=='ON':fallback=='ON';}
+    function signed(){return request.auth != null && (request.auth.token.firebase.sign_in_provider != 'anonymous' || (request.auth.token.get('apkVerified',false)==true && flag('anonymousApkAuth','OFF'))); }
     // Trusted bootstrap identity. A verified email is required; registration order never grants admin.
     function founder(){return signed() && request.auth.token.email_verified == true && request.auth.token.email == 'suloanani1@gmail.com';}
     function superadmin(){return founder() || (signed() && get(/databases/$(database)/documents/pf_members/$(request.auth.uid)).data.role == 'superadmin');}
@@ -28,6 +29,15 @@ service cloud.firestore {
     function selectedOffer(d,id){let o=get(/databases/$(database)/documents/pf_offers/$(d.acceptedOfferId)).data;return o.requestId==id && o.ownerId==request.auth.uid && getAfter(/databases/$(database)/documents/pf_confirmations/$(d.acceptedOfferId)).data.status=='accepted' && getAfter(/databases/$(database)/documents/pf_orders/$(id)).data.offerId==d.acceptedOfferId;}
     function validOffer(d){return d.keys().hasAll(['requestId','ownerId','shopId','shopName','price','condition','delivery','note','status','createdAt']) && d.keys().hasOnly(['requestId','ownerId','shopId','shopName','price','serviceAvailable','servicePrice','condition','delivery','note','status','createdAt']) && text(d.requestId,128) && text(d.ownerId,128) && text(d.shopId,128) && text(d.shopName,100) && d.price is number && d.price>0 && d.price<=1000000 && (!d.keys().hasAny(['serviceAvailable','servicePrice']) || (d.keys().hasAll(['serviceAvailable','servicePrice']) && d.serviceAvailable is bool && d.servicePrice is number && d.servicePrice>=0 && d.servicePrice<=1000000 && (d.serviceAvailable || d.servicePrice==0))) && d.condition in ['ახალი','მეორადი'] && text(d.delivery,120) && text(d.note,1000) && d.status=='pending' && d.createdAt is timestamp;}
     function validCategory(d){return d.keys().hasAll(['name','createdAt']) && d.keys().hasOnly(['name','createdAt']) && text(d.name,80) && d.createdAt is timestamp;}
+    match /pf_contacts/{uid} {
+      allow read: if signed() && request.auth.uid==uid && flag('phoneContact','ON');
+      allow create,update: if signed() && request.auth.uid==uid && flag('phoneContact','ON') && request.resource.data.keys().hasOnly(['phone','phoneVerified','updatedAt']) && request.resource.data.phone is string && request.resource.data.phone.matches('[+]9955[0-9]{8}') && request.resource.data.phoneVerified==false && request.resource.data.updatedAt==request.time;
+      allow delete: if signed() && request.auth.uid==uid;
+    }
+    match /pf_rewards/{uid} {allow read: if signed() && uid==request.auth.uid && flag('loyaltyPoints','OFF'); allow write: if false;}
+    match /pf_vouchers/{id} {allow read: if signed() && flag('vouchers','OFF') && (resource.data.ownerId==request.auth.uid || resource.data.partnerId==request.auth.uid || superadmin()); allow write: if false;}
+    match /pf_promotions/{id} {allow read: if signed() && flag('partnerPromotions','OFF') && (resource.data.status=='approved'||resource.data.partnerId==request.auth.uid||superadmin()); allow write: if false;}
+    match /pf_referrals/{uid} {allow read: if signed() && flag('referrals','OFF') && uid==request.auth.uid; allow write: if false;}
     match /pf_members/{uid} {
       allow read: if signed() && (request.auth.uid==uid || superadmin());
       allow create: if signed() && uid==request.auth.uid && validMember(request.resource.data) && request.resource.data.createdAt==request.time && (request.resource.data.role=='customer'||(founder()&&request.resource.data.role=='superadmin'));
@@ -35,10 +45,10 @@ service cloud.firestore {
     }
     // A user's garage is private to that signed-in account. Vehicle identity is immutable.
     match /pf_garage/{uid}/vehicles/{vehicleId} {
-      allow read: if signed() && request.auth.uid==uid;
-      allow create: if signed() && request.auth.uid==uid && validGarageVehicle(request.resource.data) && request.resource.data.createdAt==request.time;
+      allow read: if flag('garage','ON') && signed() && request.auth.uid==uid;
+      allow create: if flag('garage','ON') && signed() && request.auth.uid==uid && validGarageVehicle(request.resource.data) && request.resource.data.createdAt==request.time;
       allow update: if false;
-      allow delete: if signed() && request.auth.uid==uid;
+      allow delete: if flag('garage','ON') && signed() && request.auth.uid==uid;
     }
     match /pf_shops/{uid} {
       allow read: if (resource.data.status=='approved' && serviceBusiness(resource.data)) || (signed() && (uid==request.auth.uid||resource.data.status=='approved'||admin()));
@@ -104,7 +114,7 @@ service cloud.firestore {
       allow update: if !deleting(id) && validRequest(request.resource.data) && ((signed()&&resource.data.ownerId==request.auth.uid&&resource.data.status=='open'&&request.resource.data.status=='closed'&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','acceptedOfferId'])&&(request.resource.data.acceptedOfferId==null||selectedOffer(request.resource.data,id))) || (admin()&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','previousStatus'])&&((request.resource.data.status=='hidden'&&resource.data.status!='hidden'&&request.resource.data.previousStatus==resource.data.status)||(resource.data.status=='hidden'&&request.resource.data.status==resource.data.previousStatus&&request.resource.data.previousStatus==resource.data.previousStatus))));
     }
     match /pf_offers/{id} {
-      allow read: if signed() && (admin()||resource.data.ownerId==request.auth.uid||resource.data.shopId==request.auth.uid);
+      allow read: if flag('offers','ON') && signed() && (admin()||resource.data.ownerId==request.auth.uid||resource.data.shopId==request.auth.uid);
       allow create: if !deleting(request.resource.data.requestId)&&signed()&&validOffer(request.resource.data)&&id==request.resource.data.requestId+'_'+request.auth.uid&&request.resource.data.shopId==request.auth.uid&&request.resource.data.createdAt==request.time&&get(/databases/$(database)/documents/pf_requests/$(request.resource.data.requestId)).data.status=='open'&&get(/databases/$(database)/documents/pf_requests/$(request.resource.data.requestId)).data.ownerId==request.resource.data.ownerId&&request.resource.data.ownerId!=request.auth.uid&&shopMatch(get(/databases/$(database)/documents/pf_requests/$(request.resource.data.requestId)).data)&&request.resource.data.shopName==get(/databases/$(database)/documents/pf_shops/$(request.auth.uid)).data.name;
       allow delete: if deletingBySuperadmin(resource.data.requestId);
     }
@@ -188,8 +198,8 @@ service cloud.firestore {
       );
     }
     match /pf_messages/{id} {
-      allow read: if signed() && (admin() || participant(resource.data) || resource.data.recipientId==request.auth.uid);
-      allow create: if signed() && validMessage(request.resource.data) && chatOpen(request.resource.data) && messageOffer(request.resource.data,id) && getAfter(/databases/$(database)/documents/pf_chat_activity/$(request.resource.data.offerId)).data.lastMessageId==id;
+      allow read: if flag('chat','ON') && signed() && (admin() || participant(resource.data) || resource.data.recipientId==request.auth.uid);
+      allow create: if flag('chat','ON') && signed() && validMessage(request.resource.data) && chatOpen(request.resource.data) && messageOffer(request.resource.data,id) && getAfter(/databases/$(database)/documents/pf_chat_activity/$(request.resource.data.offerId)).data.lastMessageId==id;
       allow delete: if deletingBySuperadmin(resource.data.requestId);
     }
     function validActivity(d){return d.keys().hasAll(['offerId','requestId','ownerId','shopId','lastMessageId','lastSenderId','lastText','lastKind','customerReplied','shopReplied','version','createdAt','updatedAt']) && d.keys().hasOnly(['offerId','requestId','ownerId','shopId','lastMessageId','lastSenderId','lastText','lastKind','customerReplied','shopReplied','version','createdAt','updatedAt']) && text(d.offerId,300) && text(d.requestId,128) && text(d.ownerId,128) && text(d.shopId,128) && text(d.lastMessageId,128) && text(d.lastSenderId,128) && text(d.lastText,2000) && d.lastKind in ['message','admin','admin_join'] && d.customerReplied is bool && d.shopReplied is bool && d.version is int && d.version>0 && d.version<1000000000 && d.createdAt is timestamp && d.updatedAt==request.time;}
@@ -199,9 +209,9 @@ service cloud.firestore {
     }
     match /pf_chat_activity/{id} {
       allow get: if offerAccess(id);
-      allow list: if signed() && (admin()||participant(resource.data));
-      allow create: if signed() && validActivity(request.resource.data) && id==request.resource.data.offerId && offerFields(request.resource.data) && chatOpen(request.resource.data) && request.resource.data.version==1 && request.resource.data.createdAt==request.time && activityMessage(request.resource.data,{});
-      allow update: if signed() && validActivity(request.resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessageId','lastSenderId','lastText','lastKind','customerReplied','shopReplied','version','updatedAt']) && request.resource.data.version==resource.data.version+1 && chatOpen(resource.data) && activityMessage(request.resource.data,resource.data);
+      allow list: if flag('chat','ON') && signed() && (admin()||participant(resource.data));
+      allow create: if flag('chat','ON') && signed() && validActivity(request.resource.data) && id==request.resource.data.offerId && offerFields(request.resource.data) && chatOpen(request.resource.data) && request.resource.data.version==1 && request.resource.data.createdAt==request.time && activityMessage(request.resource.data,{});
+      allow update: if flag('chat','ON') && signed() && validActivity(request.resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessageId','lastSenderId','lastText','lastKind','customerReplied','shopReplied','version','updatedAt']) && request.resource.data.version==resource.data.version+1 && chatOpen(resource.data) && activityMessage(request.resource.data,resource.data);
       allow delete: if deletingBySuperadmin(resource.data.requestId);
     }
     function validParticipation(d){return d.keys().hasAll(['offerId','requestId','ownerId','shopId','adminId','adminName','messageId','createdAt']) && d.keys().hasOnly(['offerId','requestId','ownerId','shopId','adminId','adminName','messageId','createdAt']) && text(d.offerId,300) && text(d.requestId,128) && text(d.ownerId,128) && text(d.shopId,128) && text(d.adminId,128) && text(d.adminName,100) && text(d.messageId,128) && d.createdAt==request.time;}
@@ -233,21 +243,23 @@ service cloud.firestore {
     function validDevice(d){return d.keys().hasAll(['token','platform','updatedAt']) && d.keys().hasOnly(['token','platform','updatedAt']) && text(d.token,4096) && d.platform=='android' && d.updatedAt==request.time;}
     match /pf_devices/{uid}/tokens/{id} {
       allow read,delete: if isOwner(uid);
-      allow create,update: if isOwner(uid) && id.matches('[a-f0-9]{64}') && validDevice(request.resource.data);
+      allow create,update: if flag('pushNotifications','OFF') && isOwner(uid) && id.matches('[a-f0-9]{64}') && validDevice(request.resource.data);
     }
     // Content-free permanent deletion lock: blocks recreation and supports interrupted cascades.
     function validDeletion(d){return d.keys().hasAll(['requestedBy','status','createdAt','updatedAt']) && d.keys().hasOnly(['requestedBy','status','createdAt','updatedAt']) && text(d.requestedBy,128) && d.status in ['pending','completed'] && d.createdAt is timestamp && d.updatedAt==request.time;}
     match /pf_settings/{id} {
-      allow read: if (id == 'infrastructure' && superadmin()) || (id == 'control' && signed());
+      allow read: if (id in ['infrastructure','rewards'] && superadmin()) || (id == 'control' && signed());
       allow create: if id == 'infrastructure' && superadmin() && validInfrastructure(request.resource.data) && request.resource.data.updatedAt == request.time && request.resource.data.updatedBy == request.auth.uid;
       allow update: if id == 'infrastructure' && superadmin() && validInfrastructure(request.resource.data) && request.resource.data.updatedAt == request.time && request.resource.data.updatedBy == request.auth.uid;
       allow create,update: if id == 'control' && superadmin() && validControl(request.resource.data) && request.resource.data.updatedAt == request.time && request.resource.data.updatedBy == request.auth.uid && request.resource.data.revision == (resource == null ? 1 : resource.data.revision + 1);
+      allow create,update: if id=='rewards' && superadmin() && request.resource.data.keys().hasAll(['referralPoints','voucherPoints','voucherValue','updatedBy','updatedAt']) && request.resource.data.keys().hasOnly(['referralPoints','voucherPoints','voucherValue','updatedBy','updatedAt']) && request.resource.data.referralPoints is int && request.resource.data.referralPoints>=1 && request.resource.data.referralPoints<=1000000 && request.resource.data.voucherPoints is int && request.resource.data.voucherPoints>=1 && request.resource.data.voucherPoints<=1000000 && request.resource.data.voucherValue is int && request.resource.data.voucherValue>=1 && request.resource.data.voucherValue<=1000000 && request.resource.data.updatedBy==request.auth.uid && request.resource.data.updatedAt==request.time;
       allow delete: if false;
     }
-    function validControl(d){return d.keys().hasAll(['schemaVersion','flags','message','revision','updatedBy','updatedAt']) && d.keys().hasOnly(['schemaVersion','flags','message','revision','updatedBy','updatedAt']) && d.schemaVersion == 1 && d.flags is map && d.flags.keys().hasAll(['godMode','maintenance','aiOrderAssistant','anonymousApkAuth','smsOtp','phoneRecovery','emailLinking','referrals','loyaltyPoints','vouchers']) && d.flags.keys().hasOnly(['godMode','maintenance','aiOrderAssistant','anonymousApkAuth','smsOtp','phoneRecovery','emailLinking','referrals','loyaltyPoints','vouchers']) && d.flags.values().hasOnly(['OFF','TEST','LIMITED','ON']) && d.message is string && d.message.size() >= 1 && d.message.size() <= 240 && d.revision is int && d.revision >= 1 && d.updatedBy == request.auth.uid && d.updatedAt is timestamp;}
+    function controlAudit(d){let a=getAfter(/databases/$(database)/documents/pf_control_audit/$(string(d.revision))).data;return a.actorId==request.auth.uid && a.revision==d.revision && a.after.flags==d.flags && a.after.message==d.message && a.createdAt==request.time;}
+    function validControl(d){return controlAudit(d) && d.keys().hasAll(['schemaVersion','flags','message','revision','updatedBy','updatedAt']) && d.keys().hasOnly(['schemaVersion','flags','message','revision','updatedBy','updatedAt']) && d.schemaVersion == 1 && d.flags is map && d.flags.keys().hasAll(['godMode','maintenance','aiOrderAssistant','anonymousApkAuth','smsOtp','phoneRecovery','emailLinking','referrals','loyaltyPoints','vouchers','webAuthRequired','orders','offers','chat','garage','phoneContact','partnerPromotions','vip','pushNotifications']) && d.flags.keys().hasOnly(['godMode','maintenance','aiOrderAssistant','anonymousApkAuth','smsOtp','phoneRecovery','emailLinking','referrals','loyaltyPoints','vouchers','webAuthRequired','orders','offers','chat','garage','phoneContact','partnerPromotions','vip','pushNotifications']) && d.flags.values().hasOnly(['OFF','TEST','LIMITED','ON']) && d.flags.webAuthRequired=='ON' && (d.flags.phoneRecovery!='ON'||d.flags.smsOtp=='ON') && (d.flags.loyaltyPoints!='ON'||d.flags.referrals=='ON') && (d.flags.vouchers!='ON'||(d.flags.loyaltyPoints=='ON'&&d.flags.partnerPromotions=='ON')) && d.message is string && d.message.size() >= 1 && d.message.size() <= 240 && d.revision is int && d.revision >= 1 && d.updatedBy == request.auth.uid && d.updatedAt is timestamp;}
     match /pf_control_audit/{id} {
       allow read: if superadmin();
-      allow create: if superadmin() && request.resource.data.keys().hasAll(['action','revision','actorId','before','after','createdAt']) && request.resource.data.keys().hasOnly(['action','revision','actorId','before','after','createdAt']) && request.resource.data.action in ['update','rollback'] && request.resource.data.revision is int && request.resource.data.actorId == request.auth.uid && request.resource.data.before is map && request.resource.data.after is map && request.resource.data.createdAt == request.time;
+      allow create: if superadmin() && request.resource.data.keys().hasAll(['action','revision','actorId','before','after','createdAt']) && request.resource.data.keys().hasOnly(['action','revision','actorId','before','after','createdAt']) && request.resource.data.action in ['update','rollback'] && request.resource.data.revision is int && request.resource.data.actorId == request.auth.uid && request.resource.data.before is map && request.resource.data.after is map && id==string(request.resource.data.revision) && getAfter(/databases/$(database)/documents/pf_settings/control).data.revision==request.resource.data.revision && getAfter(/databases/$(database)/documents/pf_settings/control).data.flags==request.resource.data.after.flags && request.resource.data.createdAt == request.time;
       allow update,delete: if false;
     }
     match /pf_deletions/{id} {

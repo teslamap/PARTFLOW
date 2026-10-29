@@ -1,7 +1,8 @@
+import {DEFAULT_FLAGS,validateFlags} from './feature-policy.mjs';
 import {doc,collection,runTransaction,serverTimestamp,onSnapshot} from 'firebase/firestore';
 
-export const FLAGS=Object.freeze({godMode:'GOD MODE',maintenance:'ტექნიკური მომსახურება',aiOrderAssistant:'AI შეკვეთები',anonymousApkAuth:'ანონიმური APK ავტორიზაცია',smsOtp:'SMS კოდი',phoneRecovery:'ტელეფონის აღდგენა',emailLinking:'ელფოსტის მიბმა',referrals:'რეფერალები',loyaltyPoints:'ქულები',vouchers:'ვაუჩერები'});
-export const DEFAULT_CONTROL=Object.freeze({schemaVersion:1,flags:Object.freeze({godMode:'OFF',maintenance:'OFF',aiOrderAssistant:'OFF',anonymousApkAuth:'OFF',smsOtp:'OFF',phoneRecovery:'OFF',emailLinking:'OFF',referrals:'OFF',loyaltyPoints:'OFF',vouchers:'OFF'}),message:'მიმდინარეობს ტექნიკური მომსახურება.'});
+export const FLAGS=Object.freeze({godMode:'GOD MODE',maintenance:'ტექნიკური მომსახურება',webAuthRequired:'ვებ ავტორიზაცია',orders:'შეკვეთები',offers:'შეთავაზებები',chat:'ჩატი',garage:'გარაჟი',phoneContact:'საკონტაქტო ნომერი',aiOrderAssistant:'AI შეკვეთები',anonymousApkAuth:'ანონიმური APK ავტორიზაცია',smsOtp:'SMS კოდი',phoneRecovery:'ტელეფონით აღდგენა',emailLinking:'ელფოსტის მიბმა',referrals:'მეგობრების მოწვევა',loyaltyPoints:'ქულები',vouchers:'ვაუჩერები',partnerPromotions:'პარტნიორების აქციები',vip:'VIP',pushNotifications:'Push შეტყობინებები'});
+export const DEFAULT_CONTROL=Object.freeze({schemaVersion:1,flags:DEFAULT_FLAGS,message:'მიმდინარეობს ტექნიკური მომსახურება.'});
 export const STATES=Object.freeze(['OFF','TEST','LIMITED','ON']);
 export function normalizeControl(value={}){
  const flags={...DEFAULT_CONTROL.flags};
@@ -10,6 +11,7 @@ export function normalizeControl(value={}){
 }
 export function assertControl(value){
  if(!value||typeof value!=='object'||!value.flags||Object.keys(value.flags).length!==Object.keys(DEFAULT_CONTROL.flags).length||Object.keys(DEFAULT_CONTROL.flags).some(k=>!STATES.includes(value.flags[k])))throw Error('კონფიგურაცია არასწორია');
+ validateFlags(value.flags);
  if(typeof value.message!=='string'||value.message.trim().length<1||value.message.length>240)throw Error('შეტყობინება უნდა იყოს 1–240 სიმბოლო');
  return value;
 }
@@ -21,7 +23,7 @@ export async function saveControl(db,uid,current,draft,action='update'){
   const previous=await tx.get(target),before=normalizeControl(previous.data()),revision=before.revision+1;
   if(previous.exists()&&before.revision!==current.revision)throw Error('კონფიგურაცია შეიცვალა. განაახლე და სცადე ხელახლა.');
   tx.set(target,{schemaVersion:1,flags:{...draft.flags},message:draft.message.trim(),revision,updatedBy:uid,updatedAt:serverTimestamp()});
-  tx.set(doc(audit),{action,revision,actorId:uid,before:{flags:before.flags,message:before.message},after:{flags:{...draft.flags},message:draft.message.trim()},createdAt:serverTimestamp()});
+  tx.set(doc(audit,String(revision)),{action,revision,actorId:uid,before:{flags:before.flags,message:before.message},after:{flags:{...draft.flags},message:draft.message.trim()},createdAt:serverTimestamp()});
   return revision;
  });
 }
