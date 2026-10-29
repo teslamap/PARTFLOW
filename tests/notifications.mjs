@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {buildNotifications} from '../src/notifications.mjs';
+const stamp=n=>({toMillis:()=>n});
+const input={uid:'buyer',requests:[{id:'r',status:'open'}],offers:[{id:'o',ownerId:'buyer',requestId:'r',createdAt:stamp(1)}],messages:[{id:'m',senderId:'shop',ownerId:'buyer',shopId:'shop',requestId:'r',createdAt:stamp(3)},{id:'self',senderId:'buyer',ownerId:'buyer',requestId:'r'},{id:'private',senderId:'outsider',ownerId:'other',requestId:'r'}],orders:[{id:'r',requestId:'r',ownerId:'buyer',shopId:'shop',status:'shipped',version:2,updatedAt:stamp(2)}],confirmations:[{id:'o',requestId:'r',offerId:'o',ownerId:'buyer',shopId:'shop',status:'pending',version:1,updatedAt:stamp(4)}]};
+assert.deepEqual(buildNotifications(input).map(n=>n.id),['confirmation_o_1_pending','message_m','order_r_2','offer_o']);
+assert.equal(buildNotifications({...input,requests:[]}).some(n=>n.id.startsWith('confirmation_')),false);
+assert.equal(buildNotifications({...input,messages:[input.messages[0],input.messages[0]]}).filter(n=>n.id==='message_m').length,1);
+assert.deepEqual(buildNotifications({uid:'stranger',...Object.fromEntries(['requests','offers','messages','orders','confirmations'].map(k=>[k,input[k]]))}),[]);
+assert.equal(buildNotifications({...input,confirmations:[{...input.confirmations[0],status:'accepted',version:2}]}).some(n=>n.id==='confirmation_o_2_accepted'),false);
+console.log('PASS: notifications audience, deduplication, newest-first and confirmation lifecycle');

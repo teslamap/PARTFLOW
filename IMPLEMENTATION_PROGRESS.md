@@ -1,6 +1,6 @@
 # PARTFLOW V2 implementation progress
 
-Updated: 2026-10-29 (Asia/Dubai). Current checkpoint: **stage 6 of 10**.
+Updated: 2026-10-29 (Asia/Dubai). Current checkpoint: **stage 7 of 10**.
 
 ## Continuation contract
 
@@ -15,8 +15,8 @@ Use focused reads and small changes (TOKEN-SAVER). Preserve existing design, dat
 | 3 | Web/APK auth, anonymous UID persistence, trusted Android identity | Complete; implementation deployed, attestation/auth gates OFF |
 | 4 | Orders, matching, offers, real-time updates and chat | Complete; CI and live deployment verified |
 | 5 | Cloudflare AI assistant and confirmed order creation | In progress: Cloudflare adapter implemented; production setup pending |
-| 6 | Garage, VIN and profile | Implemented; CI and deployment verification pending |
-| 7 | In-app notifications and disabled recovery/push/SMS channels | Partial upstream scaffolding; user flows/provider rollout remain |
+| 6 | Garage, VIN and profile | Complete; CI and Pages verified at 4cfb274 |
+| 7 | In-app notifications and disabled recovery/push/SMS channels | Implemented; CI/publication pending; external channels OFF |
 | 8 | Disabled referrals, points and anti-fraud | Partial upstream backend; anti-fraud/UI remain |
 | 9 | Disabled vouchers, partners and monetization | Partial upstream backend; partner/voucher UI remains |
 | 10 | Full operational GOD MODE and final regression | Not started |
@@ -129,3 +129,16 @@ Stage 3 checkpoint is complete (3/10); the next stage was held for explicit user
 - Added focused VIN/validation tests plus Firestore regressions for concurrent VIN saves, cross-user garage writes and name changes. No rule/schema migration is required.
 - Local TypeScript, VIN tests, web build and mobile bundle passed. Full rules/concurrency regression and Pages publication pending CI.
 - Stage 5 production AI configuration remains pending independently; stage 6 does not enable AI or other deferred modules.
+
+## Stage 6 verification
+
+- Main commit 4cfb274 published successfully. Full CI (including rules/concurrent VIN writes): https://github.com/teslamap/PARTFLOW/actions/runs/40889762569 — success. Pages: https://github.com/teslamap/PARTFLOW/actions/runs/40889762382 — success. Live customer page HTTP 200.
+
+## Stage 7 notifications / disabled channels
+
+- Restored visible Chat / Orders / Notifications navigation to the existing shared desktop/mobile hub. Added unread count, unread-only filter and batched mark-all-read using private durable receipts.
+- Notifications derive from existing authoritative messages/offers/confirmation/order records, are participant-filtered, deduplicated and newest-first. Confirmation versions/statuses retain separate read markers. No new notification source or data migration is introduced.
+- Added gated phone verification form for a saved private contact (smsOtp and phoneContact must be ON and API configured). Added customer phone recovery form, absent unless VITE_PHONE_RECOVERY=1 and VITE_API_BASE are explicitly configured. Backend independently enforces smsOtp/phoneRecovery and verified phone ownership. Recovery uses the existing UID via a Firebase custom token.
+- Shared protected API client now includes native App Check when configured, limits response wait, and handles malformed responses. Credentials/codes/tokens are not persisted by these forms.
+- Push registration/sender gates and default OFF remain unchanged. SMS provider, OTP secret, protected API hosting, push backend publication and real Android/provider tests remain production prerequisites. No external channel was enabled or deployed by this stage.
+- Added notification audience/order/deduplication/lifecycle tests and OTP regression for disabling recovery independently and switching SMS OFF. Local TypeScript, notification, push payload, disabled API and Android identity checks passed; web/mobile builds passed. Full emulator CI and publication pending.

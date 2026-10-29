@@ -14,4 +14,9 @@ const code=sent[0].code;assert.equal((await service.confirm({uid:'buyer',challen
 await assert.rejects(service.confirm({uid:'buyer',challengeId:start.challengeId,code,purpose:'verify'}));
 await db.recursiveDelete(db.collection('pf_otp_rate'));const recovery=await service.start({phone:'+995555123456',purpose:'recovery',clientIp:'127.0.0.1'});const recovered=await service.confirm({challengeId:recovery.challengeId,code:sent[1].code,purpose:'recovery'});assert.equal(recovered.customToken,'test-token-for-buyer');
 await db.recursiveDelete(db.collection('pf_otp_rate'));await db.doc('pf_contacts/buyer').update({phoneVerified:false});const unavailable=await service.start({phone:'+995555123456',purpose:'recovery',clientIp:'127.0.0.1'});assert.equal(sent.length,2);await assert.rejects(service.confirm({challengeId:unavailable.challengeId,code:'123456',purpose:'recovery'}));
+await db.recursiveDelete(db.collection('pf_otp_rate'));
+await db.doc('pf_settings/control').set({flags:{...DEFAULT_FLAGS,smsOtp:'ON',phoneRecovery:'OFF'}});
+await assert.rejects(service.start({phone:'+995555123456',purpose:'recovery',clientIp:'127.0.0.1'}),e=>e.status===403);
+await db.doc('pf_settings/control').set({flags:DEFAULT_FLAGS});
+await assert.rejects(service.confirm({uid:'buyer',challengeId:start.challengeId,code,purpose:'verify'}),e=>e.status===403);
 console.log('PASS: OTP hashes, owner isolation, single-use confirmation, verified-phone recovery and unverified recovery denial');await db.terminate();

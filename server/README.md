@@ -28,3 +28,9 @@ Set server-only CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN (Workers AI permissi
 Reference: https://developers.cloudflare.com/workers-ai/configuration/open-ai-compatibility/
 
 Before enabling: deploy the protected API with Firebase credentials and allowed origins, verify provider access and Georgian output, build VITE_API_BASE with the HTTPS API address, then test clarification, summary, confirmation, retries, expiry, cross-user denial and existing matching/offers. Only then enable aiOrderAssistant. Service booking and VIN decoding remain unsupported.
+
+## Stage 7 channel rollout
+
+Defaults remain OFF. In-app notifications require no SMS/push provider and use private Firestore receipts. Phone verification UI requires smsOtp + phoneContact and VITE_API_BASE. Public customer recovery UI additionally requires VITE_PHONE_RECOVERY=1; backend phoneRecovery and smsOtp must both be ON. The build switch only controls visibility and never authorizes recovery. Configure/verify HTTPS API, SMS adapter and OTP_HMAC_SECRET before building this switch; test same-UID recovery, expiry, replay, wrong-owner and flag-off behavior with a real provider. Keep the switch unset until these checks pass. Existing email-password reset remains available.
+
+Push requires its separate Firebase Functions deployment, Android FCM credentials, user permission and pushNotifications=ON; registration source alone does not establish delivery. No production channel activation was performed in stage 7.
