@@ -11,7 +11,7 @@ Use focused reads and small changes (TOKEN-SAVER). Preserve existing design, dat
 | Stage | Agreed scope | Status |
 | --- | --- | --- |
 | 1 | Audit and safe foundation | Complete: checked, committed, pushed and verified live |
-| 2 | GOD MODE flags, live config, kill switch, maintenance, audit/rollback | In progress; client panel implemented; emulator/rules verification pending |
+| 2 | GOD MODE flags, live config, kill switch, maintenance, audit/rollback | Complete; deployed and verified |
 | 3 | Web/APK auth, anonymous UID persistence, trusted Android identity | Not started |
 | 4 | Orders, matching, offers, real-time updates and chat | Not started |
 | 5 | Cloudflare AI assistant and confirmed order creation | Not started |
@@ -59,6 +59,15 @@ Local Java is unavailable; the full Firestore emulator regression passed in the 
 
 ## Remaining work / exact next step
 
-Stage 2 changes are in progress. The GOD MODE interface now edits revisioned settings and records audit history through a Firestore transaction; rollback creates a new revision. Client checks and production build pass. Firestore rules now reserve signed-in reads, superadmin writes, and append-only audit access for the new documents. Existing infrastructure settings retain their prior access policy.
+## Stage 2 complete
 
-**Verification limitation:** local Firestore emulator execution is unavailable because Java is not installed. Do not deploy the new Firestore rules until the emulator regression passes in a Java-enabled environment. No production rules or settings have been changed. The V2 feature states remain OFF by default; flags do not yet gate existing auth, order, or chat flows. Stage 2 remains in progress pending rules verification, deployment, and live checks.
+- GOD MODE added to the existing superadmin infrastructure page. Controls include OFF/TEST/LIMITED/ON, maintenance message, AI/APK/SMS/recovery/email/referral/points/voucher flags, config revision, and up to 20 visible audit entries with rollback.
+- Firestore `pf_settings/control` is readable to signed-in users and writable only by verified superadmins; rules validate schema, exact flag keys/states, actor, timestamp, message and sequential revision. `pf_control_audit` is readable to superadmins, append-only, and has no client update/delete path. Existing infrastructure rule access remains unchanged.
+- Each save or rollback uses a Firestore transaction to write a new revision and audit entry atomically. Stale edits are rejected.
+- Production Firestore rules deployed successfully to `menio-8de8f` Standard `(default)` database.
+- Stage 2 implementation: [`bdf0a021598c15bdd6027b0626827d0652dcb0f1`](https://github.com/teslamap/PARTFLOW/commit/bdf0a021598c15bdd6027b0626827d0652dcb0f1). Follow-up test expectation fixes: [`03c9c557c88b536a5c2001e98c768f6d97031c24`](https://github.com/teslamap/PARTFLOW/commit/03c9c557c88b536a5c2001e98c768f6d97031c24) and [`d4cb9a90a71d27c0e30351c087f77cec1cf143f9`](https://github.com/teslamap/PARTFLOW/commit/d4cb9a90a71d27c0e30351c087f77cec1cf143f9).
+- Final full CI: [40879874141](https://github.com/teslamap/PARTFLOW/actions/runs/40879874141), **success**, including TypeScript, mobile production build, business, push, install, and all Firestore emulator regression suites.
+- Pages workflow for final code: [40879634249](https://github.com/teslamap/PARTFLOW/actions/runs/40879634249), **success**. Live superadmin, customer and mobile pages return HTTP 200; the published pages contain the new GOD MODE UI.
+- **Scope:** all new flags default OFF. This stage stores and distributes flags; it does not wire them into existing auth/order/chat flows or create backend endpoints for future features. Maintenance display, emergency shutdown of existing workflows, and feature-specific backend enforcement remain follow-up implementation before those functions are enabled.
+
+**STOP: stage 2 is complete (2/10). Stage 3 has not started.** Ask the required Georgian question and wait for explicit approval.
