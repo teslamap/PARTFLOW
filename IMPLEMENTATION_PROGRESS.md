@@ -13,12 +13,12 @@ Use focused reads and small changes (TOKEN-SAVER). Preserve existing design, dat
 | 1 | Audit and safe foundation | Complete: checked, committed, pushed and verified live |
 | 2 | GOD MODE flags, live config, kill switch, maintenance, audit/rollback | Complete; deployed and verified |
 | 3 | Web/APK auth, anonymous UID persistence, trusted Android identity | Complete; implementation deployed, attestation/auth gates OFF |
-| 4 | Orders, matching, offers, real-time updates and chat | In progress; final tests/deployment pending |
-| 5 | Cloudflare AI assistant and confirmed order creation | Not started |
+| 4 | Orders, matching, offers, real-time updates and chat | Complete; CI and live deployment verified |
+| 5 | Cloudflare AI assistant and confirmed order creation | Partial upstream scaffolding; integration/rollout remains |
 | 6 | Garage, VIN and profile | Not started |
-| 7 | In-app notifications and disabled recovery/push/SMS channels | Not started |
-| 8 | Disabled referrals, points and anti-fraud | Not started |
-| 9 | Disabled vouchers, partners and monetization | Not started |
+| 7 | In-app notifications and disabled recovery/push/SMS channels | Partial upstream scaffolding; user flows/provider rollout remain |
+| 8 | Disabled referrals, points and anti-fraud | Partial upstream backend; anti-fraud/UI remain |
+| 9 | Disabled vouchers, partners and monetization | Partial upstream backend; partner/voucher UI remains |
 | 10 | Full operational GOD MODE and final regression | Not started |
 
 ## Stage 1 audit
@@ -99,4 +99,11 @@ Stage 3 checkpoint is complete (3/10); the next stage was held for explicit user
 - Audited request-to-offer matching, deterministic one-offer-per-shop writes, participant-scoped real-time listeners, chat history/confirmation flows, order transitions and immutable order events. Existing Firestore rules remain the authoritative access and transition checks; no data/schema migration is needed.
 - Hardened the order action helper with a shared `canChangeOrder` transition check. Invalid actors, terminal-state changes and actions blocked by an open dispute now stop before attempting a Firestore write. Admin dispute resolution passes the UI role hint to this client check; Firestore rules still independently verify actual admin authorization.
 - Added transition coverage for customer, shop, outsider, admin and dispute states in the commerce emulator suite. Existing matching, concurrent offer selection, live listener, chat, confirmation, retry, cancellation and order-history coverage remains in place.
-- Full tests, generated page builds, commit/push and post-deployment checks are pending. No new rollout flags were turned on and no production records were changed.
+- Local checks passed: TypeScript, production web build, mobile bundle, foundation, feature policy/API gating, business migration, push, installation and Android identity suites. The local machine has no Java runtime, so the Firestore emulator suite ran in GitHub Actions.
+- Full CI, including the Firestore emulator commerce/chat/order suite plus V2 API and OTP transaction tests: [40886689799](https://github.com/teslamap/PARTFLOW/actions/runs/40886689799), **success**. A first run caught an outdated rejection assertion; the assertion was corrected and the full run passed.
+- Stage 4 code/build commits: `1ade59c` and `d3e5688`; test correction: `ac0876f`. All are pushed to `main`.
+- Pages publish: [40886688905](https://github.com/teslamap/PARTFLOW/actions/runs/40886688905), **success**. Live index, customer, mobile-customer, app, shop and superadmin pages all returned HTTP 200.
+- This stage changed only client-side order transition validation and tests. Firestore rules remain authoritative. No production Firestore records or rollout flags were changed by stage 4.
+- A separate upstream commit `9e8bcd6` already added partial V2 AI/API, OTP, referral/reward and voucher/promotion modules. They are not considered complete stages; their rollout gaps are listed in `IMPLEMENTATION_V2_STATUS.md` and they remain outside stage 4.
+
+**STOP: stage 4 is complete (4/10). Do not start stage 5 until the user explicitly approves.**
