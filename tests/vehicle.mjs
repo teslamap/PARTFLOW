@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {decodedVehicle,validateVin,validateGarageVehicle} from '../src/vehicle.mjs';
+assert.equal(validateVin(' jtdbr32e720123456 '),'JTDBR32E720123456');
+for(const value of ['123','JTDBR32E72012345I'])assert.throws(()=>validateVin(value));
+const unknown=decodedVehicle({Make:'Unknown',Model:'Unknown',ModelYear:'bad',ErrorCode:'7'});
+assert.equal(unknown.brand,'');assert.equal(unknown.model,'');assert.equal(unknown.year,'');assert.equal(unknown.warning,true);
+const prius=decodedVehicle({Make:'TOYOTA',Model:'Prius',ModelYear:'2018',ErrorCode:'0'});
+assert.equal(prius.brand,'Toyota');assert.equal(prius.model,'Prius');assert.equal(prius.warning,false);
+const car={brand:'Toyota',model:'Prius',year:2018,engine:'1.8',vin:''};
+assert.equal(validateGarageVehicle(car).year,2018);
+for(const invalid of [{...car,year:1900},{...car,model:'Nonexistent'},{...car,engine:' '},{...car,vin:'invalid'}])assert.throws(()=>validateGarageVehicle(invalid));
+console.log('PASS: VIN normalization, incomplete decode, manual vehicle validation');

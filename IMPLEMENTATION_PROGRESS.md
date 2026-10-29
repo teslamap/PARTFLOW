@@ -1,6 +1,6 @@
 # PARTFLOW V2 implementation progress
 
-Updated: 2026-10-29 (Asia/Dubai). Current checkpoint: **stage 4 of 10**.
+Updated: 2026-10-29 (Asia/Dubai). Current checkpoint: **stage 6 of 10**.
 
 ## Continuation contract
 
@@ -15,7 +15,7 @@ Use focused reads and small changes (TOKEN-SAVER). Preserve existing design, dat
 | 3 | Web/APK auth, anonymous UID persistence, trusted Android identity | Complete; implementation deployed, attestation/auth gates OFF |
 | 4 | Orders, matching, offers, real-time updates and chat | Complete; CI and live deployment verified |
 | 5 | Cloudflare AI assistant and confirmed order creation | In progress: Cloudflare adapter implemented; production setup pending |
-| 6 | Garage, VIN and profile | Not started |
+| 6 | Garage, VIN and profile | Implemented; CI and deployment verification pending |
 | 7 | In-app notifications and disabled recovery/push/SMS channels | Partial upstream scaffolding; user flows/provider rollout remain |
 | 8 | Disabled referrals, points and anti-fraud | Partial upstream backend; anti-fraud/UI remain |
 | 9 | Disabled vouchers, partners and monetization | Partial upstream backend; partner/voucher UI remains |
@@ -118,3 +118,14 @@ Stage 3 checkpoint is complete (3/10); the next stage was held for explicit user
 - Production rollout is NOT complete: this environment has no Cloudflare API credentials or API host configuration. AI stays OFF. Remaining deployment and model-quality checks are documented in server/README.md.
 
 **Stage 5 remains in progress. Do not start stage 6 or claim live AI activation.**
+
+## Stage 6 garage / VIN / profile
+
+- Retained private per-UID garage and existing vehicle-to-request prefilling on desktop/mobile. Garage OFF now also suppresses its listener and UI.
+- VIN decode no longer retains a previous/default vehicle when the decoder cannot identify a supported brand/model/year. Partial/error results require manual review. Manual save form is shown only at the review step, after choosing a method.
+- New VIN vehicles use a deterministic per-owner document and a transaction, preventing simultaneous saves of the same VIN. Existing randomly keyed vehicles remain compatible and UI duplicate checks retain protection for these legacy records; this is not a global uniqueness constraint against arbitrary clients.
+- Vehicle deletion asks for confirmation and preserves existing requests. VIN-free manual vehicles remain supported.
+- Added customer name editing to mobile Profile and desktop Garage using the existing owner-only member update rules. Role and creation time cannot be changed by this form. No authentication identity/email or verified-phone changes are made.
+- Added focused VIN/validation tests plus Firestore regressions for concurrent VIN saves, cross-user garage writes and name changes. No rule/schema migration is required.
+- Local TypeScript, VIN tests, web build and mobile bundle passed. Full rules/concurrency regression and Pages publication pending CI.
+- Stage 5 production AI configuration remains pending independently; stage 6 does not enable AI or other deferred modules.

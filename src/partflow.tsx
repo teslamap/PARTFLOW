@@ -1,3 +1,4 @@
+import {ProfileEditor} from './profile';
 'use client';
 import {useEffect,useState} from 'react';
 import {mutate,uploadPhoto,watchData} from './data';
@@ -48,6 +49,7 @@ return <div className="app"><aside id="panel-navigation" className={mobile?'side
 <div className={page==='garage'?'content pf-garage-page':'content'}>{demo&&<div className="demo-banner"><Zap size={16}/><span>დემო რეჟიმი — საცდელი მონაცემები. ცვლილებები რეალურ ბაზაში არ ინახება.</span><button onClick={()=>window.location.assign(initialRole+'.html')}>გამოსვლა <X size={14}/></button></div>}{!demo&&error&&<div className="error-banner"><span>{error}</span>{!user?<a href={initialRole+".html"}>შესვლა →</a>:<button onClick={load}>თავიდან ცდა</button>}</div>}
 <div className="page-heading"><div><div className="eyebrow">PARTFLOW / {roleNames[role]}</div><h1>{page==='garage'?'ჩემი გარაჟი':page==='commerce'?'ჩატი / შეკვეთები':page==='archive'?'არქივი':page==='dashboard'?'ყველაფერი ერთ სივრცეში':page==='shop'?'შენი მაღაზია':page==='shops'?'მაღაზიების მართვა':page==='users'?'მომხმარებლების მართვა':page==='infrastructure'?'ინფრასტრუქტურის მართვა':page==='categories'?'ნაწილების კატეგორიები':page==='offers'?'შეთავაზებები':role==='shop'?'შენზე მორგებული მოთხოვნები':'მოთხოვნები'}</h1><p>{role==='customer'?'იპოვე სასურველი ნაწილი, ზედმეტი ძებნის გარეშე.':role==='shop'?'მიიღე შესაბამისი მოთხოვნები და დაუკავშირდი ახალ მომხმარებლებს.':'მართე პლატფორმა, მაღაზიები და მომხმარებლების მოთხოვნები.'}</p></div>{role==='customer'?page!=='garage'&&<button className="primary" disabled={!user&&!demo} onClick={()=>{setRequestVehicle(null);setModal('request')}}><Plus size={18}/> მოთხოვნის დამატება</button>:role==='shop'?<button className="primary" onClick={()=>{setPage('shop');setModal('shop')}}><Settings size={17}/> მაღაზიის პარამეტრები</button>:<span className="admin-pill"><ShieldCheck size={17}/> {roleNames[role]}</span>}</div>
 {page==='services'&&<Services/>}
+{page==='garage'&&role==='customer'&&<ProfileEditor uid={user?.id} name={user?.name} demo={demo}/>}
 {page==='garage'&&role==='customer'&&<GaragePanel uid={user?.id} demo={demo} onCreateRequest={(car:Row)=>{setRequestVehicle(car);setModal('request')}}/>}
 {!demo&&role==='superadmin'&&user?.role==='superadmin'&&<DeletionQueue act={act} busy={busy}/>}
 {page==='infrastructure'&&role==='superadmin'&&user?.role==='superadmin'&&<><GodMode userId={user.id} demo={demo}/><Infrastructure userId={user.id} demo={demo}/><RewardSettings userId={user.id} demo={demo}/></>}

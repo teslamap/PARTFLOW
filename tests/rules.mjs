@@ -1,3 +1,4 @@
+import {saveGarageVehicle} from '../src/garage-write.mjs';
 import {DEFAULT_FLAGS} from '../src/feature-policy.mjs';
 import {readFileSync} from 'node:fs';
 import {initializeTestEnvironment,assertSucceeds,assertFails} from '@firebase/rules-unit-testing';
@@ -27,6 +28,12 @@ await assertSucceeds(getDocs(collection(alice,'pf_garage/alice/vehicles')));
 await assertFails(getDocs(collection(wrong,'pf_garage/alice/vehicles')));
 await assertFails(setDoc(doc(alice,'pf_garage/alice/vehicles/bad-vin'),{...garageVehicle,vin:'NOT-A-VALID-VIN'}));
 await assertFails(updateDoc(doc(alice,'pf_garage/alice/vehicles/prius'),{model:'Camry'}));
+const duplicateCar={...garageVehicle,vin:'JTDBR32E720123457'};delete duplicateCar.createdAt;
+const saves=await Promise.allSettled([saveGarageVehicle(alice,'alice',duplicateCar),saveGarageVehicle(alice,'alice',duplicateCar)]);
+assert.equal(saves.filter(s=>s.status==='fulfilled').length,1,'one VIN save wins');
+await assertFails(saveGarageVehicle(wrong,'alice',{...duplicateCar,vin:'JTDBR32E720123458'}));
+await assertSucceeds(updateDoc(doc(alice,'pf_members/alice'),{name:'Updated name'}));
+await assertFails(updateDoc(doc(wrong,'pf_members/alice'),{name:'Outsider'}));
 await assertFails(updateDoc(doc(alice,'pf_members/alice'),{role:'admin'}));
 const unverified=env.authenticatedContext('forged',{email:'suloanani1@gmail.com',email_verified:false}).firestore();
 await assertFails(setDoc(doc(unverified,'pf_members/forged'),{...member,role:'superadmin'}));
