@@ -10,7 +10,7 @@ Use focused reads and small changes (TOKEN-SAVER). Preserve existing design, dat
 
 | Stage | Agreed scope | Status |
 | --- | --- | --- |
-| 1 | Audit and safe foundation | Implemented; local checks passed; deployment/CI verification pending |
+| 1 | Audit and safe foundation | Complete: checked, committed, pushed and verified live |
 | 2 | GOD MODE flags, live config, kill switch, maintenance, audit/rollback | Not started; requires confirmation |
 | 3 | Web/APK auth, anonymous UID persistence, trusted Android identity | Not started |
 | 4 | Orders, matching, offers, real-time updates and chat | Not started |
@@ -48,10 +48,15 @@ No repository `AGENTS.md` was present.
 
 Local PASS: TypeScript (`tsc --noEmit`), production Vite build, mobile asset preparation, foundation, business/migration policy, push payload, installation and catalog tests; `git diff --check`.
 Dependencies installed with `npm ci` from the unchanged lockfile. No dependency upgrade.
-Local Java is unavailable, so Firestore emulator regression is delegated to the existing GitHub Actions test job; it must pass before stage 1 is reported complete.
+Local Java is unavailable; the full Firestore emulator regression passed in the existing GitHub Actions test job, including catalog, rules, archives, realtime isolation, commerce, shop panel, deletion, chat workflow, auto-service, migration and service management suites.
 
-Implementation commit and final CI/live evidence will be recorded in the stage 1 verification follow-up commit. A commit cannot embed its own SHA; use that follow-up or Git history for the final documentation SHA.
+- Implementation commit: [`bc0468a8d6cdbb4a9b96f9b67b48932b1978d739`](https://github.com/teslamap/PARTFLOW/commit/bc0468a8d6cdbb4a9b96f9b67b48932b1978d739), pushed to `main`.
+- Full CI: [40876269438](https://github.com/teslamap/PARTFLOW/actions/runs/40876269438), **success** for that exact implementation SHA.
+- Pages publishing: [40876269405](https://github.com/teslamap/PARTFLOW/actions/runs/40876269405), **success**; branch Pages deployment [40876268801](https://github.com/teslamap/PARTFLOW/actions/runs/40876268801), **success**.
+- Post-deployment primary live check: index and all six panels returned HTTP 200. Customer, mobile-customer, shop, admin, superadmin and services HTML matched the local production build after normalizing Windows/Linux line endings, including decoded embedded favicon content. Index matched directly. No login, production order or chat message was created during verification.
+- Secondary Firebase Hosting was reachable at audit time; it was not redeployed. Android workflows were not triggered, as no native/package inputs changed.
+- Final release record is this documentation-only follow-up. A commit cannot embed its own SHA; use Git history for this final documentation commit.
 
 ## Remaining work / exact next step
 
-Finish stage 1 release verification, record the implementation SHA and deployment/test results, then stop and ask the required Georgian question. After explicit approval only, start stage 2 by designing privileged config storage, validation, server enforcement, audit and rollback. Do not treat client flags as security controls or enable any paid/external service.
+**STOP: stage 1 is complete (1/10). Stage 2 has not started.** Ask the required Georgian question and wait for explicit approval. Only after approval, start stage 2 by designing privileged config storage, validation, server enforcement, audit and rollback. Do not treat client flags as security controls or enable any paid/external service.
