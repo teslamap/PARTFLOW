@@ -1,6 +1,6 @@
 # PARTFLOW V2 implementation progress
 
-Updated: 2026-10-29 (Asia/Dubai). Current checkpoint: **stage 7 of 10**.
+Updated: 2026-10-29 (Asia/Dubai). Current checkpoint: **stage 8 of 10**.
 
 ## Continuation contract
 
@@ -16,8 +16,8 @@ Use focused reads and small changes (TOKEN-SAVER). Preserve existing design, dat
 | 4 | Orders, matching, offers, real-time updates and chat | Complete; CI and live deployment verified |
 | 5 | Cloudflare AI assistant and confirmed order creation | In progress: Cloudflare adapter implemented; production setup pending |
 | 6 | Garage, VIN and profile | Complete; CI and Pages verified at 4cfb274 |
-| 7 | In-app notifications and disabled recovery/push/SMS channels | Implemented; CI/publication pending; external channels OFF |
-| 8 | Disabled referrals, points and anti-fraud | Partial upstream backend; anti-fraud/UI remain |
+| 7 | In-app notifications and disabled recovery/push/SMS channels | Complete; CI/Pages verified at 2457332; external channels OFF |
+| 8 | Disabled referrals, points and anti-fraud | Source implemented; CI/publication pending; incentives OFF |
 | 9 | Disabled vouchers, partners and monetization | Partial upstream backend; partner/voucher UI remains |
 | 10 | Full operational GOD MODE and final regression | Not started |
 
@@ -142,3 +142,17 @@ Stage 3 checkpoint is complete (3/10); the next stage was held for explicit user
 - Shared protected API client now includes native App Check when configured, limits response wait, and handles malformed responses. Credentials/codes/tokens are not persisted by these forms.
 - Push registration/sender gates and default OFF remain unchanged. SMS provider, OTP secret, protected API hosting, push backend publication and real Android/provider tests remain production prerequisites. No external channel was enabled or deployed by this stage.
 - Added notification audience/order/deduplication/lifecycle tests and OTP regression for disabling recovery independently and switching SMS OFF. Local TypeScript, notification, push payload, disabled API and Android identity checks passed; web/mobile builds passed. Full emulator CI and publication pending.
+
+## Stage 7 verification
+
+- Commit 2457332 published. Full CI https://github.com/teslamap/PARTFLOW/actions/runs/40891047116 — success. Pages https://github.com/teslamap/PARTFLOW/actions/runs/40891046837 — success. Customer page HTTP 200.
+
+## Stage 8 disabled referrals / points / anti-abuse
+
+- Added customer referral link generation/copy, explicit code attachment, own attribution/reward state and private points balance. Visible only with configured API and enabled referral flags; incentives still require verified email on the backend.
+- Referral links retain a valid first-touch code for up to 30 days across registration using browser-local storage. Storage denial is handled; no automatic attachment occurs. Attribution clears after explicit successful attachment.
+- Referral attachment rejects self/mutual invitations, existing-order customers and replacing an inviter. Code creation rechecks the live flag inside its transaction.
+- Reward transaction requires an approved shop, existing invitee/inviter members, completed non-disputed order created after attribution, matching offer/request/participants and accepted offer. Self-shop/inviter-shop awards are rejected. Per-invitee ledger and transactional balance/referral updates prevent duplicate awards on retries/concurrency. Invalid balances/unsafe arithmetic and policy above 10000 points fail closed.
+- Invitee may explicitly request reconciliation for a completed order; this credits the inviter once. No automatic server completion trigger is deployed.
+- Added eligibility/arithmetic/attribution/TTL tests and API transaction coverage for unverified users, mutual invitations, outsider claims, open disputes and live OFF. Local tests, TypeScript, web/mobile production builds passed. Full emulator CI/publication pending.
+- All referral/points switches remain OFF. This is a disabled implementation, not production incentive activation. Multi-account/Sybil and colluding-partner prevention still needs trusted identity/device evidence and operational review; verified email alone does not establish a unique person. API hosting and production identity checks remain rollout prerequisites. No legacy records were rewritten.

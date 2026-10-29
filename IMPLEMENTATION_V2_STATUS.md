@@ -14,9 +14,9 @@ Implemented in source:
 Still NOT complete:
 - Trusted APK attestation-to-UID bootstrap and release/sideload proof; Anonymous Auth stays OFF and no endpoint grants apkVerified. app.html currently requires existing login, like the previous mobile entry.
 - API hosting, Firebase Rules/Functions production publication, AI endpoint/secrets, SMS adapter credentials; no such deployment was performed by the code build. AI stays OFF.
-- Full customer/partner referral and voucher UI, share-link retention/attribution, partner statistics and automated reward trigger. Backend reward endpoint is explicit and verified-email only; multi-account abuse prevention is not complete.
+- Stage 8 adds customer referral UI, share-link retention/explicit attribution and hardened once-only reward reconciliation. Partner/voucher UI and statistics remain stage 9 work; automated reward trigger is not deployed. Multi-account abuse prevention remains incomplete and incentives stay OFF.
 - VIP entitlement module and email account-linking module. Their flags exist but these modules are not implemented.
-- SMS/recovery frontend flows and real-provider verification.
+- SMS/recovery frontend flows are implemented behind OFF/build gates in stage 7; real-provider verification remains pending.
 - AI service booking (parts requests only), production AI quality validation and standalone VIN lookup.
 
 Default requested optional features remain OFF. Payments were not enabled. Do not turn incomplete modules ON.

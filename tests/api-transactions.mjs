@@ -13,10 +13,17 @@ await db.doc('pf_settings/control').set({flags});
 const request={brand:'Tesla',model:'Model 3',year:2020,engine:'ელექტრო',vin:'',category:CATEGORIES[0],part:'ძრავა',description:'საჭიროა ძრავა',city:'თბილისი',condition:'ნებისმიერი',budget:null};
 const service=createService({db,auth:{verifyIdToken:async uid=>({uid,email_verified:true,firebase:{sign_in_provider:'password'}})},ai:async()=>({request})});
 async function call(uid,action,body={}){const r=await service.handle(new Request('https://test/'+action,{method:'POST',headers:{Authorization:'Bearer '+uid},body:JSON.stringify(body)}));return {status:r.status,data:await r.json()}}
+const unverified=createService({db,auth:{verifyIdToken:async()=>({uid:'unverified',email_verified:false})}});
+assert.equal((await unverified.handle(new Request('https://test/referral-code',{method:'POST',headers:{Authorization:'Bearer token'},body:'{}'}))).status,403);
 const code=(await call('inviter','referral-code')).data.code;assert.ok(code);
 assert.equal((await call('inviter','referral-attach',{code})).status,400);
 assert.equal((await call('buyer','referral-attach',{code})).status,200);
-await db.doc('pf_members/buyer').set({role:'customer'});await db.doc('pf_shops/partner').set({status:'approved'});await db.doc('pf_orders/order').set({ownerId:'buyer',shopId:'partner',status:'completed',offerId:'offer'});
+await db.doc('pf_members/inviter').set({role:'customer'});await db.doc('pf_members/buyer').set({role:'customer'});await db.doc('pf_shops/partner').set({status:'approved'});await db.doc('pf_orders/order').set({requestId:'order',ownerId:'buyer',shopId:'partner',status:'completed',dispute:'none',offerId:'offer',createdAt:Timestamp.now()});
+await db.doc('pf_offers/offer').set({ownerId:'buyer',shopId:'partner',requestId:'order',price:100});await db.doc('pf_requests/order').set({ownerId:'buyer',acceptedOfferId:'offer',category:CATEGORIES[0]});
+const buyerCode=(await call('buyer','referral-code')).data.code;
+assert.equal((await call('inviter','referral-attach',{code:buyerCode})).status,409,'mutual referral blocked');
+assert.equal((await call('stranger','reward',{orderId:'order'})).status,409,'outsider cannot claim');
+await db.doc('pf_orders/order').update({dispute:'open'});assert.equal((await call('buyer','reward',{orderId:'order'})).status,409);await db.doc('pf_orders/order').update({dispute:'none'});
 const awards=await Promise.all([call('buyer','reward',{orderId:'order'}),call('buyer','reward',{orderId:'order'})]);assert.equal(awards.filter(r=>r.data.credited).length,1);assert.equal((await db.doc('pf_rewards/inviter').get()).data().points,100);
 await db.doc('pf_rewards/buyer').set({points:500});await db.doc('pf_promotions/promo').set({status:'approved',partnerId:'partner',minOrder:0,category:CATEGORIES[0],service:'შეცვლა',monthlyLimit:1,expiresAt:Timestamp.fromMillis(Date.now()+60000)});
 const vouchers=await Promise.all([call('buyer','voucher-redeem',{promotionId:'promo',idempotencyKey:'same'}),call('buyer','voucher-redeem',{promotionId:'promo',idempotencyKey:'same'})]);assert.equal(vouchers[0].data.id,vouchers[1].data.id);assert.equal((await db.doc('pf_rewards/buyer').get()).data().points,0);
@@ -29,6 +36,6 @@ const expired=db.collection('pf_ai_drafts').doc();await expired.set({ownerId:'bu
 assert.equal((await call('buyer','ai-confirm',{draftId:expired.id,confirmed:true})).status,409);
 assert.equal((await call('buyer','ai-draft',{messages:[null]})).status,400);
 const confirms=await Promise.all([call('buyer','ai-confirm',{draftId:draft.data.draftId,confirmed:true}),call('buyer','ai-confirm',{draftId:draft.data.draftId,confirmed:true})]);assert.equal(confirms[0].data.requestId,confirms[1].data.requestId);assert.equal((await db.collection('pf_requests').get()).size,2);
-await db.doc('pf_settings/control').set({flags:DEFAULT_FLAGS});assert.equal((await call('buyer','ai-draft',{messages:[]})).status,403);
+await db.doc('pf_settings/control').set({flags:DEFAULT_FLAGS});assert.equal((await call('buyer','reward',{orderId:'order'})).status,403);assert.equal((await call('buyer','ai-draft',{messages:[]})).status,403);
 console.log('PASS: real Firestore transactions prevent duplicate rewards, voucher overspend/reuse and duplicate AI confirmations');
 await db.terminate();
