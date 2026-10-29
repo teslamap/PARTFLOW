@@ -90,7 +90,7 @@ await assertFails(updateDoc(doc(alice,'pf_requests/r1'),{status:'open'}));
 await assertSucceeds(updateDoc(doc(owner,'pf_requests/r1'),{status:'hidden',previousStatus:'closed'}));
 await assertSucceeds(updateDoc(doc(owner,'pf_requests/r1'),{status:'closed',previousStatus:'closed'}));
 await assertFails(getDocs(collection(alice,'pf_members')));
-await assertFails(getDoc(doc(alice,'pf_settings/control')));
+await assertSucceeds(getDoc(doc(alice,'pf_settings/control')));
 await assertSucceeds(getDoc(doc(owner,'pf_settings/control')));
 const control={schemaVersion:1,flags:{godMode:'OFF',maintenance:'OFF',aiOrderAssistant:'OFF',anonymousApkAuth:'OFF',smsOtp:'OFF',phoneRecovery:'OFF',emailLinking:'OFF',referrals:'OFF',loyaltyPoints:'OFF',vouchers:'OFF'},message:'მიმდინარეობს ტექნიკური მომსახურება.',revision:1,updatedBy:'owner',updatedAt:serverTimestamp()};
 await assertFails(setDoc(doc(alice,'pf_settings/control'),control));
