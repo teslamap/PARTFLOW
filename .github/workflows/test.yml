@@ -21,6 +21,7 @@ jobs:
       - run: npm install --global npm@11.6.2 --no-audit --no-fund
       - run: npm ci
       - run: npm run check
+      - run: node tests/foundation.mjs
       - run: npm run build:mobile
       - run: npm run test:business
       - run: npm run test:push
