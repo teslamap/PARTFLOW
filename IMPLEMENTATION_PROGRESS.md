@@ -12,7 +12,7 @@ Use focused reads and small changes (TOKEN-SAVER). Preserve existing design, dat
 | --- | --- | --- |
 | 1 | Audit and safe foundation | Complete: checked, committed, pushed and verified live |
 | 2 | GOD MODE flags, live config, kill switch, maintenance, audit/rollback | Complete; deployed and verified |
-| 3 | Web/APK auth, anonymous UID persistence, trusted Android identity | Not started |
+| 3 | Web/APK auth, anonymous UID persistence, trusted Android identity | In progress; existing auth audited; Firebase Android app registered |
 | 4 | Orders, matching, offers, real-time updates and chat | Not started |
 | 5 | Cloudflare AI assistant and confirmed order creation | Not started |
 | 6 | Garage, VIN and profile | Not started |
@@ -71,3 +71,12 @@ Local Java is unavailable; the full Firestore emulator regression passed in the 
 - **Scope:** all new flags default OFF. This stage stores and distributes flags; it does not wire them into existing auth/order/chat flows or create backend endpoints for future features. Maintenance display, emergency shutdown of existing workflows, and feature-specific backend enforcement remain follow-up implementation before those functions are enabled.
 
 **STOP: stage 2 is complete (2/10). Stage 3 has not started.** Ask the required Georgian question and wait for explicit approval.
+
+## Stage 3 audit / checkpoint
+
+- Existing web panels already require Firebase Auth, use independent named Firebase sessions, and scope records by UID. Mobile customer web auth already uses local Firebase persistence; signed-in requests/offers are filtered to the current UID.
+- APK is a remote-only WebView and currently uses email/password. `PartflowAndroid/2` is only a user-agent hint for local persistence and hiding Google popup; it is spoofable and is not device attestation.
+- Firebase anonymous provider is disabled in `firebase.json` and production. Do not enable automatic anonymous login until Firebase App Check is integrated/enforced for the actual Android app and UID ownership tests pass.
+- Registered Firebase Android app `com.partflow.customer`, app ID `1:429553713786:android:d48cc58d5f40b8a64db1c3`; saved its public client config at `android-overrides/app/google-services.json`.
+- Remaining stage 3 work: integrate Android Firebase SDK and App Check Play Integrity on the native wrapper; pass attestation into Firebase Web SDK through an origin-restricted bridge or migrate Firebase calls to native SDK; establish production attestation/enforcement; then enable anonymous auth, test persistence/ownership and retain existing web auth. Current debug APK has no Play Store release identity, so Play Integrity setup must be verified for its distribution track.
+- No anonymous provider or production auth settings have been enabled. No APK build or emulator tests have been run for this checkpoint; tests are intentionally deferred until the stage is ready, per user's direction.
