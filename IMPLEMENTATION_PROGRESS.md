@@ -12,7 +12,7 @@ Use focused reads and small changes (TOKEN-SAVER). Preserve existing design, dat
 | --- | --- | --- |
 | 1 | Audit and safe foundation | Complete: checked, committed, pushed and verified live |
 | 2 | GOD MODE flags, live config, kill switch, maintenance, audit/rollback | Complete; deployed and verified |
-| 3 | Web/APK auth, anonymous UID persistence, trusted Android identity | Implementation complete; final CI/live verification pending |
+| 3 | Web/APK auth, anonymous UID persistence, trusted Android identity | Complete; implementation deployed, attestation/auth gates OFF |
 | 4 | Orders, matching, offers, real-time updates and chat | Not started |
 | 5 | Cloudflare AI assistant and confirmed order creation | Not started |
 | 6 | Garage, VIN and profile | Not started |
@@ -86,5 +86,10 @@ Local Java is unavailable; the full Firestore emulator regression passed in the 
 - Native wrapper now initializes Firebase App Check with Play Integrity. It exposes only a token request via AndroidX WebView message listener, allowlisted to the exact GitHub Pages origin and customer main-frame path.
 - Firebase Web App Check uses a custom provider to request that native token. Firebase anonymous sign-in runs only when Android App Check and anonymous-auth build flags are explicitly set and an App Check token is available. Existing email/password sessions and UID-scoped Firestore queries remain intact.
 - Both Android build flags are explicitly `0` in the APK workflow. `firebase.json` anonymous provider remains false; production App Check enforcement was not changed. This prepares stage 3 without activating access before app distribution configuration is complete.
-- Added focused tests for the Android/App Check gates. Full checks and Android Gradle build are running in CI before calling stage 3 complete.
+- Added focused tests for the Android/App Check gates.
+- Final full CI: [40882250405](https://github.com/teslamap/PARTFLOW/actions/runs/40882250405), **success**, including Android identity gates and all Firestore emulator suites.
+- Customer APK build/signature/package verification: [40882250397](https://github.com/teslamap/PARTFLOW/actions/runs/40882250397), **success**. Shop APK regression after Firebase-config isolation: [40882250385](https://github.com/teslamap/PARTFLOW/actions/runs/40882250385), **success**.
+- Pages deployment: [40882250398](https://github.com/teslamap/PARTFLOW/actions/runs/40882250398), **success**. Live superadmin/customer/mobile pages returned HTTP 200.
 - On future Play Console upload, register the stable release signing SHA-256 with Firebase App Check, set the distribution-appropriate Play Integrity verdicts, observe App Check metrics, then separately enable Firebase App Check enforcement, anonymous Auth, and the APK build flags. These switches remain off today.
+
+**STOP: stage 3 is complete (3/10). Stage 4 has not started.** Wait for the user's explicit approval before continuing.
