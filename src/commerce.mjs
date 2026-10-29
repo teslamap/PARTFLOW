@@ -10,6 +10,12 @@ export function nextStatuses(order,uid,isAdmin=false){
  if(isAdmin&&['shipped','delivered'].includes(order.status))result.push('cancelled');
  return result;
 }
+export function canChangeOrder(order,uid,kind,isAdmin=false){
+ if(!order||!uid)return false;
+ if(kind==='dispute')return !isAdmin&&order.dispute==='none'&&[order.ownerId,order.shopId].includes(uid);
+ if(kind==='resolve')return isAdmin&&order.dispute==='open';
+ return nextStatuses(order,uid,isAdmin).includes(kind);
+}
 const ref=(db,c,id)=>doc(db,'pf_'+c,id);
 // The request ID is the order ID: selection cannot create two fulfillment records.
 // Legacy selected offers can initialize their order without rewriting the request.
@@ -37,12 +43,13 @@ export async function confirmOrder(db,uid,offerId,expectedVersion){
   if(!existing.exists()||existing.data().ownerId!==uid||existing.data().offerId!==offerId)throw error;
  }
 }
-export async function changeOrder(db,uid,id,kind,note){
+export async function changeOrder(db,uid,id,kind,note,{isAdmin=false}={}){
  if(typeof note!=='string'||!note.trim()||note.trim().length>1000)throw Error('მიუთითე კომენტარი (1–1000 სიმბოლო)');
  const r=ref(db,'orders',id);
  await runTransaction(db,async tx=>{
   const s=await tx.get(r);if(!s.exists())throw Error('შეკვეთა ვერ მოიძებნა');
-  const o=s.data(),version=o.version+1,now=serverTimestamp();
+  const o=s.data();if(!canChangeOrder(o,uid,kind,isAdmin))throw Error('შეკვეთის ეს ცვლილება ამ ეტაპზე დაშვებული არ არის');
+  const version=o.version+1,now=serverTimestamp();
   const status=kind==='dispute'||kind==='resolve'?o.status:kind;
   const dispute=kind==='dispute'?'open':kind==='resolve'?'resolved':o.dispute;
   tx.update(r,{status,dispute,version,updatedAt:now});

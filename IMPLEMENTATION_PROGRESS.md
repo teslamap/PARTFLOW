@@ -1,11 +1,11 @@
 # PARTFLOW V2 implementation progress
 
-Updated: 2026-10-29 (Asia/Dubai). Scope: **stage 1 only**.
+Updated: 2026-10-29 (Asia/Dubai). Current checkpoint: **stage 4 of 10**.
 
 ## Continuation contract
 
-Complete one stage, test, commit/push, check live deployment, report, then stop.
-Ask: **1 მოვრჩი, გადავიდე მეორეზე?** Do not start stage 2 without the user's confirmation.
+Complete one stage, run tests at the end, commit/push, check live deployment, report, then stop.
+Ask for explicit approval before starting the next stage. Keep not-yet-enabled features OFF.
 Use focused reads and small changes (TOKEN-SAVER). Preserve existing design, data and live behavior.
 
 | Stage | Agreed scope | Status |
@@ -13,7 +13,7 @@ Use focused reads and small changes (TOKEN-SAVER). Preserve existing design, dat
 | 1 | Audit and safe foundation | Complete: checked, committed, pushed and verified live |
 | 2 | GOD MODE flags, live config, kill switch, maintenance, audit/rollback | Complete; deployed and verified |
 | 3 | Web/APK auth, anonymous UID persistence, trusted Android identity | Complete; implementation deployed, attestation/auth gates OFF |
-| 4 | Orders, matching, offers, real-time updates and chat | Not started |
+| 4 | Orders, matching, offers, real-time updates and chat | In progress; final tests/deployment pending |
 | 5 | Cloudflare AI assistant and confirmed order creation | Not started |
 | 6 | Garage, VIN and profile | Not started |
 | 7 | In-app notifications and disabled recovery/push/SMS channels | Not started |
@@ -92,4 +92,11 @@ Local Java is unavailable; the full Firestore emulator regression passed in the 
 - Pages deployment: [40882250398](https://github.com/teslamap/PARTFLOW/actions/runs/40882250398), **success**. Live superadmin/customer/mobile pages returned HTTP 200.
 - On future Play Console upload, register the stable release signing SHA-256 with Firebase App Check, set the distribution-appropriate Play Integrity verdicts, observe App Check metrics, then separately enable Firebase App Check enforcement, anonymous Auth, and the APK build flags. These switches remain off today.
 
-**STOP: stage 3 is complete (3/10). Stage 4 has not started.** Wait for the user's explicit approval before continuing.
+Stage 3 checkpoint is complete (3/10); the next stage was held for explicit user approval.
+
+## Stage 4 audit / implementation
+
+- Audited request-to-offer matching, deterministic one-offer-per-shop writes, participant-scoped real-time listeners, chat history/confirmation flows, order transitions and immutable order events. Existing Firestore rules remain the authoritative access and transition checks; no data/schema migration is needed.
+- Hardened the order action helper with a shared `canChangeOrder` transition check. Invalid actors, terminal-state changes and actions blocked by an open dispute now stop before attempting a Firestore write. Admin dispute resolution passes the UI role hint to this client check; Firestore rules still independently verify actual admin authorization.
+- Added transition coverage for customer, shop, outsider, admin and dispute states in the commerce emulator suite. Existing matching, concurrent offer selection, live listener, chat, confirmation, retry, cancellation and order-history coverage remains in place.
+- Full tests, generated page builds, commit/push and post-deployment checks are pending. No new rollout flags were turned on and no production records were changed.

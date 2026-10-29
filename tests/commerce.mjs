@@ -4,7 +4,7 @@ import {initializeTestEnvironment,assertSucceeds,assertFails} from '@firebase/ru
 import {doc,setDoc,getDoc,getDocs,updateDoc,deleteDoc,collection,query,where,or,and,orderBy,onSnapshot,serverTimestamp,writeBatch,Timestamp} from 'firebase/firestore';
 import {requestConfirmation} from '../src/chat-workflow.mjs';
 import {ensureMemberRecord} from '../src/member-write.mjs';
-import {confirmOrder,changeOrder,sendMessage,nextStatuses} from '../src/commerce.mjs';
+import {confirmOrder,changeOrder,sendMessage,nextStatuses,canChangeOrder} from '../src/commerce.mjs';
 const env=await initializeTestEnvironment({projectId:'demo-partflow',firestore:{host:'127.0.0.1',port:Number(process.env.FIRESTORE_EMULATOR_PORT||8080),rules:readFileSync('firestore.rules','utf8')}});
 const db=id=>env.authenticatedContext(id).firestore(),alice=db('alice'),shop=db('shop'),outsider=db('outsider'),admin=db('admin'),anon=env.unauthenticatedContext().firestore();
 const r=(d,c,id)=>doc(d,'pf_'+c,id);
@@ -45,18 +45,18 @@ try{
  await assertSucceeds(getDocs(query(collection(shop,'pf_orders'),where('shopId','==','shop'),orderBy('createdAt','desc'))));
  await assertSucceeds(getDocs(collection(admin,'pf_orders')));
  await assertFails(updateDoc(r(shop,'orders','r1'),{status:'preparing',version:1,updatedAt:serverTimestamp()})); // history is mandatory
- await assertFails(changeOrder(shop,'shop','r1','completed','skip'));
- await assertFails(changeOrder(alice,'alice','r1','preparing','wrong actor'));
+ await assert.rejects(changeOrder(shop,'shop','r1','completed','skip'));
+ await assert.rejects(changeOrder(alice,'alice','r1','preparing','wrong actor'));
  await assertSucceeds(changeOrder(shop,'shop','r1','preparing','მზადდება'));
  await assertSucceeds(changeOrder(alice,'alice','r1','dispute','დაზუსტება'));
- await assertFails(changeOrder(shop,'shop','r1','shipped','frozen'));
- await assertFails(changeOrder(alice,'alice','r1','resolve','self resolve'));
- await assertSucceeds(changeOrder(admin,'admin','r1','resolve','გადაწყვეტილია'));
+ await assert.rejects(changeOrder(shop,'shop','r1','shipped','frozen'));
+ await assert.rejects(changeOrder(alice,'alice','r1','resolve','self resolve'));
+ await assertSucceeds(changeOrder(admin,'admin','r1','resolve','გადაწყვეტილია',{isAdmin:true}));
  for(const status of ['shipped','delivered'])await assertSucceeds(changeOrder(shop,'shop','r1',status,status));
- await assertFails(changeOrder(shop,'shop','r1','completed','wrong actor'));
+ await assert.rejects(changeOrder(shop,'shop','r1','completed','wrong actor'));
  await assertSucceeds(changeOrder(alice,'alice','r1','completed','მივიღე'));
- await assertFails(changeOrder(admin,'admin','r1','confirmed','reopen'));
- await assertFails(changeOrder(admin,'admin','r1','cancelled','terminal'));
+ await assert.rejects(changeOrder(admin,'admin','r1','confirmed','reopen',{isAdmin:true}));
+ await assert.rejects(changeOrder(admin,'admin','r1','cancelled','terminal',{isAdmin:true}));
  const events=await getDocs(collection(alice,'pf_orders','r1','events'));assert.equal(events.size,7);
  await assertFails(updateDoc(doc(admin,'pf_orders','r1','events','0'),{note:'overwrite'}));
  await assertFails(deleteDoc(r(admin,'orders','r1')));
@@ -79,5 +79,13 @@ try{
  await assertFails(getDoc(doc(admin,...tokenPath)));
  await assertFails(setDoc(doc(shop,...tokenPath),{token:'stolen',platform:'android',updatedAt:serverTimestamp()}));
  assert.deepEqual(nextStatuses({status:'delivered',dispute:'none',ownerId:'alice',shopId:'shop'},'alice'),['completed']);
+ const initialOrder={status:'confirmed',dispute:'none',ownerId:'alice',shopId:'shop'};
+ assert.equal(canChangeOrder(initialOrder,'shop','preparing'),true);
+ assert.equal(canChangeOrder(initialOrder,'alice','preparing'),false);
+ assert.equal(canChangeOrder(initialOrder,'outsider','cancelled'),false);
+ assert.equal(canChangeOrder(initialOrder,'alice','dispute'),true);
+ assert.equal(canChangeOrder({...initialOrder,dispute:'open'},'admin','resolve',true),true);
+ assert.equal(canChangeOrder({...initialOrder,dispute:'open'},'shop','preparing'),false);
+ assert.equal(canChangeOrder({...initialOrder,status:'completed'},'admin','cancelled',true),false);
  console.log('Commerce: live chat, order cycle, disputes, atomic history, retries, isolation, validation and private device tokens passed.');
 }finally{await env.cleanup()}
