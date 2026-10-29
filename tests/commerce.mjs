@@ -65,7 +65,7 @@ try{
  for(const id of ['r2_shop','r3_shop']){await sendMessage(alice,'alice',id,'hello');await sendMessage(shop,'shop',id,'hello');await requestConfirmation(shop,'shop',id,{price:300,condition:'მეორადი',delivery:'დღეს',note:'ტესტი'})}
  console.log('Starting cancellation order');await assertSucceeds(confirmOrder(alice,'alice','r2_shop'));
  await assertSucceeds(changeOrder(alice,'alice','r2','cancelled','აღარ მჭირდება'));
- await assertFails(changeOrder(shop,'shop','r2','preparing','cancelled'));
+ await assert.rejects(changeOrder(shop,'shop','r2','preparing','cancelled'));
  // Concurrent selection: exactly one order and version-zero event, no overwrites.
  console.log('Starting concurrent confirmations');await Promise.all([confirmOrder(alice,'alice','r3_shop'),confirmOrder(alice,'alice','r3_shop')]);
  assert.equal((await getDocs(collection(alice,'pf_orders','r3','events'))).size,1);
