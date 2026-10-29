@@ -12,7 +12,7 @@ Use focused reads and small changes (TOKEN-SAVER). Preserve existing design, dat
 | --- | --- | --- |
 | 1 | Audit and safe foundation | Complete: checked, committed, pushed and verified live |
 | 2 | GOD MODE flags, live config, kill switch, maintenance, audit/rollback | Complete; deployed and verified |
-| 3 | Web/APK auth, anonymous UID persistence, trusted Android identity | In progress; existing auth audited; Firebase Android app registered |
+| 3 | Web/APK auth, anonymous UID persistence, trusted Android identity | Implementation complete; final CI/live verification pending |
 | 4 | Orders, matching, offers, real-time updates and chat | Not started |
 | 5 | Cloudflare AI assistant and confirmed order creation | Not started |
 | 6 | Garage, VIN and profile | Not started |
@@ -80,3 +80,11 @@ Local Java is unavailable; the full Firestore emulator regression passed in the 
 - Registered Firebase Android app `com.partflow.customer`, app ID `1:429553713786:android:d48cc58d5f40b8a64db1c3`; saved its public client config at `android-overrides/app/google-services.json`.
 - Remaining stage 3 work: integrate Android Firebase SDK and App Check Play Integrity on the native wrapper; pass attestation into Firebase Web SDK through an origin-restricted bridge or migrate Firebase calls to native SDK; establish production attestation/enforcement; then enable anonymous auth, test persistence/ownership and retain existing web auth. Current debug APK has no Play Store release identity, so Play Integrity setup must be verified for its distribution track.
 - No anonymous provider or production auth settings have been enabled. No APK build or emulator tests have been run for this checkpoint; tests are intentionally deferred until the stage is ready, per user's direction.
+
+## Stage 3 implementation
+
+- Native wrapper now initializes Firebase App Check with Play Integrity. It exposes only a token request via AndroidX WebView message listener, allowlisted to the exact GitHub Pages origin and customer main-frame path.
+- Firebase Web App Check uses a custom provider to request that native token. Firebase anonymous sign-in runs only when Android App Check and anonymous-auth build flags are explicitly set and an App Check token is available. Existing email/password sessions and UID-scoped Firestore queries remain intact.
+- Both Android build flags are explicitly `0` in the APK workflow. `firebase.json` anonymous provider remains false; production App Check enforcement was not changed. This prepares stage 3 without activating access before app distribution configuration is complete.
+- Added focused tests for the Android/App Check gates. Full checks and Android Gradle build are running in CI before calling stage 3 complete.
+- On future Play Console upload, register the stable release signing SHA-256 with Firebase App Check, set the distribution-appropriate Play Integrity verdicts, observe App Check metrics, then separately enable Firebase App Check enforcement, anonymous Auth, and the APK build flags. These switches remain off today.

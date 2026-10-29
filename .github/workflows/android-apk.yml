@@ -39,6 +39,9 @@ jobs:
       - run: npm install --global npm@11.6.2 --no-audit --no-fund
       - run: npm ci --no-audit --no-fund
       - name: Generate customer-only live WebView project
+        env:
+          VITE_ANDROID_APPCHECK: '0'
+          VITE_ANDROID_ANON_AUTH: '0'
         run: |
           npm run android:setup
           node build-tools/prepare-live-android.mjs

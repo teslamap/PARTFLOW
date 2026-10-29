@@ -6,6 +6,8 @@ Website changes reach this APK when the page is loaded again, without reinstalli
 
 The customer has its own persistent Firebase Auth session. Web panels keep their independent sessions and have no cross-panel navigation links. Existing accounts and backend security roles remain shared in Firebase. Native WebView email/password sign-in is supported; Google popup sign-in is not used in the app.
 
+The Android package is registered in Firebase as `1:429553713786:android:d48cc58d5f40b8a64db1c3`. Its public `google-services.json` is copied from `android-overrides/app/` into generated Android projects. The native wrapper initializes Firebase App Check with Play Integrity and exposes only a token request through AndroidX `WebViewCompat.addWebMessageListener`, restricted to the exact GitHub Pages origin, the main frame, and the customer page path. The web client uses this bridge only when `VITE_ANDROID_APPCHECK=1`; anonymous sign-in additionally requires `VITE_ANDROID_ANON_AUTH=1`. Both build flags are `0` in the APK workflow today. Production enforcement and anonymous auth remain off until a stable release signing identity is registered with App Check and the App Check metrics have been checked. Debug APKs use short-lived runner signing keys and are unsuitable as the final Play Integrity identity.
+
 ## Build
 
 The GitHub Actions Android workflow uses the runner's existing SDK, Node 24 and Java 21. It generates the scaffold, applies android-overrides/ via build-tools/prepare-live-android.mjs, compiles and verifies PARTFLOW-customer-live.apk, then uploads PARTFLOW-customer-live-APK with checksums. No Firebase admin secrets are needed. Application ID: com.partflow.customer. Version: 3.0. Minimum Android: 7.0 (API 24).

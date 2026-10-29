@@ -26,4 +26,5 @@ jobs:
       - run: npm run test:business
       - run: npm run test:push
       - run: npm run test:install
+      - run: npm run test:android-identity
       - run: npx firebase-tools emulators:exec --only firestore --project demo-partflow "npm run test:rules"

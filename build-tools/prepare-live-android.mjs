@@ -5,6 +5,7 @@ const file='android/app/build.gradle';
 let gradle=readFileSync(file,'utf8');
 gradle=gradle.replace('versionCode 1','versionCode 3').replace('versionName "1.0"','versionName "3.0"');
 if(!gradle.includes('// Remote-only WebView assets'))gradle+='\n// Remote-only WebView assets: no bundled website or Capacitor bridge configuration.\nandroid { sourceSets { main { assets { exclude "public/**", "capacitor.config.json", "capacitor.plugins.json" } } } }\n';
+if(!gradle.includes('firebase-appcheck-playintegrity'))gradle=gradle.replace('dependencies {','dependencies {\n    implementation platform("com.google.firebase:firebase-bom:34.19.0")\n    implementation "com.google.firebase:firebase-appcheck-playintegrity"\n    implementation "androidx.webkit:webkit:1.14.0"');
 writeFileSync(file,gradle);
 // Remove only Capacitor-generated web assets inside this native project.
 // Resolve and check the parent before deleting a directory on Windows or CI.

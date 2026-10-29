@@ -25,6 +25,11 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.splashscreen.SplashScreen;
+import androidx.webkit.WebViewCompat;
+import androidx.webkit.WebViewFeature;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.appcheck.FirebaseAppCheck;
+import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory;
 import java.util.Collections;
 
 /** Remote customer-only WebView. No native JavaScript interface is exposed. */
@@ -39,6 +44,9 @@ public class MainActivity extends AppCompatActivity {
     @Override public void onCreate(Bundle state) {
         SplashScreen.installSplashScreen(this);
         super.onCreate(state);
+        FirebaseApp.initializeApp(this);
+        FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
+                PlayIntegrityAppCheckProviderFactory.getInstance());
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(0xff142332);
@@ -69,6 +77,14 @@ public class MainActivity extends AppCompatActivity {
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
         if(Build.VERSION.SDK_INT>=26)settings.setSafeBrowsingEnabled(true);
         WebView.setWebContentsDebuggingEnabled(false);
+        if(WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)){
+            WebViewCompat.addWebMessageListener(web,"PartflowAppCheck",Collections.singleton("https://"+HOST),(view,message,origin,isMainFrame,reply)->{
+                if(!isMainFrame||!"https".equals(origin.getScheme())||!HOST.equals(origin.getHost())||!PATH.equals(Uri.parse(view.getUrl()).getPath())||!"appCheckToken".equals(message.getData()))return;
+                FirebaseAppCheck.getInstance().getAppCheckToken(false)
+                    .addOnSuccessListener(result->reply.postMessage("{\"token\":"+org.json.JSONObject.quote(result.getToken())+",\"expireTimeMillis\":"+result.getExpireTimeMillis()+"}"))
+                    .addOnFailureListener(error->reply.postMessage("{}"));
+            });
+        }
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web,false);
         web.setWebViewClient(new WebViewClient(){
