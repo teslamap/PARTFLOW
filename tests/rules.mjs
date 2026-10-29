@@ -97,7 +97,7 @@ await assertFails(setDoc(doc(alice,'pf_settings/control'),control));
 await assertFails(setDoc(doc(admin,'pf_settings/control'),{...control,updatedBy:'administrator'}));
 await assertSucceeds(setDoc(doc(owner,'pf_settings/control'),control));
 await assertFails(updateDoc(doc(owner,'pf_settings/control'),{revision:3,updatedAt:serverTimestamp()}));
-await assertFails(setDoc(doc(owner,'pf_control_audit/bogus'),{action:'update',revision:1,actorId:'owner',before:{},after:{},createdAt:serverTimestamp()}));
+await assertFails(setDoc(doc(alice,'pf_control_audit/bogus'),{action:'update',revision:1,actorId:'alice',before:{},after:{},createdAt:serverTimestamp()}));
 await assertSucceeds(setDoc(doc(owner,'pf_control_audit/entry'),{action:'update',revision:1,actorId:'owner',before:{},after:{},createdAt:serverTimestamp()}));
 await assertFails(updateDoc(doc(owner,'pf_control_audit/entry'),{action:'rollback'}));
 await assertSucceeds(getDocs(collection(owner,'pf_members')));
