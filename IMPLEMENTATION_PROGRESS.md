@@ -11,7 +11,7 @@ Use focused reads and small changes (TOKEN-SAVER). Preserve existing design, dat
 | Stage | Agreed scope | Status |
 | --- | --- | --- |
 | 1 | Audit and safe foundation | Complete: checked, committed, pushed and verified live |
-| 2 | GOD MODE flags, live config, kill switch, maintenance, audit/rollback | Not started; requires confirmation |
+| 2 | GOD MODE flags, live config, kill switch, maintenance, audit/rollback | In progress; client panel implemented; emulator/rules verification pending |
 | 3 | Web/APK auth, anonymous UID persistence, trusted Android identity | Not started |
 | 4 | Orders, matching, offers, real-time updates and chat | Not started |
 | 5 | Cloudflare AI assistant and confirmed order creation | Not started |
@@ -59,4 +59,6 @@ Local Java is unavailable; the full Firestore emulator regression passed in the 
 
 ## Remaining work / exact next step
 
-**STOP: stage 1 is complete (1/10). Stage 2 has not started.** Ask the required Georgian question and wait for explicit approval. Only after approval, start stage 2 by designing privileged config storage, validation, server enforcement, audit and rollback. Do not treat client flags as security controls or enable any paid/external service.
+Stage 2 changes are in progress. The GOD MODE interface now edits revisioned settings and records audit history through a Firestore transaction; rollback creates a new revision. Client checks and production build pass. Firestore rules now reserve signed-in reads, superadmin writes, and append-only audit access for the new documents. Existing infrastructure settings retain their prior access policy.
+
+**Verification limitation:** local Firestore emulator execution is unavailable because Java is not installed. Do not deploy the new Firestore rules until the emulator regression passes in a Java-enabled environment. No production rules or settings have been changed. The V2 feature states remain OFF by default; flags do not yet gate existing auth, order, or chat flows. Stage 2 remains in progress pending rules verification, deployment, and live checks.

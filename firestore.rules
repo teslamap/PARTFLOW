@@ -238,10 +238,17 @@ service cloud.firestore {
     // Content-free permanent deletion lock: blocks recreation and supports interrupted cascades.
     function validDeletion(d){return d.keys().hasAll(['requestedBy','status','createdAt','updatedAt']) && d.keys().hasOnly(['requestedBy','status','createdAt','updatedAt']) && text(d.requestedBy,128) && d.status in ['pending','completed'] && d.createdAt is timestamp && d.updatedAt==request.time;}
     match /pf_settings/{id} {
-      allow read: if id == 'infrastructure' && superadmin();
+      allow read: if (id == 'infrastructure' && superadmin()) || (id == 'control' && signed());
       allow create: if id == 'infrastructure' && superadmin() && validInfrastructure(request.resource.data) && request.resource.data.updatedAt == request.time && request.resource.data.updatedBy == request.auth.uid;
       allow update: if id == 'infrastructure' && superadmin() && validInfrastructure(request.resource.data) && request.resource.data.updatedAt == request.time && request.resource.data.updatedBy == request.auth.uid;
+      allow create,update: if id == 'control' && superadmin() && validControl(request.resource.data) && request.resource.data.updatedAt == request.time && request.resource.data.updatedBy == request.auth.uid && request.resource.data.revision == (resource == null ? 1 : resource.data.revision + 1);
       allow delete: if false;
+    }
+    function validControl(d){return d.keys().hasAll(['schemaVersion','flags','message','revision','updatedBy','updatedAt']) && d.keys().hasOnly(['schemaVersion','flags','message','revision','updatedBy','updatedAt']) && d.schemaVersion == 1 && d.flags is map && d.flags.keys().hasAll(['godMode','maintenance','aiOrderAssistant','anonymousApkAuth','smsOtp','phoneRecovery','emailLinking','referrals','loyaltyPoints','vouchers']) && d.flags.keys().hasOnly(['godMode','maintenance','aiOrderAssistant','anonymousApkAuth','smsOtp','phoneRecovery','emailLinking','referrals','loyaltyPoints','vouchers']) && d.flags.values().hasOnly(['OFF','TEST','LIMITED','ON']) && d.message is string && d.message.size() >= 1 && d.message.size() <= 240 && d.revision is int && d.revision >= 1 && d.updatedBy == request.auth.uid && d.updatedAt is timestamp;}
+    match /pf_control_audit/{id} {
+      allow read: if superadmin();
+      allow create: if superadmin() && request.resource.data.keys().hasAll(['action','revision','actorId','before','after','createdAt']) && request.resource.data.keys().hasOnly(['action','revision','actorId','before','after','createdAt']) && request.resource.data.action in ['update','rollback'] && request.resource.data.revision is int && request.resource.data.actorId == request.auth.uid && request.resource.data.before is map && request.resource.data.after is map && request.resource.data.createdAt == request.time;
+      allow update,delete: if false;
     }
     match /pf_deletions/{id} {
       allow read: if superadmin();
