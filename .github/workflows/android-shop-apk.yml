@@ -45,6 +45,10 @@ jobs:
           node build-tools/prepare-live-android.mjs
           python - <<'PY'
           from pathlib import Path
+          Path('android/app/google-services.json').unlink(missing_ok=True)
+          PY
+          python - <<'PY'
+          from pathlib import Path
           p=Path('android/app/src/main/java/com/partflow/customer/MainActivity.java')
           s=p.read_text().replace('/PARTFLOW/mobile-customer.html','/PARTFLOW/shop.html').replace('Remote customer-only WebView','Remote shop-only WebView')
           p.write_text(s)

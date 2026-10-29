@@ -32,7 +32,7 @@ import com.google.firebase.appcheck.FirebaseAppCheck;
 import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory;
 import java.util.Collections;
 
-/** Remote customer-only WebView. No native JavaScript interface is exposed. */
+/** Remote customer-only WebView with an origin-restricted App Check token channel. */
 public class MainActivity extends AppCompatActivity {
     private static final String HOST = "teslamap.github.io";
     private static final String PATH = "/PARTFLOW/mobile-customer.html";
