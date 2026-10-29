@@ -14,7 +14,7 @@ Use focused reads and small changes (TOKEN-SAVER). Preserve existing design, dat
 | 2 | GOD MODE flags, live config, kill switch, maintenance, audit/rollback | Complete; deployed and verified |
 | 3 | Web/APK auth, anonymous UID persistence, trusted Android identity | Complete; implementation deployed, attestation/auth gates OFF |
 | 4 | Orders, matching, offers, real-time updates and chat | Complete; CI and live deployment verified |
-| 5 | Cloudflare AI assistant and confirmed order creation | Partial upstream scaffolding; integration/rollout remains |
+| 5 | Cloudflare AI assistant and confirmed order creation | In progress: Cloudflare adapter implemented; production setup pending |
 | 6 | Garage, VIN and profile | Not started |
 | 7 | In-app notifications and disabled recovery/push/SMS channels | Partial upstream scaffolding; user flows/provider rollout remain |
 | 8 | Disabled referrals, points and anti-fraud | Partial upstream backend; anti-fraud/UI remain |
@@ -107,3 +107,14 @@ Stage 3 checkpoint is complete (3/10); the next stage was held for explicit user
 - A separate upstream commit `9e8bcd6` already added partial V2 AI/API, OTP, referral/reward and voucher/promotion modules. They are not considered complete stages; their rollout gaps are listed in `IMPLEMENTATION_V2_STATUS.md` and they remain outside stage 4.
 
 **STOP: stage 4 is complete (4/10). Do not start stage 5 until the user explicitly approves.**
+
+## Stage 5 implementation checkpoint
+
+- Added a server-only Cloudflare Workers AI adapter with explicit model selection, HTTPS, redirect rejection, timeout and JSON response validation. Compatible endpoint overrides remain supported.
+- Invalid/incomplete AI requests return clarification; empty parts cannot be drafted. Provider failures return a controlled error and malformed conversation entries are rejected.
+- New messages invalidate the previous summary. Garage changes reset the conversation, as does successful confirmation. Existing owner checks, expiry, explicit confirmation and transactional deduplication remain enforced.
+- Added provider tests to CI, plus emulator regressions for missing confirmation, expired drafts and malformed messages.
+- Local TypeScript, provider, foundation, feature/API denial tests, production web build and mobile bundle passed. Full emulator checks require CI (no local Java runtime).
+- Production rollout is NOT complete: this environment has no Cloudflare API credentials or API host configuration. AI stays OFF. Remaining deployment and model-quality checks are documented in server/README.md.
+
+**Stage 5 remains in progress. Do not start stage 6 or claim live AI activation.**

@@ -18,3 +18,13 @@ Do not mark rollout complete until:
 - Implement missing modules and end-to-end/concurrency tests before enabling their flags.
 
 This directory is server-only. Never bundle credentials or service modules into the website.
+
+## Stage 5 Cloudflare configuration
+
+The protected Node API requires an existing HTTPS host and Firebase Application Default Credentials. Workers AI supplies inference; this Firebase Admin API is not a Worker.
+
+Set server-only CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN (Workers AI permission) and AI_MODEL. The adapter calls https://api.cloudflare.com/client/v4/accounts/{account}/ai/v1/chat/completions. AI_ENDPOINT and AI_TOKEN overrides remain supported; HTTPS is required. Never put provider tokens in VITE variables.
+
+Reference: https://developers.cloudflare.com/workers-ai/configuration/open-ai-compatibility/
+
+Before enabling: deploy the protected API with Firebase credentials and allowed origins, verify provider access and Georgian output, build VITE_API_BASE with the HTTPS API address, then test clarification, summary, confirmation, retries, expiry, cross-user denial and existing matching/offers. Only then enable aiOrderAssistant. Service booking and VIN decoding remain unsupported.

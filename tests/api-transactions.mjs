@@ -24,6 +24,10 @@ assert.equal((await call('buyer','voucher-redeem',{promotionId:'promo',idempoten
 await db.doc('pf_offers/offer').set({price:100});await db.doc('pf_requests/order').set({category:CATEGORIES[0]});
 const uses=await Promise.all([call('partner','voucher-use',{voucherId:vouchers[0].data.id,orderId:'order'}),call('partner','voucher-use',{voucherId:vouchers[0].data.id,orderId:'order'})]);assert.deepEqual(uses.map(r=>r.status).sort(),[200,409]);
 const draft=await call('buyer','ai-draft',{messages:[{role:'user',content:'Tesla Model 3 2020 ძრავა თბილისში'}]});assert.equal(draft.status,200,JSON.stringify(draft));assert.equal((await db.collection('pf_ai_drafts').get()).size,1);assert.equal((await call('stranger','ai-confirm',{draftId:draft.data.draftId,confirmed:true})).status,403);
+assert.equal((await call('buyer','ai-confirm',{draftId:draft.data.draftId})).status,400);
+const expired=db.collection('pf_ai_drafts').doc();await expired.set({ownerId:'buyer',request,expiresAt:Timestamp.fromMillis(Date.now()-1000)});
+assert.equal((await call('buyer','ai-confirm',{draftId:expired.id,confirmed:true})).status,409);
+assert.equal((await call('buyer','ai-draft',{messages:[null]})).status,400);
 const confirms=await Promise.all([call('buyer','ai-confirm',{draftId:draft.data.draftId,confirmed:true}),call('buyer','ai-confirm',{draftId:draft.data.draftId,confirmed:true})]);assert.equal(confirms[0].data.requestId,confirms[1].data.requestId);assert.equal((await db.collection('pf_requests').get()).size,2);
 await db.doc('pf_settings/control').set({flags:DEFAULT_FLAGS});assert.equal((await call('buyer','ai-draft',{messages:[]})).status,403);
 console.log('PASS: real Firestore transactions prevent duplicate rewards, voucher overspend/reuse and duplicate AI confirmations');

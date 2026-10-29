@@ -22,7 +22,7 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: node tests/foundation.mjs
-      - run: node tests/features.mjs && node tests/api-features.mjs
+      - run: node tests/features.mjs && node tests/api-features.mjs && node tests/ai-provider.mjs
       - run: npm run build:mobile
       - run: npm run test:business
       - run: npm run test:push
