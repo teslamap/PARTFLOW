@@ -1,0 +1,20 @@
+# Usage alerts and recovery
+
+The hourly `Infrastructure usage alerts` workflow is prepared, **not enabled**. Set `PARTFLOW_MONITOR_ENABLED=true` only after validating the provider configuration and receiving a test workflow failure notification. GitHub Actions notifications are the alert channel; subscribe to failures for this workflow. No email, chat, or webhook messages are sent by the application.
+
+Copy `monitoring.config.example.json` into the repository variable `PARTFLOW_MONITOR_CONFIG`. Its limits are example operating budgets, not verified plan entitlements. Replace Worker/bucket names, scope Google metric filters to the actual database/buckets, remove services that are not used, and set limits from the account dashboards. Rolling 24-hour counters are deliberately conservative and do not exactly match provider billing-day resets. Cloudflare adaptive analytics are estimates, not a billing ledger.
+
+Configure `PARTFLOW_MONITOR_WIF_PROVIDER` and `PARTFLOW_MONITOR_SERVICE_ACCOUNT` for GitHub OIDC, restricted to this repository/default branch. Grant only Monitoring Viewer to the monitoring identity. Store Cloudflare account ID and a read-only Analytics token in the corresponding GitHub secrets. Never use a personal Firebase refresh token, service-account key, or a `VITE_` variable for monitoring credentials. Google authentication failure fails the workflow too.
+
+The runner checks Firestore reads/writes/deletes, Firestore data and index storage (including existing inline request photos), configured Firebase/GCS storage, Worker requests/errors and R2 payload plus metadata storage. It paginates Google time series, sums counters, uses latest gauges per series, and rejects missing/stale/truncated telemetry. At 80% it warns; at 100% it is critical. Warning, critical and unknown all fail the workflow and retain a credential-free report for seven days. No customer documents are read. Idle services without samples must be reviewed, not assumed healthy or zero.
+
+Local execution: `GOOGLE_ACCESS_TOKEN` is a short-lived Monitoring Viewer token; `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_ANALYTICS_TOKEN` supply read-only Cloudflare access. Run `node scripts/monitor-usage.mjs <config-file>`. `MONITOR_REPORT_PATH` optionally saves the report. No provider credentials are committed.
+
+## Recovery
+
+- Quota/network failures keep the current form open and show retry guidance. Before repeating a request creation after an ambiguous timeout, check the request list; request creation is not globally idempotent. Existing offers, order chat and manual vehicle entry remain available where their dependencies are healthy. OCR failure never writes a vehicle and does not upload a certificate.
+- Reduce optional AI/uploads and expensive listeners through existing operational controls when necessary. Do not broaden Firestore rules, delete offers/chat or disable authentication to bypass an outage. The application has no automatic cross-cloud database failover.
+- Code is backed by Git and Pages deployment history. Save the active production ruleset before every rules release. Restore that saved ruleset if needed; repository rules contain older pending changes and are not necessarily identical to production.
+- Before enabling paid managed backups/PITR, confirm billing and retention. Target a daily protected Firestore backup and a quarterly restore into an isolated project; verify request/offer/order/chat relationships, rules and participant access before any production restore. Customer-data restore and backup creation were not performed in this batch. Keep exported data encrypted and access restricted, outside Git and public build artifacts. Include object storage versioning/retention and Firebase Auth recovery in a separately reviewed recovery plan.
+
+Provider references: [Google metric types](https://docs.cloud.google.com/monitoring/api/metrics_gcp_d_h), [Firestore monitoring](https://firebase.google.com/docs/firestore/monitor-usage), [Workers metrics](https://developers.cloudflare.com/analytics/graphql-api/tutorials/querying-workers-metrics/), [R2 metrics](https://developers.cloudflare.com/r2/platform/metrics-analytics/).

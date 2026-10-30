@@ -1,0 +1,72 @@
+{
+  "project": "menio-8de8f",
+  "metrics": [
+    {
+      "name": "firestore-reads-24h",
+      "provider": "gcp",
+      "filter": "metric.type=\"firestore.googleapis.com/document/read_count\"",
+      "kind": "counter",
+      "windowHours": 24,
+      "limit": 50000
+    },
+    {
+      "name": "firestore-writes-24h",
+      "provider": "gcp",
+      "filter": "metric.type=\"firestore.googleapis.com/document/write_count\"",
+      "kind": "counter",
+      "windowHours": 24,
+      "limit": 20000
+    },
+    {
+      "name": "firestore-deletes-24h",
+      "provider": "gcp",
+      "filter": "metric.type=\"firestore.googleapis.com/document/delete_count\"",
+      "kind": "counter",
+      "windowHours": 24,
+      "limit": 20000
+    },
+    {
+      "name": "firestore-data-index-bytes",
+      "provider": "gcp",
+      "filter": "metric.type=\"firestore.googleapis.com/storage/data_and_index_storage_bytes\"",
+      "kind": "gauge",
+      "windowHours": 48,
+      "maxAgeHours": 36,
+      "limit": 1073741824
+    },
+    {
+      "name": "firebase-storage-bytes",
+      "provider": "gcp",
+      "filter": "metric.type=\"storage.googleapis.com/storage/total_bytes\"",
+      "kind": "gauge",
+      "windowHours": 48,
+      "maxAgeHours": 36,
+      "limit": 1073741824
+    },
+    {
+      "name": "cloudflare-requests-24h",
+      "provider": "cloudflare",
+      "kind": "worker-requests",
+      "script": "REPLACE_WITH_WORKER_NAME",
+      "windowHours": 24,
+      "limit": 100000
+    },
+    {
+      "name": "cloudflare-errors-24h",
+      "provider": "cloudflare",
+      "kind": "worker-errors",
+      "script": "REPLACE_WITH_WORKER_NAME",
+      "windowHours": 24,
+      "limit": 100
+    },
+    {
+      "name": "r2-storage-bytes",
+      "provider": "cloudflare",
+      "kind": "r2-bytes",
+      "bucket": "REPLACE_WITH_BUCKET_NAME",
+      "windowHours": 48,
+      "maxAgeHours": 36,
+      "limit": 1073741824
+    }
+  ]
+}

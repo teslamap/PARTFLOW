@@ -14,5 +14,6 @@ export function validateGarageVehicle(d){
  if(!Object.hasOwn(VEHICLES,d.brand)||!VEHICLES[d.brand].includes(d.model))throw Error('აირჩიე მარკა და მოდელი.');
  const year=Number(d.year);if(!Number.isInteger(year)||year<1950||year>new Date().getFullYear()+1)throw Error('შეამოწმე გამოშვების წელი.');
  const engine=String(d.engine||'').trim();if(!engine||engine.length>80)throw Error('მიუთითე ძრავი ან „უცნობია“.');
- return {brand:d.brand,model:d.model,year,engine,vin:d.vin?validateVin(d.vin):'',trim:String(d.trim||'').trim().slice(0,80),fuel:String(d.fuel||'').trim().slice(0,50)};
+ const plate=String(d.plate||'').trim().toUpperCase();if(plate&&!/^[A-Z0-9 -]{1,12}$/.test(plate))throw Error('შეამოწმე სახელმწიფო ნომერი.');
+ return {...(plate?{plate}:{}),brand:d.brand,model:d.model,year,engine,vin:d.vin?validateVin(d.vin):'',trim:String(d.trim||'').trim().slice(0,80),fuel:String(d.fuel||'').trim().slice(0,50)};
 }

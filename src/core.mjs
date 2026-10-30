@@ -1,3 +1,4 @@
+import {searchMatchesCity} from './search-expansion.mjs';
 const VEHICLE_CATALOG={
  Toyota:['Prius','Camry','Corolla','RAV4','Land Cruiser','Aqua','Yaris','Vitz','Highlander','Hilux','C-HR','Avensis','Wish','Noah','Sienna','4Runner','Prado','Passo','Ractis','ist'],
  Mercedes:['C-Class','E-Class','S-Class','A-Class','B-Class','CLA','CLS','GLA','GLC','GLE','GLS','ML','Sprinter','Vito'],
@@ -37,7 +38,7 @@ export function inferPartCategory(part){const v=String(part||'').toLowerCase();i
 export function matches(request,rules){return rules.some(r=>(r.brand==='*'||r.brand===request.brand)&&(r.model==='*'||r.model===request.model)&&(r.category==='*'||r.category===request.category));}
 // Own requests stay visible for accounts used in both customer and shop panels.
 // Sending an offer to oneself is separately prohibited by the form and rules.
-export function shopPanelRequests(requests,shop){return requests.filter(r=>shop?.status==='approved'&&r.status!=='hidden'&&matches(r,shop.rules));}
+export function shopPanelRequests(requests,shop,offers=[]){return requests.filter(r=>shop?.status==='approved'&&r.status!=='hidden'&&(r.ownerId===shop.id||searchMatchesCity(r,shop.city)||offers.some(o=>o.requestId===r.id&&o.shopId===shop.id))&&matches(r,shop.rules));}
 export function visibleRequest(request,user,shop){return ['admin','superadmin'].includes(user.role)||request.ownerId===user.id||Boolean(shop&&shop.status==='approved'&&request.status!=='hidden'&&matches(request,shop.rules));}
 export function cleanText(v,max=200){if(typeof v!=='string'||!v.trim()||v.trim().length>max)throw Error('შეამოწმე სავალდებულო ველები');return v.trim();}
 export function validateRules(rules,categories=CATEGORIES){if(!Array.isArray(rules)||!rules.length||rules.length>10)throw Error('დაამატე მინიმუმ ერთი სპეციალიზაცია');return rules.map(r=>{if(!(r.brand==='*'||Object.hasOwn(VEHICLES,r.brand))||!(r.model==='*'||VEHICLES[r.brand]?.includes(r.model))||!(r.category==='*'||categories.includes(r.category)))throw Error('სპეციალიზაცია არასწორია');return {brand:r.brand,model:r.model,category:r.category};});}

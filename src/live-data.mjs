@@ -1,3 +1,4 @@
+import {searchExpanded} from './search-expansion.mjs';
 import {collection,doc,query,where,orderBy,limit,onSnapshot} from 'firebase/firestore';
 import {CATEGORIES,sortCategories} from './core.mjs';
 
@@ -63,6 +64,8 @@ export function subscribePanelData(db,identity,next,error,{panel='customer'}={})
   building=false;
   // No stale privileged/matched data remains visible while permissions change.
   next({user:{...identity,...profile},shop:shop?row(identity.id,shop):null,categories:CATEGORIES,requests:[],offers:[],archives:[],shops:shop?[row(identity.id,shop)]:[],users:[]});
+  // Time passing does not trigger a Firestore snapshot. Re-evaluate matching locally.
+  if(isShop){const expanded=new Set();const clock=setInterval(()=>{let changed=false;for(const r of unique([...requestSets.values()]))if(searchExpanded(r)&&!expanded.has(r.id)){expanded.add(r.id);changed=true}if(changed)emit()},1000);children.push(()=>clearInterval(clock))}
   reconcile();emit();
  }
  const roots=[

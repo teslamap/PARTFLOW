@@ -1,0 +1,39 @@
+name: Infrastructure usage alerts
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  usage:
+    if: vars.PARTFLOW_MONITOR_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.PARTFLOW_MONITOR_WIF_PROVIDER }}
+          service_account: ${{ vars.PARTFLOW_MONITOR_SERVICE_ACCOUNT }}
+          token_format: access_token
+      - name: Check usage and raise workflow alert
+        env:
+          GOOGLE_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ANALYTICS_TOKEN: ${{ secrets.CLOUDFLARE_ANALYTICS_TOKEN }}
+          MONITOR_CONFIG: ${{ vars.PARTFLOW_MONITOR_CONFIG }}
+          MONITOR_REPORT_PATH: usage-report.json
+        run: |
+          node --input-type=module -e "import{writeFileSync}from'node:fs';writeFileSync('monitoring.config.json',process.env.MONITOR_CONFIG||'{}')"
+          node scripts/monitor-usage.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: usage-report
+          path: usage-report.json
+          retention-days: 7

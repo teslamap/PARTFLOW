@@ -20,7 +20,10 @@ concurrency:
   group: partflow-pages
   cancel-in-progress: true
 jobs:
+  regression:
+    uses: ./.github/workflows/test.yml
   deploy:
+    needs: regression
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -36,6 +39,7 @@ jobs:
       - run: npm run build
         env:
           VITE_BATCH_API_BASE: ${{ vars.PARTFLOW_BATCH_API_BASE }}
+          VITE_CITY_EXPANSION: ${{ vars.PARTFLOW_CITY_EXPANSION }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
