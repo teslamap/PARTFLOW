@@ -1,0 +1,8 @@
+{
+  "functions": [{
+    "source": "api-runtime",
+    "codebase": "partflow-batch-api",
+    "runtime": "nodejs24",
+    "predeploy": ["node build-tools/prepare-api.mjs"]
+  }]
+}
