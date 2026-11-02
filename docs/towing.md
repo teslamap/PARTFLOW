@@ -1,6 +1,6 @@
 # Towing dispatch
 
-Open **ევაკუატორი** in any authenticated web panel or the mobile customer menu.
+Customer app: use the **SOS** and **დაგეგმილი გადაყვანა** buttons on the home screen. Drivers use the independent **towing.html** page with a separate sign-in session. Shop panels have no towing forms. Admin driver approval is available in business management.
 The existing parts, garage, shop, service and chat flows remain separate.
 
 ## Customer
@@ -13,7 +13,7 @@ The existing parts, garage, shop, service and chat flows remain separate.
 
 ## Driver and admin
 
-Driver registration is available inside the towing page. Applications include name, phone, city and truck details; they start pending. Administrators approve, reject or suspend applications in the same page. Administrators cannot approve their own driver profile. Pending/rejected applicants can resubmit; approved profiles cannot silently change their city or identity. Suspended drivers cannot claim or advance requests.
+Driver registration is available only on the independent driver page (`towing.html`). Applications include name, phone, city and truck details; they start pending. Administrators approve, reject or suspend applications in the admin business management page. Administrators cannot approve their own driver profile. Pending/rejected applicants can resubmit; approved profiles cannot silently change their city or identity. Suspended drivers cannot claim or advance requests.
 
 Approved drivers see the same-city SOS feed and nationwide feed in real time while the page is open. Accept a call with a price, wait for customer confirmation, mark departure, then mark transport started. The customer closes the trip. Background push/SMS dispatch is not part of this module; an open towing page receives live Firestore updates.
 
@@ -31,7 +31,7 @@ Cancellation is allowed from `searching`, `offered` and `confirmed`.
 
 ## Validation and deployment
 
-`npm run test:towing` validates fields and the exact 15-minute boundary.
+`npm run test:towing` validates fields, the exact 15-minute boundary, and rendered role separation: customer SOS/scheduled forms, driver-only registration, and absence of these forms from shop/admin panels.
 `npm run test:towing:rules` runs against the local Firestore emulator on port 8080 and tests real transactions, query authorization, city restrictions, nationwide routing, first-claim races, consent, suspension, immutable fields, schema/type/size attacks and status transitions. Both suites are included in CI; existing regression suites remain enabled.
 
 Deploy `firestore.rules` to `menio-8de8f` before publishing the new UI. The module uses indexed equality filters and needs no Functions deployment or new paid service. Build with `npm run build`; GitHub Pages publishes from the main-branch workflow after regressions pass. Firebase Hosting remains the secondary copy.

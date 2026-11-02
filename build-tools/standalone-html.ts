@@ -1,11 +1,11 @@
 import {writeFileSync,readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import type {Plugin} from 'vite';
-const names:Record<string,string>={customer:'მომხმარებელი',shop:'ავტომაღაზია',admin:'ადმინი',superadmin:'სუპერადმინი','mobile-customer':'მობილური მომხმარებელი'};
+const names:Record<string,string>={customer:'მომხმარებელი',towing:'ევაკუატორი',shop:'ავტომაღაზია',admin:'ადმინი',superadmin:'სუპერადმინი','mobile-customer':'მობილური მომხმარებელი'};
 export function standaloneHTML():Plugin {
   let root='';
   return {name:'partflow-complete-html',enforce:'post',configResolved(c){root=c.root},
-    configureServer(server){server.middlewares.use((req,_res,next)=>{if(req.url&&/^\/(customer|shop|admin|superadmin|mobile-customer|services|index)\.html(?:\?|$)/.test(req.url))req.url='/entries'+req.url;next();});},
+    configureServer(server){server.middlewares.use((req,_res,next)=>{if(req.url&&/^\/(customer|shop|admin|superadmin|mobile-customer|services|towing|index)\.html(?:\?|$)/.test(req.url))req.url='/entries'+req.url;next();});},
     generateBundle(_options,bundle){
       const icon=readFileSync(resolve(root,'public/favicon.svg')).toString('base64');
       for(const [key,asset] of Object.entries(bundle)){
@@ -29,7 +29,7 @@ export function standaloneHTML():Plugin {
       <a class="auth-logo" href="${role}.html">PART<span>FLOW</span></a>
       <div class="eyebrow">${names[role]} / FIREBASE</div>
       <h1>კეთილი იყოს შენი დაბრუნება</h1>
-      <p class="muted">შედი ან დარეგისტრირდი და იპოვე სასურველი ავტონაწილი.</p>
+      <p class="muted">${role==='towing'?'შედი ან დარეგისტრირდი ევაკუატორის მძღოლის გვერდზე.':'შედი ან დარეგისტრირდი და იპოვე სასურველი ავტონაწილი.'}</p>
       <button class="google-button" disabled>Google-ით შესვლა <span>G</span></button>
       <div class="auth-divider">ან ელფოსტით</div>
       <form class="auth-form">
