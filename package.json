@@ -12,6 +12,8 @@
     "android:setup": "npm run build:mobile && cap add android && cap sync android",
     "check": "tsc --noEmit",
     "test:rules": "node tests/catalog.mjs && node tests/rules.mjs && node tests/archive.mjs && node tests/realtime.mjs && node tests/commerce.mjs && node tests/shop-panel.mjs && node tests/deletion.mjs && node tests/chat-workflow.mjs && node tests/auto-service.mjs && node tests/migration.mjs && node tests/service-management.mjs && node tests/owned-services.mjs",
+    "test:towing": "node tests/towing.mjs",
+    "test:towing:rules": "node tests/towing-rules.mjs",
     "test:push": "node tests/push.mjs",
     "test:install": "node tests/app-install.mjs",
     "test:android-identity": "node tests/android-identity.mjs",

@@ -1,0 +1,75 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {initializeTestEnvironment,assertSucceeds,assertFails} from '@firebase/rules-unit-testing';
+import {doc,setDoc,updateDoc,getDoc,getDocs,collection,query,where,serverTimestamp,Timestamp,deleteDoc,deleteField} from 'firebase/firestore';
+import {applyTowDriver,createTowRequest,claimTow,towAction} from '../src/towing.mjs';
+const env=await initializeTestEnvironment({projectId:'demo-partflow',firestore:{host:'127.0.0.1',port:8080,rules:readFileSync('firestore.rules','utf8')}});
+const db=uid=>env.authenticatedContext(uid,{email:uid+'@example.com',email_verified:true}).firestore();
+const alice=db('alice'),bob=db('bob'),carol=db('carol'),other=db('other'),admin=db('admin'),anon=env.unauthenticatedContext().firestore();
+const dr=(d,id)=>doc(d,'pf_tow_drivers',id),rr=(d,id)=>doc(d,'pf_tow_requests',id);
+const details={mode:'sos',city:'ბათუმი',destinationCity:'ქობულეთი',origin:'ბათუმი, რუსთაველის 1',destination:'სერვისი',vehicle:'Toyota Prius 2015',condition:'blocked',phone:'+995555123456',notes:'',location:{lat:41.64,lng:41.63}};
+async function seed(id,patch={}){await env.withSecurityRulesDisabled(async c=>{await updateDoc(rr(c.firestore(),id),patch)})}
+async function request(d=details){return (await createTowRequest(alice,'alice',d)).id}
+try{
+ await env.clearFirestore();
+ await env.withSecurityRulesDisabled(async c=>{for(const [uid,role] of [['alice','customer'],['bob','customer'],['carol','customer'],['other','customer'],['admin','admin']])await setDoc(doc(c.firestore(),'pf_members',uid),{name:uid,role,createdAt:Timestamp.now()})});
+ for(const [d,id,city] of [[bob,'bob','ბათუმი'],[carol,'carol','ბათუმი'],[other,'other','თბილისი']])await assertSucceeds(applyTowDriver(d,id,{name:id,phone:'+995555123456',city,truck:'Tow AB-123 capacity 3t'}));
+ await assertFails(updateDoc(dr(bob,'bob'),{status:'approved',updatedAt:serverTimestamp()}));
+ await assertSucceeds(applyTowDriver(admin,'admin',{name:'Admin',phone:'+995555123456',city:'ბათუმი',truck:'Tow'}));
+ await assertFails(updateDoc(dr(admin,'admin'),{status:'approved',updatedAt:serverTimestamp()}));
+ await assertFails(applyTowDriver(bob,'carol',{name:'spoof',phone:'+995555123456',city:'ბათუმი',truck:'Tow'}));
+ await assertFails(getDoc(dr(alice,'bob')));
+ await assertSucceeds(getDocs(collection(admin,'pf_tow_drivers')));
+ await assertFails(updateDoc(dr(bob,'bob'),{truck:'x'.repeat(161),updatedAt:serverTimestamp()}));
+ const id=await request();
+ await assertFails(getDoc(rr(bob,id))); // Pending cannot see requests.
+ await assertFails(getDoc(rr(anon,id)));
+ for(const uid of ['bob','carol','other'])await assertSucceeds(updateDoc(dr(admin,uid),{status:'approved',updatedAt:serverTimestamp()}));
+ await assertFails(updateDoc(dr(bob,'bob'),{city:'თბილისი',updatedAt:serverTimestamp()}));
+ await assertSucceeds(getDoc(rr(bob,id)));
+ await assertFails(getDoc(rr(other,id)));
+ await assert.rejects(claimTow(other,id,'other',120));
+ await assertFails(getDocs(collection(bob,'pf_tow_requests')));
+ await assertSucceeds(getDocs(query(collection(bob,'pf_tow_requests'),where('status','==','searching'),where('scope','==','city'),where('city','==','ბათუმი'))));
+ await assertSucceeds(getDocs(query(collection(alice,'pf_tow_requests'),where('ownerId','==','alice'))));
+ await assertSucceeds(getDocs(query(collection(bob,'pf_tow_requests'),where('driverId','==','bob'))));
+ await assertSucceeds(getDocs(collection(admin,'pf_tow_requests')));
+ await assertFails(updateDoc(rr(alice,id),{scope:'all',expandedAt:serverTimestamp(),updatedAt:serverTimestamp()}));
+ await seed(id,{createdAt:Timestamp.fromMillis(Date.now()-16*60000)});
+ await assertFails(updateDoc(rr(other,id),{scope:'all',expandedAt:serverTimestamp(),updatedAt:serverTimestamp()}));
+ await assertSucceeds(towAction(alice,id,'alice','expand'));
+ await assertSucceeds(getDoc(rr(other,id)));
+ await assertSucceeds(getDocs(query(collection(other,'pf_tow_requests'),where('status','==','searching'),where('scope','==','all'))));
+ await assert.rejects(towAction(alice,id,'alice','expand'));
+ const contested=await request();
+ const claims=await Promise.allSettled([claimTow(bob,contested,'bob',150),claimTow(carol,contested,'carol',180)]);
+ assert.equal(claims.filter(r=>r.status==='fulfilled').length,1,'only the first driver wins');
+ const claimed=(await getDoc(rr(alice,contested))).data(),winner=claimed.driverId==='bob'?bob:carol,loser=claimed.driverId==='bob'?carol:bob;
+ await assertFails(getDoc(rr(loser,contested)));
+ await assertFails(updateDoc(rr(alice,contested),{status:'confirmed',driverId:'other',updatedAt:serverTimestamp()}));
+ await assert.rejects(towAction(winner,contested,claimed.driverId,'advance'));
+ await assertFails(updateDoc(rr(winner,contested),{quote:1,updatedAt:serverTimestamp()}));
+ await assertSucceeds(towAction(alice,contested,'alice','confirm'));
+ await assert.rejects(claimTow(loser,contested,claimed.driverId==='bob'?'carol':'bob',90));
+ await assert.rejects(towAction(alice,contested,'alice','complete'));
+ await assertSucceeds(towAction(winner,contested,claimed.driverId,'advance'));
+ await assert.rejects(towAction(alice,contested,'alice','cancel'));
+ await assertSucceeds(towAction(winner,contested,claimed.driverId,'advance'));
+ await assertSucceeds(towAction(alice,contested,'alice','complete'));
+ await assertFails(updateDoc(rr(alice,contested),{status:'searching',updatedAt:serverTimestamp()}));
+ await assertFails(deleteDoc(rr(alice,contested)));
+ const cancelled=await request();await assertSucceeds(towAction(alice,cancelled,'alice','cancel'));await assert.rejects(claimTow(bob,cancelled,'bob',100));
+ const national=await request({...details,mode:'intercity',pickupAt:new Date(Date.now()+3600000).toISOString()});
+ await assertSucceeds(getDoc(rr(other,national)));
+ await assertSucceeds(claimTow(other,national,'other',300));
+ await assertSucceeds(updateDoc(dr(admin,'other'),{status:'suspended',updatedAt:serverTimestamp()}));
+ await assertFails(towAction(alice,national,'alice','confirm'));
+ await assert.rejects(claimTow(other,id,'other',100));
+ // Strict schema, types, immutable identity/time, arbitrary fields, oversized strings.
+ const original=(await getDoc(rr(alice,id))).data();
+ for(const patch of [{ownerId:'bob'},{createdAt:Timestamp.now()},{notes:'x'.repeat(1001)},{origin:5},{location:{lat:91,lng:41}},{extra:'pollution'},{driverId:'bob'},{pickupAt:Timestamp.now()},{vehicle:deleteField()}])await assertFails(updateDoc(rr(alice,id),{...patch,updatedAt:serverTimestamp()}));
+ for(const patch of [{ownerId:'bob'},{createdAt:Timestamp.fromMillis(1)},{origin:''},{location:{lat:41,lng:41,history:[]}},{scope:'all'},{notes:'x'.repeat(1001)},{extra:true},{mode:'intercity',location:null,pickupAt:Timestamp.fromMillis(1),scope:'all'}])await assertFails(setDoc(rr(alice,'invalid'),{...original,scope:'city',expandedAt:null,createdAt:serverTimestamp(),updatedAt:serverTimestamp(),...patch}));
+ await assertFails(setDoc(rr(anon,'anon'),{...original,createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
+ await assertFails(setDoc(dr(anon,'anon'),{ownerId:'anon',name:'n',phone:'+995555123456',city:'ბათუმი',truck:'Tow',status:'pending',updatedAt:serverTimestamp()}));
+ console.log('Towing rules: routing, queries, first-claim concurrency, consent, state transitions and adversarial validation passed');
+}finally{await env.cleanup()}
