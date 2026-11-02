@@ -1,6 +1,6 @@
 # Auto-service accounts and orders
 
-Existing parts shops can add multiple auto-services from **Shop profile → My auto-services**, using their current Firebase Auth session. Each branch has an auto-generated `pf_shops` document ID, immutable `ownerId` and `parentShopId` equal to the shop account UID. Each application requires its own superadmin approval; the shop's existing approval never approves its branches.
+Existing parts shops can add multiple auto-services from **Shop profile → My auto-services**, using their current Firebase Auth session. Each branch has a `service_`-prefixed auto-generated `pf_shops` document ID (separate from Auth account IDs), immutable `ownerId` and `parentShopId` equal to the shop account UID. Each application requires its own superadmin approval; the shop's existing approval never approves its branches.
 
 Independent services register/sign in using the existing email/password or Google Firebase Auth flow at `shop.html?businessType=auto_service`, then submit their business profile. Their business ID remains their account UID, without `parentShopId`.
 
