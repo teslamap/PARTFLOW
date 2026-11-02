@@ -10,6 +10,9 @@ globalThis.location={search:'',href:'http://localhost/customer.html'};
 const server=await createServer({server:{middlewareMode:true},appType:'custom',plugins:[{name:'isolated-test-firebase',enforce:'pre',resolveId(source,importer){if(source==='./firebase'&&importer?.includes('/src/'))return 'virtual:test-firebase'},load(id){if(id==='virtual:test-firebase')return 'export const auth={currentUser:null},db={},app={},config={},appCheckReady=Promise.resolve(false);export async function androidAppCheckToken(){return null}';}}]});
 try{
  const {CustomerTowing,TowDriverPanel,TowDriverApprovals}=await server.ssrLoadModule('/src/towing-ui.tsx');
+ const {AdminShopMap,CustomerShopMap}=await server.ssrLoadModule('/src/shop-map.tsx');
+ const allShops=Array.from({length:350},(_,i)=>({id:'s'+i,name:'Map Shop '+i,city:'ბათუმი',status:'approved'}));const adminMap=renderToStaticMarkup(createElement(AdminShopMap,{demo:true,shops:allShops}));assert.match(adminMap,/Map Shop 349/);assert.match(adminMap,/pf-map-large/);
+ const chosen=renderToStaticMarkup(createElement(CustomerShopMap,{data:{user:{id:'u'},shops:[{id:'winner',name:'Winning shop',city:'ბათუმი'},{id:'loser',name:'Competing shop',city:'თბილისი'}],requests:[{id:'r',ownerId:'u',acceptedOfferId:'o',part:'Part'}],offers:[{id:'o',requestId:'r',shopId:'winner'}]}}));assert.match(chosen,/Winning shop/);assert.doesNotMatch(chosen,/Competing shop/);
  const {TowingApp}=await server.ssrLoadModule('/src/towing-app.tsx');
  const App=(await server.ssrLoadModule('/src/partflow.tsx')).default;
  const render=(C,props={})=>renderToStaticMarkup(createElement(C,{user:{name:'Test',role:'customer'},demo:true,...props}));
@@ -19,8 +22,8 @@ try{
  assert.doesNotMatch(customer,/მძღოლის რეგისტრაცია|დამტკიცებაზე გაგზავნა|მძღოლების დამტკიცება/);
  assert.match(scheduled,/name="pickupAt"/);assert.match(scheduled,/type="datetime-local" required/);
  assert.doesNotMatch(scheduled,/ჩემი მდებარეობის დაფიქსირება/);
- assert.match(driver,/ევაკუატორის მძღოლის რეგისტრაცია/);assert.match(driver,/დამტკიცებაზე გაგზავნა/);
- for(const html of [driver,admin])assert.doesNotMatch(html,/name="origin"|name="destination"|name="pickupAt"|ჩემი მდებარეობის დაფიქსირება/);
+ assert.match(driver,/ევაკუატორის მძღოლის რეგისტრაცია/);assert.match(driver,/დამტკიცებაზე გაგზავნა/);assert.ok(driver.includes('ევაკუატორი / SOS რუკა'));assert.match(driver,/ჩემი მდებარეობის დაფიქსირება/);
+ for(const html of [driver,admin])assert.doesNotMatch(html,/name="origin"|name="destination"|name="pickupAt"/);
  assert.doesNotMatch(admin,/დამტკიცებაზე გაგზავნა/);
  const driverPage=render(TowingApp);assert.match(driverPage,/მძღოლის პანელი/);assert.doesNotMatch(driverPage,/ჩემი გარაჟი|ავტოსერვისები|ნაწილის დამატება/);
  for(const role of ['shop','admin','superadmin']){const html=render(App,{initialRole:role,initialDemo:true});assert.doesNotMatch(html,/SOS \/ დაგეგმილი|SOS — ევაკუატორის გამოძახება|name="pickupAt"|მძღოლის რეგისტრაცია/);}

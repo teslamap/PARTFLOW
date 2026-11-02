@@ -55,6 +55,8 @@ jobs:
           cp android/app/build/outputs/apk/debug/app-debug.apk apk-output/PARTFLOW-customer-live.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose apk-output/PARTFLOW-customer-live.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging apk-output/PARTFLOW-customer-live.apk > apk-output/package-info.txt
+          grep "uses-permission: name='android.permission.ACCESS_FINE_LOCATION'" apk-output/package-info.txt
+          grep "uses-permission: name='android.permission.ACCESS_COARSE_LOCATION'" apk-output/package-info.txt
           grep "package: name='com.partflow.customer'" apk-output/package-info.txt
           python - <<'PY'
           from zipfile import ZipFile

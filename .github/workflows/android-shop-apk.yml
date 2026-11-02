@@ -50,7 +50,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           p=Path('android/app/src/main/java/com/partflow/customer/MainActivity.java')
-          s=p.read_text().replace('/PARTFLOW/mobile-customer.html','/PARTFLOW/shop.html').replace('Remote customer-only WebView','Remote shop-only WebView')
+          s=p.read_text().replace('/PARTFLOW/app.html','/PARTFLOW/shop.html').replace('/PARTFLOW/mobile-customer.html','/PARTFLOW/shop.html').replace('Remote customer-only WebView','Remote shop-only WebView')
           p.write_text(s)
           p=Path('android/app/build.gradle')
           s=p.read_text().replace('applicationId "com.partflow.customer"','applicationId "com.partflow.shop"')
