@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import {Timestamp} from 'firebase/firestore';
 import {requestFields,canExpand,TOW_CITIES,EXPAND_AFTER} from '../src/towing.mjs';
+import {locateTowCustomer} from '../src/towing-location.mjs';
+assert.deepEqual(await locateTowCustomer({getCurrentPosition(success,failure,options){assert.equal(options.timeout,15000);success({coords:{latitude:41.64,longitude:41.63}})}}),{lat:41.64,lng:41.63});
+await assert.rejects(locateTowCustomer(null),/მიუწვდომელია/);
+await assert.rejects(locateTowCustomer({getCurrentPosition(_success,failure){failure({code:1})}}),/წვდომა დაბლოკილია/);
+await assert.rejects(locateTowCustomer({getCurrentPosition(_success,failure){failure({code:3})}}),/დრო ამოეწურა/);
 const now=Date.now(),base={mode:'sos',city:'ბათუმი',destinationCity:'ქობულეთი',origin:'რუსთაველის 1',destination:'სერვისი',vehicle:'Toyota Prius 2015',condition:'rolls',phone:'+995555123456',notes:'',location:{lat:41.64,lng:41.63}};
 assert.equal(requestFields(base,now).scope,'city');
 assert.throws(()=>requestFields({...base,location:null},now));

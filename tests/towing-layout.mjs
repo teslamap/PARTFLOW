@@ -15,6 +15,7 @@ try{
  const render=(C,props={})=>renderToStaticMarkup(createElement(C,{user:{name:'Test',role:'customer'},demo:true,...props}));
  const customer=render(CustomerTowing),scheduled=render(CustomerTowing,{initialMode:'intercity'}),driver=render(TowDriverPanel),admin=render(TowDriverApprovals,{user:{name:'Admin',role:'admin'}});
  assert.match(customer,/SOS — სასწრაფო/);assert.match(customer,/ჩემი მდებარეობის დაფიქსირება/);
+ const liveCustomer=render(CustomerTowing,{demo:false});assert.match(liveCustomer,/მდებარეობაზე წვდომას მოგთხოვს/);assert.doesNotMatch(liveCustomer,/<button[^>]*disabled[^>]*>ევაკუატორის გამოძახება/);
  assert.doesNotMatch(customer,/მძღოლის რეგისტრაცია|დამტკიცებაზე გაგზავნა|მძღოლების დამტკიცება/);
  assert.match(scheduled,/name="pickupAt"/);assert.match(scheduled,/type="datetime-local" required/);
  assert.doesNotMatch(scheduled,/ჩემი მდებარეობის დაფიქსირება/);
