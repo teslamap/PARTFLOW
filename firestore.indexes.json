@@ -665,6 +665,20 @@
       "collectionGroup": "pf_confirmations",
       "fieldPath": "note",
       "indexes": []
+    },
+    {
+      "collectionGroup": "serviceOrders",
+      "fieldPath": "customerId",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
     }
   ]
 }

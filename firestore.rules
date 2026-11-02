@@ -20,7 +20,7 @@ service cloud.firestore {
     function validMember(d){return d.keys().hasAll(['name','role','createdAt']) && d.keys().hasOnly(['name','role','createdAt']) && text(d.name,100) && d.role in ['customer','admin','superadmin'] && d.createdAt is timestamp;}
     function validGarageVehicle(d){return d.keys().hasAll(['brand','model','year','engine','vin','trim','fuel','createdAt']) && d.keys().hasOnly(['brand','model','year','engine','vin','trim','fuel','createdAt','plate']) && (!d.keys().hasAny(['plate']) || (d.plate is string && d.plate.matches('[A-Z0-9 -]{1,12}'))) && text(d.brand,60) && text(d.model,80) && d.year is int && d.year>=1950 && d.year<=request.time.year()+1 && text(d.engine,80) && d.vin is string && (d.vin==''||d.vin.matches('[A-HJ-NPR-Z0-9]{17}')) && d.trim is string && d.trim.size()<=80 && d.fuel is string && d.fuel.size()<=50 && d.createdAt is timestamp;}
     function serviceBusiness(d){return d.get('businessType','parts_shop')=='auto_service';}
-    function validShop(d){return d.keys().hasAll(['ownerId','name','city','phone','status','rulesMap','createdAt']) && d.keys().hasOnly(['ownerId','name','city','phone','status','rulesMap','createdAt','businessType','reviewReason','reviewedBy','reviewedAt']) && text(d.ownerId,128) && text(d.name,100) && text(d.city,80) && text(d.phone,30) && d.phone.matches('[+0-9 ()-]{9,30}') && d.get('businessType','parts_shop') in ['parts_shop','auto_service'] && (serviceBusiness(d)?d.status in ['pending_approval','approved','rejected','needs_clarification','suspended']:d.status in ['pending','approved','suspended']) && (!d.keys().hasAny(['reviewReason','reviewedBy','reviewedAt']) || (serviceBusiness(d) && d.keys().hasAll(['reviewReason','reviewedBy','reviewedAt']) && d.reviewReason is string && d.reviewReason.size()<=1000 && text(d.reviewedBy,128) && d.reviewedAt is timestamp)) && d.rulesMap is map && d.rulesMap.size()>0 && d.rulesMap.size()<=30 && d.rulesMap.values().hasOnly([true]) && d.createdAt is timestamp;}
+    function validShop(d){return d.keys().hasAll(['ownerId','name','city','phone','status','rulesMap','createdAt']) && d.keys().hasOnly(['ownerId','name','city','phone','status','rulesMap','createdAt','businessType','parentShopId','reviewReason','reviewedBy','reviewedAt']) && text(d.ownerId,128) && text(d.name,100) && text(d.city,80) && text(d.phone,30) && d.phone.matches('[+0-9 ()-]{9,30}') && d.get('businessType','parts_shop') in ['parts_shop','auto_service'] && (serviceBusiness(d)?d.status in ['pending','pending_approval','approved','rejected','needs_clarification','suspended']:d.status in ['pending','approved','suspended']) && (!d.keys().hasAny(['reviewReason','reviewedBy','reviewedAt']) || (serviceBusiness(d) && d.keys().hasAll(['reviewReason','reviewedBy','reviewedAt']) && d.reviewReason is string && d.reviewReason.size()<=1000 && text(d.reviewedBy,128) && d.reviewedAt is timestamp)) && (!d.keys().hasAny(['parentShopId']) || (serviceBusiness(d) && text(d.parentShopId,128) && d.parentShopId==d.ownerId)) && d.rulesMap is map && d.rulesMap.size()>0 && d.rulesMap.size()<=30 && d.rulesMap.values().hasOnly([true]) && d.createdAt is timestamp;}
     function photo(p){return p is string && p.size()<=180000 && p.matches('data:image/jpeg;base64,.*');}
     function validPhotos(p){return p is list && p.size()<=4 && (p.size()<1||photo(p[0])) && (p.size()<2||photo(p[1])) && (p.size()<3||photo(p[2])) && (p.size()<4||photo(p[3]));}
     function validRequest(d){return d.keys().hasAll(['ownerId','brand','model','year','engine','vin','category','part','description','city','condition','budget','photos','status','previousStatus','acceptedOfferId','createdAt']) && d.keys().hasOnly(['ownerId','brand','model','year','engine','vin','category','part','description','city','condition','budget','photos','status','previousStatus','acceptedOfferId','createdAt','searchScope','expandedAt']) && (!d.keys().hasAny(['searchScope']) || d.searchScope=='city') && (!d.keys().hasAny(['expandedAt']) || (d.keys().hasAny(['searchScope']) && d.expandedAt is timestamp)) && text(d.ownerId,128) && text(d.brand,60) && text(d.model,80) && d.year is int && d.year>=1950 && d.year<=request.time.year()+1 && text(d.engine,80) && d.vin is string && (d.vin==''||d.vin.matches('[A-HJ-NPR-Z0-9]{17}')) && text(d.category,80) && text(d.part,120) && text(d.description,2000) && text(d.city,80) && d.condition in ['ნებისმიერი','ახალი','მეორადი'] && (d.budget==null||(d.budget is number&&d.budget>0&&d.budget<=1000000)) && validPhotos(d.photos) && d.status in ['open','closed','hidden'] && d.previousStatus in ['open','closed'] && (d.acceptedOfferId==null||text(d.acceptedOfferId,300)) && d.createdAt is timestamp;}
@@ -52,14 +52,16 @@ service cloud.firestore {
       allow delete: if flag('garage','ON') && signed() && request.auth.uid==uid;
     }
     match /pf_shops/{uid} {
-      allow read: if (resource.data.status=='approved' && serviceBusiness(resource.data)) || (signed() && (uid==request.auth.uid||resource.data.status=='approved'||admin()));
-      allow create: if signed()&&uid==request.auth.uid&&validShop(request.resource.data)&&request.resource.data.ownerId==uid&&request.resource.data.status==(serviceBusiness(request.resource.data)?'pending_approval':'pending')&&!request.resource.data.keys().hasAny(['reviewReason','reviewedBy','reviewedAt'])&&request.resource.data.createdAt==request.time;
+      allow read: if (resource.data.status=='approved' && serviceBusiness(resource.data)) || (signed() && (uid==request.auth.uid||resource.data.ownerId==request.auth.uid||resource.data.status=='approved'||admin()));
+      allow create: if signed()&&validShop(request.resource.data)&&request.resource.data.ownerId==request.auth.uid&&((uid==request.auth.uid&&!request.resource.data.keys().hasAny(['parentShopId']))||(serviceBusiness(request.resource.data)&&uid!=request.auth.uid&&request.resource.data.parentShopId==request.auth.uid&&exists(/databases/$(database)/documents/pf_shops/$(request.auth.uid))&&!serviceBusiness(serviceParent(request.auth.uid))))&&request.resource.data.status in (serviceBusiness(request.resource.data)?['pending','pending_approval']:['pending'])&&!request.resource.data.keys().hasAny(['reviewReason','reviewedBy','reviewedAt'])&&request.resource.data.createdAt==request.time;
       allow update: if validShop(request.resource.data)
         && request.resource.data.ownerId==resource.data.ownerId
         && request.resource.data.createdAt==resource.data.createdAt
+        && request.resource.data.get('parentShopId','')==resource.data.get('parentShopId','')
         && request.resource.data.get('businessType','parts_shop')==resource.data.get('businessType','parts_shop')
-        && ((signed() && uid==request.auth.uid
-          && request.resource.data.status==(serviceBusiness(resource.data)?'pending_approval':'pending')
+        && ((signed() && resource.data.ownerId==request.auth.uid
+          && (!serviceBusiness(resource.data)||resource.data.status!='suspended')
+          && request.resource.data.status in (serviceBusiness(resource.data)?['pending','pending_approval']:['pending'])
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','city','phone','rulesMap','status','businessType']))
         || (!serviceBusiness(resource.data) && admin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
         || (serviceBusiness(resource.data) && superadmin()
@@ -74,9 +76,25 @@ service cloud.firestore {
     // hours/weekly: Asia/Tbilisi timezone, exactly seven weekly days, timestamps.
     // closures: a real calendar day, staff ID or whole business, active, timestamps.
     function serviceParent(uid){return get(/databases/$(database)/documents/pf_shops/$(uid)).data;}
-    function serviceOwner(uid){return signed() && request.auth.uid==uid && serviceBusiness(serviceParent(uid));}
+    function serviceOwner(uid){return signed() && request.auth.uid==serviceParent(uid).ownerId && serviceBusiness(serviceParent(uid));}
     function servicePublic(uid){let p=serviceParent(uid);return serviceBusiness(p) && p.status=='approved';}
     function serviceInspect(uid){return serviceOwner(uid) || (signed() && admin() && serviceBusiness(serviceParent(uid)));}
+    // Service orders live under their business, independently of parts orders.
+    // Only the customer, business owner and superadmin can read them.
+    function validServiceOrder(uid,d){return d.keys().hasAll(['businessId','customerId','description','status','createdAt','updatedAt']) && d.keys().hasOnly(['businessId','customerId','description','status','createdAt','updatedAt']) && d.businessId==uid && text(d.businessId,128) && text(d.customerId,128) && text(d.description,2000) && d.status in ['pending','accepted','completed','cancelled'] && d.createdAt is timestamp && d.updatedAt==request.time;}
+    match /pf_shops/{uid}/serviceOrders/{id} {
+      allow read: if signed() && (superadmin() || serviceOwner(uid) || resource.data.customerId==request.auth.uid);
+      allow create: if signed() && flag('orders','ON') && servicePublic(uid) && validServiceOrder(uid,request.resource.data) && request.resource.data.customerId==request.auth.uid && !serviceOwner(uid) && request.resource.data.status=='pending' && request.resource.data.createdAt==request.time;
+      allow update: if signed() && validServiceOrder(uid,request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
+        && ((resource.data.status in ['pending','accepted'] && request.resource.data.status=='cancelled' && (resource.data.customerId==request.auth.uid || serviceOwner(uid) || superadmin()))
+          || ((superadmin() || (serviceOwner(uid) && servicePublic(uid))) && ((resource.data.status=='pending' && request.resource.data.status=='accepted') || (resource.data.status=='accepted' && request.resource.data.status=='completed'))));
+      allow delete: if false;
+    }
+    // Customer collection-group history remains available after suspension.
+    match /{parent=**}/serviceOrders/{id} {
+      allow read: if signed() && resource.data.customerId==request.auth.uid;
+    }
     function setupDay(d){return d is map && d.keys().hasOnly(['open','start','end']) && d.open is bool && d.start is int && d.end is int && d.start>=0 && d.start<=1439 && d.end>=0 && d.end<=1439 && (d.open?d.end>d.start:(d.start==0&&d.end==0));}
     function setupWeek(w){return w is list && w.size()==7 && setupDay(w[0]) && setupDay(w[1]) && setupDay(w[2]) && setupDay(w[3]) && setupDay(w[4]) && setupDay(w[5]) && setupDay(w[6]);}
     function setupTimes(d){return d.createdAt is timestamp && d.updatedAt==request.time;}

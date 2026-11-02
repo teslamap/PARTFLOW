@@ -2,7 +2,7 @@
 export const businessType = shop => shop?.businessType || 'parts_shop';
 export function submissionState(type) {
   if (!['parts_shop','auto_service'].includes(type)) throw Error('ბიზნესის ტიპი არასწორია');
-  return type === 'auto_service' ? 'pending_approval' : 'pending';
+  return 'pending';
 }
 export function reviewFields(actor, status, reason, timestamp) {
   if (actor.role !== 'superadmin') throw Error('მხოლოდ სუპერადმინს შეუძლია ავტოსერვისის განხილვა');

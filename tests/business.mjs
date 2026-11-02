@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {businessType,submissionState,reviewFields,legacyBusinessPatch} from '../src/business.mjs';
 assert.equal(businessType({status:'approved'}),'parts_shop');
-assert.equal(submissionState('auto_service'),'pending_approval');
+assert.equal(submissionState('auto_service'),'pending');
 assert.throws(()=>submissionState('superadmin'));
 assert.throws(()=>reviewFields({id:'a',role:'admin'},'approved','',0));
 assert.throws(()=>reviewFields({id:'s',role:'superadmin'},'rejected',' ',0));
