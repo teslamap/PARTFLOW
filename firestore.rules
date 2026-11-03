@@ -45,13 +45,6 @@ function validPackage(d){return d.keys().hasAll(['name','createdAt','updatedAt']
       allow create: if signed() && uid==request.auth.uid && validMember(request.resource.data) && request.resource.data.createdAt==request.time && (request.resource.data.role=='customer'||(founder()&&request.resource.data.role=='superadmin'));
       allow update: if validMember(request.resource.data) && request.resource.data.createdAt==resource.data.createdAt && ((signed()&&uid==request.auth.uid&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','city'])) || (superadmin()&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']) && ((uid!=request.auth.uid&&resource.data.role!='superadmin'&&request.resource.data.role in ['customer','admin'])||(founder()&&uid==request.auth.uid&&request.resource.data.role=='superadmin'))));
     }
-    // A user's garage is private to that signed-in account. Vehicle identity is immutable.
-    match /pf_garage/{uid}/vehicles/{vehicleId} {
-      allow read: if flag('garage','ON') && signed() && request.auth.uid==uid;
-      allow create: if flag('garage','ON') && signed() && request.auth.uid==uid && validGarageVehicle(request.resource.data) && request.resource.data.createdAt==request.time;
-      allow update: if false;
-      allow delete: if flag('garage','ON') && signed() && request.auth.uid==uid;
-    }
     match /pf_packages/{id} {
       allow read: if signed();
       allow create: if superadmin() && validPackage(request.resource.data) && request.resource.data.createdAt==request.time && request.resource.data.updatedAt==request.time && request.resource.data.createdBy==request.auth.uid;
