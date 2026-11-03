@@ -26,7 +26,7 @@ jobs:
         working-directory: native-android
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
+          ./gradlew --no-daemon :app:assembleDebug :app:testCustomerDebugUnitTest :app:lintCustomerDebug :app:lintBusinessDebug :app:lintTowDebug :app:lintSuperadminDebug
       - name: Verify actual APKs
         run: |
           python3 native-android/tools/verify_apks.py
@@ -61,4 +61,40 @@ jobs:
           path: |
             native-android/app/build/reports/
             native-android/app/schemas/
+          if-no-files-found: warn
+  device-contracts:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - run: npm install --global firebase-tools@15.1.0
+      - name: Test native Firebase workflows on Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            chmod +x native-android/gradlew
+            cd native-android && firebase emulators:exec --only auth,firestore --project demo-partflow --config firebase-emulators.json './gradlew --no-daemon :app:connectedCustomerDebugAndroidTest'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-device-contract-results
+          path: native-android/app/build/reports/androidTests/
           if-no-files-found: warn
