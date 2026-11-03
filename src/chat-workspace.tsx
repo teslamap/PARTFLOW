@@ -6,9 +6,9 @@ import {chatClosed,writeChatMessage,joinChat,requestConfirmation,declineConfirma
 import {confirmOrder} from './commerce.mjs';
 import './chat-workspace.css';
 type Row=Record<string,any>;
-function useRows(path:string[],filters:any[],key:string){
+function useRows(path:string[],filters:any[],key:string,enabled=true){
  const [rows,setRows]=useState<Row[]>([]),[error,setError]=useState('');
- useEffect(()=>{setRows([]);setError('');return onSnapshot(query(collection(db,path[0],...path.slice(1)),...filters),s=>{setRows(s.docs.map(d=>({...d.data(),id:d.id})));setError('')},e=>setError(e.message))},[key]);
+ useEffect(()=>{setRows([]);setError('');if(!enabled)return;return onSnapshot(query(collection(db,path[0],...path.slice(1)),...filters),s=>{setRows(s.docs.map(d=>({...d.data(),id:d.id})));setError('')},e=>setError(e.message))},[key,enabled]);
  return {rows,error};
 }
 const millis=(v:any)=>v?.toMillis?.()||(typeof v==='string'?Date.parse(v):0)||0;
@@ -91,7 +91,7 @@ function Thread({offer:o,request:r,uid,user,admin,isShop,summary,card,back,activ
  const closed=chatClosed(r,o.id),won=r.acceptedOfferId===o.id;
  const scope=admin?[]:[where(isShop?'shopId':'ownerId','==',uid)];
  const filters=[where('offerId','==',o.id),...scope,orderBy('createdAt','desc')];
- const admins=useRows(['pf_chat_admins'],[where('offerId','==',o.id),...scope,orderBy('createdAt','asc')],o.id+':'+admin+':admins');
+ const admins=useRows(['pf_chat_admins'],[where('offerId','==',o.id),...scope,orderBy('createdAt','asc')],o.id+':'+admin+':admins',active);
  const [messages,setMessages]=useState<Row[]>([]),[older,setOlder]=useState<Row[]>([]),[cursor,setCursor]=useState<any>(null),[olderCursor,setOlderCursor]=useState<any>(null),[more,setMore]=useState(false),[loadingOld,setLoadingOld]=useState(false);
  const [text,setText]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[showTerms,setShowTerms]=useState(false),[serviceQuote,setServiceQuote]=useState(Boolean(o.serviceAvailable));
  const log=useRef<HTMLDivElement>(null),previousLive=useRef<Row[]>([]),loadedOlder=useRef(false),pendingReceipts=useRef(new Set<string>());
