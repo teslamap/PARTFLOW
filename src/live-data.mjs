@@ -53,8 +53,13 @@ export function subscribePanelData(db,identity,next,error,{panel='customer'}={})
   pending.add('archives');
   children.push(onSnapshot(query(collection(db,'pf_archives',identity.id,'panels',panel,'items'),orderBy('createdAt','desc')),s=>{if(!current())return;archives=s.docs.map(d=>row(d.id,d.data()));pending.delete('archives');emit()},e=>{if(current()){pending.delete('archives');error(e);emit()}}));
   if(isAdmin||isCustomer)requests('own',isAdmin?[]:[where('ownerId','==',identity.id)]);
-  if(isShop&&shop?.status==='approved'&&shop?.businessType!=='auto_service')for(const [i,rule] of row(identity.id,shop).rules.entries()){
-   const filters=[where('status','in',['open','closed'])];for(const k of ['brand','model','category'])if(rule[k]!=='*')filters.push(where(k,'==',rule[k]));requests('match'+i,filters);
+  if(isShop&&shop?.status==='approved'&&shop?.businessType!=='auto_service'){
+   const rules=row(identity.id,shop).rules;
+   const covers=(a,b)=>['brand','model','category'].every(k=>a[k]==='*'||a[k]===b[k]);
+   const minimal=rules.filter((rule,i)=>!rules.some((other,j)=>j!==i&&covers(other,rule)&&(!covers(rule,other)||j<i)));
+   for(const [i,rule] of minimal.entries()){
+    const filters=[where('status','in',['open','closed'])];for(const k of ['brand','model','category'])if(rule[k]!=='*')filters.push(where(k,'==',rule[k]));requests('match'+i,filters);
+   }
   }
   if(isAdmin||isCustomer)offers('owner',isAdmin?[]:[where('ownerId','==',identity.id)]);
   if(isShop)offers('shop',[where('shopId','==',identity.id)]);
