@@ -9,6 +9,7 @@ import com.google.firebase.firestore.Source
 import com.google.firebase.firestore.DocumentSnapshot
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.tasks.await
 
 data class Feed(val key: String, val title: String, val query: Query)
 class AppModel(application: Application) : AndroidViewModel(application) {
