@@ -1,4 +1,4 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useState,type FormEvent} from 'react';
 import {doc,onSnapshot,setDoc,serverTimestamp,updateDoc} from 'firebase/firestore';
 import {auth,db} from './firebase';
 import {CITIES} from './core.mjs';
@@ -14,7 +14,7 @@ export function ProfileEditor({uid,name,city,demo=false}:any){
  const cleanPhone=phone.replace(/[\s()-]/g,'');
  const changed=value.trim()!==(name||'').trim()||cityValue!==(city||'თბილისი')||(contactEnabled&&cleanPhone!==originalPhone);
  const validPhone=!contactEnabled||(!cleanPhone||/^\+9955\d{8}$/.test(cleanPhone));
- async function save(e:React.FormEvent){e.preventDefault();if(demo||!uid||auth.currentUser?.uid!==uid||busy||!value.trim()||!validPhone||!changed)return;setBusy(true);setStatus('');try{
+ async function save(e:FormEvent){e.preventDefault();if(demo||!uid||auth.currentUser?.uid!==uid||busy||!value.trim()||!validPhone||!changed)return;setBusy(true);setStatus('');try{
   if(value.trim()!==(name||'').trim()||cityValue!==(city||'თბილისი'))await updateDoc(doc(db,'pf_members',uid),{name:value.trim(),city:cityValue});
   if(contactEnabled&&cleanPhone!==originalPhone){if(!cleanPhone)throw Error('ნომრის წასაშლელად დაუკავშირდი მხარდაჭერას.');await setDoc(doc(db,'pf_contacts',uid),{phone:cleanPhone,phoneVerified:false,updatedAt:serverTimestamp()});}
   setStatus('ცვლილებები წარმატებით შეინახა.');
