@@ -36,8 +36,53 @@ case 'moderateShop':{await runTransaction(db,async tx=>{const r=ref('shops',d.id
 case 'moderateRequest':{const r=ref('requests',d.id),s=await getDoc(r);if(!s.exists())throw Error('მოთხოვნა ვერ მოიძებნა');await updateDoc(r,{status:d.status==='hidden'?'hidden':s.data().previousStatus||'open',previousStatus:d.status==='hidden'?s.data().status:s.data().previousStatus});break;}
 case 'role':await updateDoc(ref('members',d.id),{role:d.role});break;
 case 'category':{if(user.role!=='superadmin')throw Error('კატეგორიის დამატება მხოლოდ ადმინისტრატორს შეუძლია');const name=cleanText(d.name,80),existing=sortCategories([...CATEGORIES,...(await list('categories')).map(c=>c.name)]);if(existing.some(c=>c.normalize('NFC').toLocaleLowerCase('ka')===name.normalize('NFC').toLocaleLowerCase('ka')))throw Error('ეს კატეგორია უკვე არსებობს');const id=name.normalize('NFC');await setDoc(ref('categories',id),{name,createdAt:now});break;}
-case 'packageCreate':{if(user.role!=='superadmin')throw Error('მხოლოდ სუპერადმინს შეუძლია პაკეტის შექმნა');const name=cleanText(d.name,100);const maxServices=Number(d.maxServices),maxStaff=Number(d.maxStaff),trialDays=Number(d.trialDays);if(!Number.isInteger(maxServices)||maxServices<1||maxServices>10000||!Number.isInteger(maxStaff)||maxStaff<1||maxStaff>10000||!Number.isInteger(trialDays)||trialDays<0||trialDays>3650)throw Error('პაკეტის ლიმიტები არასწორია');const packageRef=await addDoc(collection(db,'pf_packages'),{name,description:String(d.description||'').trim().slice(0,500),maxServices,maxStaff,trialDays,createdBy:user.id,createdAt:serverTimestamp(),updatedAt:serverTimestamp()});await addDoc(collection(db,'pf_package_audit'),{actorId:user.id,action:'create',targetId:packageRef.id,details:{name,maxServices,maxStaff,trialDays},createdAt:serverTimestamp()});break;}
-case 'packageAssign':{if(user.role!=='superadmin')throw Error('მხოლოდ სუპერადმინს შეუძლია პაკეტის მინიჭება');const packageId=d.packageId?cleanText(d.packageId,128):null;let expires=d.expiresAt?Timestamp.fromDate(new Date(d.expiresAt)):null;if(!expires&&packageId){const packageDoc=await getDoc(doc(db,'pf_packages',packageId));const trialDays=packageDoc.exists()?Number(packageDoc.data().trialDays||0):0;if(trialDays>0)expires=Timestamp.fromDate(new Date(Date.now()+trialDays*86400000));}if(expires&&!Number.isFinite(expires.toMillis()))throw Error('ვადა არასწორია');const target=d.targetType==='tow_driver'?'pf_tow_drivers':'pf_shops';if(!['tow_driver','shop'].includes(d.targetType||'shop'))throw Error('ობიექტის ტიპი არასწორია');await updateDoc(doc(db,target,d.id),{packageId,packageAssignedAt:now,packageExpiresAt:expires,...(target==='pf_tow_drivers'?{updatedAt:serverTimestamp()}:{})});await addDoc(collection(db,'pf_package_audit'),{actorId:user.id,action:'assign',targetId:d.id,details:{targetType:d.targetType||'shop',packageId,expiresAt:expires?expires.toDate().toISOString():null},createdAt:serverTimestamp()});break;}
+case 'packageCreate':{
+ if(user.role!=='superadmin')throw Error('მხოლოდ სუპერადმინს შეუძლია პაკეტის შექმნა');
+ const name=cleanText(d.name,100),packageType=d.packageType||'auto_service';
+ if(!['parts_shop','auto_service','tow_driver'].includes(packageType))throw Error('ბიზნესის ტიპი არასწორია');
+ const maxServices=Number(d.maxServices),maxStaff=Number(d.maxStaff),trialDays=Number(d.trialDays),graceDays=Number(d.graceDays??5),monthlyPriceGEL=Number(d.monthlyPriceGEL??100);
+ if(!Number.isInteger(maxServices)||maxServices<1||maxServices>10000||!Number.isInteger(maxStaff)||maxStaff<1||maxStaff>10000||!Number.isInteger(trialDays)||trialDays<0||trialDays>3650||!Number.isInteger(graceDays)||graceDays<0||graceDays>60||!Number.isFinite(monthlyPriceGEL)||monthlyPriceGEL<0||monthlyPriceGEL>1000000)throw Error('პაკეტის პარამეტრები არასწორია');
+ const record={name,description:String(d.description||'').trim().slice(0,500),packageType,monthlyPriceGEL,maxServices,maxStaff,trialDays,graceDays,allowCustomPrice:d.allowCustomPrice===true,active:d.active!==false,createdBy:user.id,createdAt:serverTimestamp(),updatedAt:serverTimestamp()};
+ const packageRef=await addDoc(collection(db,'pf_packages'),record);
+ await addDoc(collection(db,'pf_package_audit'),{actorId:user.id,action:'create',targetId:packageRef.id,details:{name,packageType,monthlyPriceGEL,trialDays},createdAt:serverTimestamp()});
+ break;
+}
+case 'packageUpdate':{
+ if(user.role!=='superadmin')throw Error('მხოლოდ სუპერადმინს შეუძლია პაკეტის რედაქტირება');
+ const id=cleanText(d.id,128),existing=await getDoc(doc(db,'pf_packages',id));
+ if(!existing.exists())throw Error('პაკეტი ვერ მოიძებნა');
+ const old=existing.data();
+ if(!('name' in d)){
+  if(typeof d.active!=='boolean')throw Error('სტატუსი არასწორია');
+  await updateDoc(existing.ref,{active:d.active,updatedAt:serverTimestamp()});
+  await addDoc(collection(db,'pf_package_audit'),{actorId:user.id,action:'update',targetId:id,details:{name:old.name,active:d.active},createdAt:serverTimestamp()});
+  break;
+ }
+ const name=cleanText(d.name,100),packageType=d.packageType||old.packageType||'auto_service',monthlyPriceGEL=Number(d.monthlyPriceGEL),trialDays=Number(d.trialDays),graceDays=Number(d.graceDays),maxServices=Number(d.maxServices),maxStaff=Number(d.maxStaff);
+ if(!['parts_shop','auto_service','tow_driver'].includes(packageType)||!Number.isFinite(monthlyPriceGEL)||monthlyPriceGEL<0||monthlyPriceGEL>1000000||!Number.isInteger(trialDays)||trialDays<0||trialDays>3650||!Number.isInteger(graceDays)||graceDays<0||graceDays>60||!Number.isInteger(maxServices)||maxServices<1||maxServices>10000||!Number.isInteger(maxStaff)||maxStaff<1||maxStaff>10000)throw Error('პაკეტის პარამეტრები არასწორია');
+ await updateDoc(existing.ref,{name,description:String(d.description||'').trim().slice(0,500),packageType,monthlyPriceGEL,trialDays,graceDays,maxServices,maxStaff,active:d.active===true,allowCustomPrice:d.allowCustomPrice===true,updatedAt:serverTimestamp()});
+ await addDoc(collection(db,'pf_package_audit'),{actorId:user.id,action:'update',targetId:id,details:{name,packageType,monthlyPriceGEL},createdAt:serverTimestamp()});
+ break;
+}
+case 'packageAssign':{
+ if(user.role!=='superadmin')throw Error('მხოლოდ სუპერადმინს შეუძლია პაკეტის მინიჭება');
+ const packageId=cleanText(d.packageId,128),targetType=d.targetType==='tow_driver'?'tow_driver':'shop';
+ if(!['tow_driver','shop'].includes(d.targetType))throw Error('ობიექტის ტიპი არასწორია');
+ const packageDoc=await getDoc(doc(db,'pf_packages',packageId));
+ if(!packageDoc.exists()||packageDoc.data().active===false)throw Error('ეს პაკეტი არ არის აქტიური');
+ const plan=packageDoc.data(),target=targetType==='tow_driver'?'pf_tow_drivers':'pf_shops',record=await getDoc(doc(db,target,cleanText(d.id,128)));
+ if(!record.exists())throw Error('ბიზნესი ვერ მოიძებნა');
+ const expected=targetType==='tow_driver'?'tow_driver':(record.data().businessType||'parts_shop');
+ if(plan.packageType&&plan.packageType!==expected)throw Error('პაკეტის ტიპი არ შეესაბამება ბიზნესს');
+ const hasOverride=d.priceOverride!==null&&d.priceOverride!==undefined&&d.priceOverride!=='';
+ const packagePriceOverride=hasOverride?Number(d.priceOverride):null;
+ if(hasOverride&&(!plan.allowCustomPrice||!Number.isFinite(packagePriceOverride)||packagePriceOverride<0||packagePriceOverride>1000000))throw Error('ინდივიდუალური ტარიფი დაუშვებელია');
+ const trialDays=Number(plan.trialDays||0),expires=d.expiresAt?Timestamp.fromDate(new Date(String(d.expiresAt)+'T23:59:59+04:00')):(trialDays>0?Timestamp.fromDate(new Date(Date.now()+trialDays*86400000)):null);
+ if(expires&&!Number.isFinite(expires.toMillis()))throw Error('ვადა არასწორია');
+ await updateDoc(record.ref,{packageId,packageAssignedAt:now,packageExpiresAt:expires,packagePriceOverride,...(targetType==='tow_driver'?{updatedAt:serverTimestamp()}:{})});
+ await addDoc(collection(db,'pf_package_audit'),{actorId:user.id,action:'assign',targetId:d.id,details:{targetType,packageId,packagePriceOverride,expiresAt:expires?.toDate().toISOString()||null},createdAt:serverTimestamp()});
+ break;
+}
 default:throw Error('უცნობი მოქმედება');}}
 export async function uploadPhoto(file:File){if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>4*1024*1024)throw Error('დასაშვებია JPG, PNG, WebP — მაქს. 4 MB');const image=await createImageBitmap(file),canvas=document.createElement('canvas');const scale=Math.min(1,1000/Math.max(image.width,image.height));canvas.width=Math.round(image.width*scale);canvas.height=Math.round(image.height*scale);canvas.getContext('2d')!.drawImage(image,0,0,canvas.width,canvas.height);image.close();let quality=.75,result=canvas.toDataURL('image/jpeg',quality);while(result.length>180000&&quality>.15){quality-=.1;result=canvas.toDataURL('image/jpeg',quality);}if(result.length>180000)throw Error('ფოტო ძალიან დიდია, აირჩიე პატარა გამოსახულება');return result;}
 
