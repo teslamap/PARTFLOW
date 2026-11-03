@@ -1,9 +1,28 @@
 import {useEffect,useState} from 'react';
-import {doc,updateDoc} from 'firebase/firestore';
+import {doc,onSnapshot,setDoc,serverTimestamp,updateDoc} from 'firebase/firestore';
 import {auth,db} from './firebase';
 import {CITIES} from './core.mjs';
+import {useFeatures} from './use-features';
+import {UserRound,MapPin,Phone,ShieldCheck,Save,LockKeyhole,CheckCircle2} from 'lucide-react';
+import './profile.css';
+
 export function ProfileEditor({uid,name,city,demo=false}:any){
- const [value,setValue]=useState(name||''),[cityValue,setCityValue]=useState(city||'თბილისი'),[busy,setBusy]=useState(false),[status,setStatus]=useState('');
+ const enabled=useFeatures(),contactEnabled=enabled('phoneContact');
+ const [value,setValue]=useState(name||''),[cityValue,setCityValue]=useState(city||'თბილისი'),[phone,setPhone]=useState(''),[originalPhone,setOriginalPhone]=useState(''),[busy,setBusy]=useState(false),[status,setStatus]=useState(''),[phoneError,setPhoneError]=useState('');
  useEffect(()=>{setValue(name||'');setCityValue(city||'თბილისი');setStatus('')},[uid,name,city]);
- return <section className="panel" style={{padding:20,marginBottom:16}}><h3>ჩემი პროფილი</h3><form className="inline-form" onSubmit={async e=>{e.preventDefault();const clean=value.trim();if(demo||!uid||auth.currentUser?.uid!==uid||!clean||busy)return;setBusy(true);setStatus('');try{await updateDoc(doc(db,'pf_members',uid),{name:clean,city:cityValue});setStatus('პროფილი შენახულია.')}catch{setStatus('პროფილი ვერ შეინახა. სცადე ხელახლა.')}finally{setBusy(false)}}}><label>სახელი<input value={value} maxLength={100} required autoComplete="name" disabled={demo||busy} onChange={e=>setValue(e.target.value)}/></label><label>ქალაქი<select value={cityValue} disabled={demo||busy} onChange={e=>setCityValue(e.target.value)}>{CITIES.map((c:string)=><option key={c}>{c}</option>)}</select></label><button className="secondary" disabled={demo||busy||!value.trim()||(value.trim()===name&&cityValue===(city||'თბილისი'))}>{busy?'ინახება...':'შენახვა'}</button></form>{status&&<p role="status">{status}</p>}</section>;
+ useEffect(()=>{setPhone('');setOriginalPhone('');setPhoneError('');if(!uid||demo||!contactEnabled)return onSnapshot(doc(db,'pf_contacts',uid),s=>{const p=s.data()?.phone||'';setPhone(p);setOriginalPhone(p)},()=>setPhoneError('საკონტაქტო ნომერი ვერ ჩაიტვირთა.'));},[uid,demo,contactEnabled]);
+ const cleanPhone=phone.replace(/[\s()-]/g,'');
+ const changed=value.trim()!==(name||'').trim()||cityValue!==(city||'თბილისი')||(contactEnabled&&cleanPhone!==originalPhone);
+ const validPhone=!contactEnabled||(!cleanPhone||/^\+9955\d{8}$/.test(cleanPhone));
+ async function save(e:React.FormEvent){e.preventDefault();if(demo||!uid||auth.currentUser?.uid!==uid||busy||!value.trim()||!validPhone||!changed)return;setBusy(true);setStatus('');try{
+  if(value.trim()!==(name||'').trim()||cityValue!==(city||'თბილისი'))await updateDoc(doc(db,'pf_members',uid),{name:value.trim(),city:cityValue});
+  if(contactEnabled&&cleanPhone!==originalPhone){if(!cleanPhone)throw Error('ნომრის წასაშლელად დაუკავშირდი მხარდაჭერას.');await setDoc(doc(db,'pf_contacts',uid),{phone:cleanPhone,phoneVerified:false,updatedAt:serverTimestamp()});}
+  setStatus('ცვლილებები წარმატებით შეინახა.');
+ }catch(e:any){setStatus(e?.message||'პროფილი ვერ შეინახა. სცადე ხელახლა.')}finally{setBusy(false)}}
+ return <section className="panel pf-profile">
+  <div className="pf-profile-head"><div className="pf-profile-avatar"><UserRound size={28}/></div><div><span className="pf-profile-eyebrow">PARTFLOW · პირადი სივრცე</span><h2>ჩემი პროფილი</h2><p>მართე შენი საკონტაქტო ინფორმაცია ერთ უსაფრთხო სივრცეში.</p></div><span className="pf-profile-private"><LockKeyhole size={14}/> პირადი</span></div>
+  <form onSubmit={save} className="pf-profile-form"><div className="pf-profile-section"><h3><UserRound size={17}/> პირადი ინფორმაცია</h3><div className="pf-profile-grid"><label>სახელი და გვარი<input value={value} maxLength={100} required autoComplete="name" disabled={demo||busy} placeholder="შენი სახელი" onChange={e=>setValue(e.target.value)}/></label><label><span><MapPin size={14}/> ქალაქი</span><select value={cityValue} disabled={demo||busy} onChange={e=>setCityValue(e.target.value)}>{CITIES.map((c:string)=><option key={c}>{c}</option>)}</select></label></div></div>
+  {contactEnabled&&<div className="pf-profile-section"><h3><Phone size={17}/> საკონტაქტო ინფორმაცია</h3><div className="pf-profile-grid"><label>მობილურის ნომერი<input type="tel" inputMode="tel" autoComplete="tel" value={phone} maxLength={20} disabled={demo||busy} placeholder="+9955XXXXXXXX" aria-invalid={!validPhone} onChange={e=>setPhone(e.target.value)}/></label><div className="pf-profile-hint"><ShieldCheck size={19}/><span>ნომერი ინახება ცალკე დაცულ ჩანაწერში და საჯარო პროფილზე არ გამოჩნდება. ნომრის შეცვლისას დადასტურების სტატუსი განულდება.</span></div></div>{!validPhone&&<p className="pf-profile-error">გამოიყენე ფორმატი +9955XXXXXXXX</p>}{phoneError&&<p className="pf-profile-error">{phoneError}</p>}</div>}
+  <div className="pf-profile-footer"><span><CheckCircle2 size={16}/> ცვლილებები შეინახება მხოლოდ შენს ანგარიშზე.</span><button type="submit" className="primary" disabled={demo||busy||!value.trim()||!validPhone||!changed}><Save size={17}/>{busy?'ინახება...':'ცვლილებების შენახვა'}</button></div>{status&&<p role="status" className="pf-profile-status">{status}</p>}</form>
+ </section>;
 }
