@@ -14,6 +14,6 @@ export function RecordActions({type,id,label,data,act,busy,restore=false}:any){
   <button className="secondary" disabled={busy} onClick={()=>act({action:restore?'restore':'archive',type,id,label})}>{restore?<ArchiveRestore size={15}/>:<Archive size={15}/>} {restore?'აღდგენა':'არქივში გადატანა'}</button>
   {type==='requests'&&!data.demo&&data.user?.role==='superadmin'&&<button className="danger" disabled={busy} onClick={()=>{if(window.confirm('სამუდამოდ წაიშალოს მხოლოდ არჩეული მოთხოვნა „'+label+'“ და მისი დაკავშირებული შეთავაზებები/ჩატები/შეკვეთა? სხვა მოთხოვნები უცვლელი დარჩება.'))void act({action:'deleteRequest',id})}}><Trash2 size={15}/> წაშლა</button>}
   {restore&&data.user?.role==='superadmin'&&<button className="danger" disabled={busy} onClick={()=>{if(window.confirm('წაიშალოს მხოლოდ ეს ჩანაწერი არქივის სიიდან? ორიგინალი ობიექტი უცვლელი დარჩება.'))void act({action:'restore',type,id,label})}}><Trash2 size={15}/> არქივიდან წაშლა</button>}
- </div>
+ </div></ContextTarget>
 }
 export function ArchiveView({data,act,busy}:any){return <section className="panel archive-panel"><h2>არქივი</h2><p>აქ გადატანილი ჩანაწერები მხოლოდ ამ პანელშია დამალული. ანგარიშები არ იბლოკება და სხვა მონაწილეების მონაცემები უცვლელია.</p>{!(data.archives||[]).length&&<p>არქივი ცარიელია.</p>}{(data.archives||[]).map((a:any)=><article className="archive-row" key={a.id}><div><small>{entityNames[a.type]}</small><h3>{a.label}</h3></div><RecordActions type={a.type} id={a.targetId} label={a.label} data={data} act={act} busy={busy} restore/></article>)}</section>}
