@@ -11,7 +11,7 @@ service cloud.firestore {
     function flag(key,fallback){return exists(/databases/$(database)/documents/pf_settings/control)?get(/databases/$(database)/documents/pf_settings/control).data.flags.get(key,fallback)=='ON':fallback=='ON';}
     function signed(){return request.auth != null && (request.auth.token.firebase.sign_in_provider != 'anonymous' || (request.auth.token.get('apkVerified',false)==true && flag('anonymousApkAuth','OFF'))); }
     // Trusted bootstrap identity. A verified email is required; registration order never grants admin.
-    function founder(){return signed() && request.auth.token.email_verified == true && request.auth.token.email == 'suloanani1@gmail.com';}
+    function founder(){return signed() && request.auth.token.get('email_verified',false) == true && request.auth.token.get('email','') == 'suloanani1@gmail.com';}
     function superadmin(){return founder() || (signed() && get(/databases/$(database)/documents/pf_members/$(request.auth.uid)).data.role == 'superadmin');}
     function admin(){return superadmin();}
     function deleting(id){return exists(/databases/$(database)/documents/pf_deletions/$(id));}
