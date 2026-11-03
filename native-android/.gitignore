@@ -1,0 +1,9 @@
+.gradle/
+**/build/
+local.properties
+*.jks
+*.keystore
+.index-inventory.json
+emulator-rules/
+device-apks/
+device-screenshots/
