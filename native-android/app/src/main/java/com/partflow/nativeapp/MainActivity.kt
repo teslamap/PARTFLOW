@@ -33,6 +33,10 @@ import org.json.JSONObject
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        androidx.core.view.WindowCompat.getInsetsController(window,window.decorView).apply {
+            isAppearanceLightStatusBars=true
+            isAppearanceLightNavigationBars=true
+        }
         setContent { MaterialTheme(colorScheme=lightColorScheme(primary=Color(0xFF087C69),background=Color(0xFFF4F7F6))) { Surface(Modifier.fillMaxSize()) { Partflow() } } }
     }
 }
@@ -178,7 +182,7 @@ fun requestFields(r: Repository)=vehicleFields(r)+listOf(Field("category","კ�
     val busy by vm.busy.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical=24.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
         Text("შედი PARTFLOW-ში",style=MaterialTheme.typography.headlineMedium)
-        Text("${label(BuildConfig.ROLE)} · დამოუკიდებელი ნატიური აპი")
+        Text(when(BuildConfig.ROLE){"business"->"მაღაზიისა და ავტოსერვისის მართვა";"tow"->"გამოძახებები და რეისების მართვა";"superadmin"->"პლატფორმის მართვა";else->"ნაწილები, ავტოსერვისი და ევაკუატორი"})
         OutlinedTextField(email,{email=it},label={Text("ელფოსტა")},singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Email),modifier=Modifier.fillMaxWidth())
         OutlinedTextField(password,{password=it},label={Text("პაროლი")},singleLine=true,visualTransformation=PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth())
         Button(enabled=!busy,onClick={vm.run({vm.repo.auth.signInWithEmailAndPassword(email.trim(),password).await()})}){Text("შესვლა")}
