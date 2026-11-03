@@ -22,7 +22,7 @@ try{
  assert.doesNotMatch(customer,/მძღოლის რეგისტრაცია|დამტკიცებაზე გაგზავნა|მძღოლების დამტკიცება/);
  assert.match(scheduled,/name="pickupAt"/);assert.match(scheduled,/type="datetime-local" required/);
  assert.doesNotMatch(scheduled,/ჩემი მდებარეობის დაფიქსირება/);
- assert.match(driver,/ევაკუატორის მძღოლის რეგისტრაცია/);assert.match(driver,/დამტკიცებაზე გაგზავნა/);assert.ok(driver.includes('ევაკუატორი / SOS რუკა'));assert.match(driver,/ჩემი მდებარეობის დაფიქსირება/);
+ assert.match(driver,/ევაკუატორის მძღოლის რეგისტრაცია/);assert.match(driver,/დამტკიცებაზე გაგზავნა/);assert.ok(driver.includes('გამოძახებების რუკა'));assert.match(driver,/ჩემი მდებარეობის დაფიქსირება/);
  for(const html of [driver,admin])assert.doesNotMatch(html,/name="origin"|name="destination"|name="pickupAt"/);
  assert.doesNotMatch(admin,/დამტკიცებაზე გაგზავნა/);
  const driverPage=render(TowingApp);assert.match(driverPage,/მძღოლის პანელი/);assert.doesNotMatch(driverPage,/ჩემი გარაჟი|ავტოსერვისები|ნაწილის დამატება/);
