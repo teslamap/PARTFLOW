@@ -16,9 +16,9 @@ const dateText=(v:any)=>{try{const d=v?.toDate?.()||new Date(v?.seconds? v.secon
 const coin=(v:any)=>new Intl.NumberFormat('ka-GE',{maximumFractionDigits:2}).format(number(v,0))+' ₾';
 const statusName=(x:string)=>({approved:'დამტკიცებული',pending:'მოლოდინში',pending_approval:'მოლოდინში',suspended:'შეჩერებული',rejected:'უარყოფილი'} as Row)[x]||x||'—';
 
-export function PackageManager({packages=[],audit=[],shops=[],drivers=[],act,busy=false,demo=false}:{
+export function PackageManager({packages=[],audit=[],shops=[],drivers=[],act,busy=false,demo=false,actor}:{
  packages:Row[];audit:Row[];shops:Row[];drivers:Row[];
- act:(d:Row)=>Promise<boolean>;busy?:boolean;demo?:boolean
+ act:(d:Row)=>Promise<boolean>;busy?:boolean;demo?:boolean;actor?:Row
 }){
  const [kind,setKind]=useState<Kind>('tow_driver');
  const [editing,setEditing]=useState<string|null>(null);
@@ -82,6 +82,6 @@ export function PackageManager({packages=[],audit=[],shops=[],drivers=[],act,bus
    <button className="pfp-save" disabled={busy||demo||!target||!selected}><CheckCircle2 size={17}/> მინიჭება</button>
   </form>{message&&<p role="status" className="pfp-message">{message}</p>}
   </section>
-  <section className="pfp-panel"><div className="pfp-title"><h2>ცვლილებების ისტორია</h2><History size={19}/></div><div className="pfp-history-scroll"><table className="pfp-history"><thead><tr><th>მოქმედება</th><th>ობიექტი</th><th>შემსრულებელი</th><th>თარიღი</th></tr></thead><tbody>{history.length?history.map(a=>{const p=packages.find(p=>p.id===a.targetId),t=targets.find(t=>t.id===a.targetId);const matched=packages.find(p=>p.id===a.details?.packageId);return <tr key={a.id}><td>{actionLabels[a.action]||a.action}</td><td title={a.targetId}>{p?.name||t?.name||a.details?.name||a.targetId}{matched&&<small> · {matched.name}</small>}</td><td title={a.actorId}>{a.actorId===undefined?'—':a.actorId.length>22?a.actorId.slice(0,12)+'…':a.actorId}</td><td>{dateText(a.createdAt)}</td></tr>}):<tr><td colSpan={4} className="pfp-empty">ცვლილებების ისტორია ჯერ ცარიელია.</td></tr>}</tbody></table></div></section>
+  <section className="pfp-panel"><div className="pfp-title"><h2>ცვლილებების ისტორია</h2><History size={19}/></div><div className="pfp-history-scroll"><table className="pfp-history"><thead><tr><th>მოქმედება</th><th>ობიექტი</th><th>შემსრულებელი</th><th>თარიღი</th></tr></thead><tbody>{history.length?history.map(a=>{const p=packages.find(p=>p.id===a.targetId),t=targets.find(t=>t.id===a.targetId);const matched=packages.find(p=>p.id===a.details?.packageId);return <tr key={a.id}><td>{actionLabels[a.action]||a.action}</td><td title={a.targetId}>{p?.name||t?.name||a.details?.name||a.targetId}{matched&&<small> · {matched.name}</small>}</td><td title={a.actorId}>{a.actorId===actor?.id?(actor.email||actor.name||'სუპერადმინი'):a.actorId===undefined?'—':a.actorId.length>22?a.actorId.slice(0,12)+'…':a.actorId}</td><td>{dateText(a.createdAt)}</td></tr>}):<tr><td colSpan={4} className="pfp-empty">ცვლილებების ისტორია ჯერ ცარიელია.</td></tr>}</tbody></table></div></section>
  </div>;
 }
