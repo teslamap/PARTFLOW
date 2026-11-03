@@ -23,7 +23,7 @@ try{
  await assertSucceeds(archive(buyer,'buyer','customer','requests','r1'));
  await assertSucceeds(archive(store,'store','shop','requests','r1'));
  await assertSucceeds(archive(buyer,'buyer','mobile-customer','offers','r1_store'));
- await assertSucceeds(archive(moderator,'moderator','admin','requests','r1'));
+ await assertFails(archive(moderator,'moderator','admin','requests','r1'));
  await assertSucceeds(archive(founder,'founder','superadmin','members','buyer'));
  await assertFails(archive(other,'other','customer','requests','r1'));
  await assertFails(archive(buyer,'store','customer','requests','r1'));
@@ -42,7 +42,7 @@ try{
  await assertFails(setDoc(doc(buyer,'pf_deletions/requests_r1'),{phase:'complete'}));
  await assertFails(archive(store,'store','customer','offers','r1_store'));
  await assertSucceeds(archive(store,'store','shop','shops','store'));
- await assertSucceeds(archive(moderator,'moderator','admin','shops','store'));
+ await assertFails(archive(moderator,'moderator','admin','shops','store'));
  await assertSucceeds(archive(founder,'founder','superadmin','categories','განათება'));
  await assertFails(archive(buyer,'buyer','customer','categories','განათება'));
  await assertFails(archive(other,'other','shop','shops','store'));
