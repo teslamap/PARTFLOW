@@ -89,7 +89,7 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
             catch(e: Exception){if(e is kotlinx.coroutines.CancellationException)throw e;vm.notice.value=e.localizedMessage.orEmpty()}
         }
     }
-    val kind=row.path.substringBefore('/')
+    val kind=if(row.path.count{it=='/'}==1 || row.path.startsWith("pf_garage/") || row.path.startsWith("pf_archives/"))row.path.substringBefore('/') else row.path.split('/').takeLast(2).first()
     val context=LocalContext.current
     val noteFields=listOf(Field("note","კომენტარი"))
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)) {
@@ -172,6 +172,7 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
             "pf_archives" -> Button(enabled=!busy,onClick={vm.run({r.db.document(row.path).delete().await()})}){Text("არქივიდან აღდგენა")}
             "pf_packages" -> if(r.admin)Button(enabled=!busy,onClick={edit("პაკეტის რედაქტირება","package:${row.id}",packageFields(),row.data.mapValues{it.value?.toString().orEmpty()}){r.packageSave(it,row)}}){Text("რედაქტირება")}
             "pf_deletions" -> if(r.admin)Button(enabled=!busy,onClick={vm.run({r.deleteRequest(row.id)})}){Text("წაშლის გაგრძელება")}
+            "catalog","staff","closures" -> if(BuildConfig.ROLE=="business")OutlinedButton(enabled=!busy,onClick={vm.run({r.db.document(row.path).update(mapOf("active" to !row.b("active"),"updatedAt" to r.now())).await()})}){Text(if(row.b("active"))"გამორთვა" else "ჩართვა")}
             "pf_garage" -> {
                 Button(enabled=!busy,onClick={edit("ნაწილის მოთხოვნა","request-car:${row.id}",requestFields(r),row.data.mapValues{it.value?.toString().orEmpty()}){r.request(it)}}){Text("ამ ავტომობილისთვის ნაწილის ძებნა")}
                 OutlinedButton(enabled=!busy,onClick={vm.run({r.db.document(row.path).delete().await()})}){Text("ავტომობილის წაშლა")}

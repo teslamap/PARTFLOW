@@ -51,10 +51,10 @@ data class Editor(val title: String, val key: String, val fields: List<Field>, v
     val r=vm.repo
     fun edit(title: String, key: String, fields: List<Field>, initial: Map<String,String> = emptyMap(), save: suspend (Map<String,String>)->Unit) { editor=Editor(title,key,fields,initial,save) }
     val choices = when(BuildConfig.ROLE) {
-        "business" -> listOf("requests","offers","confirmations","orders","business","services","support")
-        "tow" -> listOf("available","assigned","driver","support")
+        "business" -> listOf("requests","offers","confirmations","orders","business","services","support","profile")
+        "tow" -> listOf("available","assigned","driver","support","profile")
         "superadmin" -> listOf("shops","drivers","requests","orders","members","categories","packages","deletions","support")
-        else -> listOf("requests","offers","confirmations","orders","garage","tow","services","serviceOrders","support","archive")
+        else -> listOf("requests","offers","confirmations","orders","garage","tow","services","serviceOrders","support","archive","profile")
     }
     LaunchedEffect(user?.uid) { tab=choices.first(); detail=null; editor=null }
     Scaffold(topBar={ TopAppBar(title={ Text("PARTFLOW · ${BuildConfig.ROLE}",style=MaterialTheme.typography.titleMedium) },actions={ if(user!=null)TextButton(enabled=!busy,onClick={vm.logout()}){Text("გასვლა")} }) }) { padding ->
@@ -98,6 +98,13 @@ data class Editor(val title: String, val key: String, val fields: List<Field>, v
             if(tab=="services" && BuildConfig.ROLE=="business")Button(enabled=!busy,onClick={edit("ავტოსერვისის დამატება","service",listOf(Field("name","სახელი"),Field("phone","ტელეფონი"),Field("city","ქალაქი",r.options("cities")))) { r.shop(it,true) }}){Text("+ ავტოსერვისი")}
             if(tab=="categories" && r.admin)Button(enabled=!busy,onClick={edit("კატეგორია","category",listOf(Field("name","სახელი"))) { v -> val name=Domain.text(v["name"],80); require(name !in r.options("categories")); r.ref("categories",name).set(mapOf("name" to name,"createdAt" to r.now())).await() }}){Text("+ კატეგორია")}
             if(tab=="packages" && r.admin)Button(enabled=!busy,onClick={edit("პაკეტის დამატება","package",packageFields(),mapOf("monthlyPriceGEL" to "100","maxServices" to "10","maxStaff" to "5","trialDays" to "30","graceDays" to "5")){r.packageSave(it)}}){Text("+ პაკეტი")}
+            if(tab=="profile") {
+                Text(member?.s("name").orEmpty(),Modifier.padding(12.dp),style=MaterialTheme.typography.titleLarge)
+                Text(user?.email.orEmpty())
+                Button(enabled=!busy,onClick={edit("პროფილის რედაქტირება","profile",listOf(Field("name","სახელი"),Field("city","ქალაქი",r.options("cities"))),mapOf("name" to member?.s("name").orEmpty(),"city" to member?.s("city").orEmpty())){v->r.ref("members",r.uid).update(mapOf("name" to Domain.text(v["name"],100),"city" to v["city"])).await()}}){Text("პროფილის შეცვლა")}
+                TextButton(enabled=!busy,onClick={vm.run({r.auth.currentUser!!.sendEmailVerification().await()})}){Text("ელფოსტის დადასტურების გაგზავნა")}
+                TextButton(enabled=!busy,onClick={vm.run({r.auth.currentUser!!.reload().await();r.auth.currentUser!!.getIdToken(true).await();vm.member.value=r.member()})}){Text("დადასტურებული ელფოსტის განახლება")}
+            }
             if(tab=="support" && !r.admin) {
                 val id=when(BuildConfig.ROLE){"business"->"shop_${r.uid}";"tow"->"driver_${r.uid}";else->r.uid}
                 Button(onClick={detail=Record(id,"pf_support_threads/$id",emptyMap())}){Text("მხარდაჭერის ჩატის გახსნა")}
@@ -145,7 +152,7 @@ fun feed(r: Repository,tab: String): Feed? {
         "archive" -> r.db.collection("pf_archives").document(r.uid).collection("panels").document("customer").collection("items")
         else -> return null
     }
-    val time=if(tab in listOf("driver","drivers","support"))"updatedAt" else "createdAt"
+    val time=if(tab in listOf("driver","drivers","support","confirmations"))"updatedAt" else "createdAt"
     return Feed(tab,label(tab),q.orderBy(time,Query.Direction.DESCENDING))
 }
 fun vehicleFields(r: Repository)=listOf(Field("brand","მარკა",r.brands()),Field("model","მოდელი"),Field("year","წელი"),Field("engine","ძრავი"),Field("vin","VIN",optional=true))

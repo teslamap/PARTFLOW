@@ -22,6 +22,8 @@ jobs:
       - name: Use installed Android SDK
         run: test -f "$ANDROID_HOME/platforms/android-35/android.jar"
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
       - name: Build and test native apps
         working-directory: native-android
         run: |
