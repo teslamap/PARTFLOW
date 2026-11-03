@@ -50,7 +50,7 @@ export function createAdminDeletion({db,auth}){
   try{await auth.deleteUser(uid)}catch(e){if(e.code!=='auth/user-not-found')throw e}
  }
  async function execute({actor,targetType,targetId,confirmation}){
-  if(!safe(actor)||!safe(targetId)||!['account','shop','service','driver'].includes(targetType))throw Error('Invalid deletion target');
+  if(!safe(actor)||!safe(targetId)||!['account','shop','service','driver','chat','support','towRequest'].includes(targetType))throw Error('Invalid deletion target');
   if(actor===targetId||targetType==='account'&&targetId===actor)throw Error('Cannot delete your own admin account');
   if(confirmation!=='DELETE '+targetId)throw Error('Deletion confirmation mismatch');
   const actorProfile=await col('members').doc(actor).get();
@@ -64,7 +64,10 @@ export function createAdminDeletion({db,auth}){
   if(existing.exists&&existing.data().status==='completed')return {deleted:true};
   await job.set({actor,targetType,targetId,status:'pending',updatedAt:FieldValue.serverTimestamp(),createdAt:existing.data()?.createdAt||FieldValue.serverTimestamp()},{merge:true});
   try{
-   if(targetType==='account')await removePerson(targetId);
+   if(targetType==='chat'){const offer=await col('offers').doc(targetId).get();if(!offer.exists)throw Error('Chat not found');for(const name of ['messages','chat_activity','chat_admins','confirmations'])await drain(name,'offerId',targetId);}
+   else if(targetType==='support')await ownDoc('support_threads',targetId);
+   else if(targetType==='towRequest')await ownDoc('tow_requests',targetId);
+   else if(targetType==='account')await removePerson(targetId);
    else if(targetType==='driver'){await ownDoc('tow_drivers',targetId);for(const name of ['tow_requests','tow_offers','tow_quotes','tow_dispatches'])for(const field of ['driverId','ownerId'])await drain(name,field,targetId);await ownDoc('support_threads','driver_'+targetId)}
    else await removeShop(targetId);
    await job.update({status:'completed',updatedAt:FieldValue.serverTimestamp()});
