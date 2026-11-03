@@ -1,0 +1,103 @@
+name: Build four PARTFLOW Android APKs
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/android-four-apks.yml'
+      - 'build-tools/prepare-live-android.mjs'
+      - 'android-overrides/**'
+      - 'package*.json'
+      - 'capacitor.config.ts'
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - role: customer
+            page: mobile-customer.html
+            package: com.partflow.customer
+            label: PARTFLOW Customer
+          - role: business
+            page: shop.html
+            package: com.partflow.business
+            label: PARTFLOW Business
+          - role: tow
+            page: towing.html
+            package: com.partflow.tow
+            label: PARTFLOW Tow
+          - role: admin
+            page: superadmin.html
+            package: com.partflow.admin
+            label: PARTFLOW Admin
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm install --global npm@11.6.2 --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
+      - name: Generate role-isolated Android WebView
+        env:
+          APK_ROLE: ${{ matrix.role }}
+          APK_PAGE: ${{ matrix.page }}
+          APK_PACKAGE: ${{ matrix.package }}
+          APK_LABEL: ${{ matrix.label }}
+          VITE_ANDROID_APPCHECK: '0'
+          VITE_ANDROID_ANON_AUTH: '0'
+        run: |
+          npm run android:setup
+          node build-tools/prepare-live-android.mjs
+          python - <<'PY'
+          import os,re
+          from pathlib import Path
+          page=os.environ['APK_PAGE']
+          package=os.environ['APK_PACKAGE']
+          label=os.environ['APK_LABEL']
+          main=Path('android/app/src/main/java/com/partflow/customer/MainActivity.java')
+          src=main.read_text()
+          src=src.replace('"/PARTFLOW/app.html"','"/PARTFLOW/'+page+'"')
+          src=src.replace('customer-only','role-specific')
+          main.write_text(src)
+          gradle=Path('android/app/build.gradle')
+          s=gradle.read_text()
+          s=re.sub(r'applicationId "com.partflow.customer"', 'applicationId "'+package+'"',s)
+          gradle.write_text(s)
+          strings=Path('android/app/src/main/res/values/strings.xml')
+          s=strings.read_text()
+          s=re.sub(r'<string name="app_name">[^<]*</string>', '<string name="app_name">'+label+'</string>',s)
+          strings.write_text(s)
+          if package!='com.partflow.customer':
+              Path('android/app/google-services.json').unlink(missing_ok=True)
+          PY
+          chmod +x android/gradlew
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew --no-daemon -Pandroid.builder.sdkDownload=false assembleDebug
+      - name: Verify package and signature
+        env:
+          APK_ROLE: ${{ matrix.role }}
+          APK_PACKAGE: ${{ matrix.package }}
+        run: |
+          mkdir -p apk-output
+          cp android/app/build/outputs/apk/debug/app-debug.apk "apk-output/PARTFLOW-${APK_ROLE}.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "apk-output/PARTFLOW-${APK_ROLE}.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "apk-output/PARTFLOW-${APK_ROLE}.apk" > apk-output/package-info.txt
+          grep -F "package: name='${APK_PACKAGE}'" apk-output/package-info.txt
+          sha256sum "apk-output/PARTFLOW-${APK_ROLE}.apk" > apk-output/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PARTFLOW-${{ matrix.role }}-APK
+          path: apk-output/
+          retention-days: 14
+          if-no-files-found: error
