@@ -1,10 +1,10 @@
 /* Keep the existing live workspace inside the available mobile viewport. */
 .mc-chat-launcher{position:fixed;right:max(18px,calc((100vw - 480px)/2 + 18px));bottom:calc(20px + env(safe-area-inset-bottom));z-index:20;width:58px;height:58px;border-radius:50%;border:0;background:var(--ink,#142332);color:var(--orange,#f18b51);box-shadow:0 6px 24px #14233238;display:grid;place-items:center}
 .mc-chat-launcher[hidden]{display:none}
-.mc-chat-popup{position:fixed;inset:auto 0 8px;margin:0 auto;width:calc(100% - 16px);max-width:464px;max-height:none;min-height:0;padding:0 0 env(safe-area-inset-bottom);border:1px solid #e2e9ed;border-radius:18px;background:#f7f8fa;color:var(--ink,#142332);box-shadow:0 12px 40px #14233230;overflow:hidden}
+.mc-chat-popup{position:fixed;inset:auto 0 8px;margin:0 auto;width:calc(100% - 16px);max-width:464px;max-height:none;min-height:0;padding:0 0 env(safe-area-inset-bottom);border:1px solid #e2e9ed;border-radius:18px;background:#171422;color:#f6f0ff;box-shadow:0 12px 40px #120a2430;overflow:hidden}
 .mc-chat-popup[open]{display:flex;flex-direction:column}
 .mc-chat-popup::backdrop{background:#12233280}
-.mc-chat-popup-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-bottom:1px solid #e2e9ed;background:white;flex-shrink:0}
+.mc-chat-popup-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-bottom:1px solid #e2e9ed;background:#171422;color:#fff;flex-shrink:0}
 .mc-chat-popup-head h2{font-size:16px}
 .mc-chat-popup>.commerce{border:0;border-radius:0;padding:0;overflow:hidden}
 .mc-chat-popup .pf-chat-shell{border:0;border-radius:0;overflow:hidden}
@@ -21,7 +21,7 @@
 .mc-chat-popup,.mc-chat-popup *{box-sizing:border-box}
 .mc-chat-launcher,.mc-chat-popup button{cursor:pointer;min-height:44px;font:inherit}
 .mc-chat-popup-head h2{margin:0;line-height:1.5}
-.mc-chat-popup-head .mc-icon{width:44px;height:44px;display:grid;place-items:center;flex-shrink:0;border:1px solid #e5e8eb;background:#fff;color:#142332;border-radius:14px;padding:0}
+.mc-chat-popup-head .mc-icon{width:44px;height:44px;display:grid;place-items:center;flex-shrink:0;border:1px solid #e5e8eb;background:#252033;color:#fff;border-radius:14px;padding:0}
 .mc-chat-launcher:focus-visible,.mc-chat-popup button:focus-visible{outline:3px solid #f18b51;outline-offset:3px}
 .shop-chat-launcher{right:22px}
 .shop-chat-popup{width:calc(100% - 16px);max-width:1100px}
