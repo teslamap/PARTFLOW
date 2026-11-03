@@ -48,6 +48,7 @@ data class Editor(val title: String, val key: String, val fields: List<Field>, v
     var editor by remember { mutableStateOf<Editor?>(null) }
     var tab by rememberSaveable { mutableStateOf("") }
     var detail by remember { mutableStateOf<Record?>(null) }
+    var search by rememberSaveable(tab,user?.uid) { mutableStateOf("") }
     val r=vm.repo
     fun edit(title: String, key: String, fields: List<Field>, initial: Map<String,String> = emptyMap(), save: suspend (Map<String,String>)->Unit) { editor=Editor(title,key,fields,initial,save) }
     val choices = when(BuildConfig.ROLE) {
@@ -90,6 +91,7 @@ data class Editor(val title: String, val key: String, val fields: List<Field>, v
             val rows by vm.rows.collectAsStateWithLifecycle()
             val archived by vm.archives.collectAsStateWithLifecycle()
             val visibleRows=rows.filter { row -> (tab !in listOf("requests","offers") || "${tab}_${row.id}" !in archived) && (tab!="services" || row.s("businessType")=="auto_service") }
+                .filter{(title(it)+" "+it.s("city")+" "+it.id).contains(search,true)}
             val cached by vm.cached.collectAsStateWithLifecycle()
             val more by vm.more.collectAsStateWithLifecycle()
             if(cached)Text("ოფლაინ ასლი · ცვლილებისთვის საჭიროა კავშირი",style=MaterialTheme.typography.labelMedium)
@@ -107,6 +109,7 @@ data class Editor(val title: String, val key: String, val fields: List<Field>, v
                 Button(enabled=!busy,onClick={edit("პროფილის რედაქტირება","profile",listOf(Field("name","სახელი"),Field("city","ქალაქი",r.options("cities"))),mapOf("name" to member?.s("name").orEmpty(),"city" to member?.s("city").orEmpty())){v->r.ref("members",r.uid).update(mapOf("name" to Domain.text(v["name"],100),"city" to v["city"])).await()}}){Text("პროფილის შეცვლა")}
                 TextButton(enabled=!busy,onClick={vm.run({r.auth.currentUser!!.sendEmailVerification().await()})}){Text("ელფოსტის დადასტურების გაგზავნა")}
                 TextButton(enabled=!busy,onClick={vm.run({r.auth.currentUser!!.reload().await();r.auth.currentUser!!.getIdToken(true).await();vm.member.value=r.member()})}){Text("დადასტურებული ელფოსტის განახლება")}
+                TextButton(enabled=!busy,onClick={vm.run({val contact=r.ref("contacts",r.uid).get(Source.SERVER).await();edit("პირადი საკონტაქტო ნომერი","contact",listOf(Field("phone","ტელეფონი +9955XXXXXXXX")),mapOf("phone" to contact.getString("phone").orEmpty())){v->r.ref("contacts",r.uid).set(mapOf("phone" to Domain.phone(v["phone"].orEmpty()),"phoneVerified" to false,"updatedAt" to r.now())).await()}})}){Text("საკონტაქტო ნომერი")}
             }
             if(tab=="settings" && r.admin)Settings(vm,::edit)
             if(tab=="support" && !r.admin) {
@@ -122,6 +125,7 @@ data class Editor(val title: String, val key: String, val fields: List<Field>, v
                 if(more)TextButton(onClick={vm.loadMore()}){Text("მეტი ბიზნესის ჩატვირთვა")}
                 return@Column
             }
+            if(feed!=null)OutlinedTextField(search,{search=it},label={Text("ძებნა ჩატვირთულ ჩანაწერებში")},modifier=Modifier.fillMaxWidth(),singleLine=true)
             LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(10.dp),contentPadding=PaddingValues(vertical=12.dp)) {
                 if(visibleRows.isEmpty())item { Text("ჩანაწერები არ არის",Modifier.padding(16.dp)) }
                 items(visibleRows,key={it.path}) { row ->
@@ -170,7 +174,7 @@ fun requestFields(r: Repository)=vehicleFields(r)+listOf(Field("category","კ�
 
 @Composable fun Login(vm: AppModel) {
     val context=androidx.compose.ui.platform.LocalContext.current
-    var email by rememberSaveable { mutableStateOf("") }; var password by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }; var password by remember { mutableStateOf("") }
     val busy by vm.busy.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical=24.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
         Text("შედი PARTFLOW-ში",style=MaterialTheme.typography.headlineMedium)

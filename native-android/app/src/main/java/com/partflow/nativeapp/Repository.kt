@@ -128,6 +128,12 @@ class Repository(val auth: FirebaseAuth, val db: FirebaseFirestore, val local: L
         val value = mutableMapOf<String,Any?>("name" to Domain.text(v["name"],100), "city" to v["city"], "phone" to Domain.text(v["phone"],30), "status" to "pending")
         require(v["city"] in options("cities"))
         if (!service) value["rulesMap"] = mapOf("${v["brand"] ?: "*"}~${v["model"] ?: "*"}~${v["category"] ?: "*"}" to true)
+        // A missing child service is not readable by ownerId rules. Create it
+        // directly, just like the web client; never weaken those shared rules.
+        if(service) {
+            r.set(value+mapOf("ownerId" to uid,"businessType" to "auto_service","parentShopId" to uid,"rulesMap" to mapOf("*~*~*" to true),"createdAt" to now())).await()
+            return
+        }
         db.runTransaction { tx ->
             val old = tx.get(r)
             if (old.exists()) tx.update(r,value)
@@ -266,5 +272,18 @@ class Repository(val auth: FirebaseAuth, val db: FirebaseFirestore, val local: L
             require(thread.getString("status")=="open") { "ჯერ გახსენი მხარდაჭერის სესია" }
             tx.set(m,mapOf("senderId" to uid,"text" to Domain.text(text,2000),"session" to thread.getLong("session"),"createdAt" to now()))
         }.await()
+    }
+    suspend fun adminSupport(target: Record): Record {
+        require(admin)
+        val kind=when(target.path.substringBefore('/')){"pf_shops"->"shop";"pf_tow_drivers"->"driver";else->"customer"}
+        val owner=target.s("ownerId").ifEmpty{target.id}
+        val id=when(kind){"shop"->"shop_$owner";"driver"->"driver_$owner";else->owner}
+        val r=ref("support_threads",id)
+        db.runTransaction { tx ->
+            val old=tx.get(r)
+            if(!old.exists())tx.set(r,mapOf("ownerId" to owner,"kind" to kind,"status" to "open","session" to 1,"createdAt" to now(),"updatedAt" to now()))
+            else if(old.getString("status")!="open")tx.update(r,mapOf("status" to "open","session" to ((old.getLong("session")?:0)+1),"updatedAt" to now()))
+        }.await()
+        return r.get(Source.SERVER).await().record()
     }
 }

@@ -101,6 +101,7 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
             if(row.s(key).isNotEmpty())Text("${fieldLabel(key)}: ${row.s(key)}")
         }
         TextButton(enabled=!busy,onClick={vm.run({row=r.db.document(row.path).get(Source.SERVER).await().record()})}){Text("განახლება")}
+        if(r.admin && kind in listOf("pf_members","pf_shops","pf_tow_drivers") && row.s("role")!="superadmin")OutlinedButton(enabled=!busy,onClick={vm.run({row=r.adminSupport(row);section="supportMessages"})}){Text("მხარდაჭერის საუბრის დაწყება")}
         when(kind) {
             "pf_requests" -> {
                 if(BuildConfig.ROLE=="business" && row.s("status")=="open")Button(enabled=!busy,onClick={ edit("შეთავაზების გაგზავნა","offer:${row.id}",listOf(Field("price","ფასი ₾"),Field("condition","მდგომარეობა",listOf("ახალი","მეორადი")),Field("delivery","მიწოდების პირობები"),Field("note","კომენტარი")),emptyMap()){r.offer(row,it)} }){Text("შეთავაზება")}

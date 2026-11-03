@@ -95,9 +95,10 @@ loopback address. No production account or record is created by these tests.
 
 ## Remaining release gates
 
-- Complete and test full web feature parity: private phone
-  contact/verification and optional API-backed features; background notifications;
-  superadmin directory search and starting support sessions on behalf of users.
+- Complete and test full web feature parity: phone verification and optional
+  API-backed features; background notifications and full administrative audit
+  navigation/rollback. Private contact editing, loaded-directory search and
+  starting support sessions on behalf of users are implemented.
 - Finish device-based end-to-end UI checks for each role, including background
   recovery, offline restart, permission revocation, photo selection, accessibility,
   keyboard/back navigation and upgrade behavior.

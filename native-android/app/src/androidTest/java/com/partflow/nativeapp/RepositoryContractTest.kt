@@ -79,4 +79,21 @@ class RepositoryContractTest {
         driver.tow(row,"claim","50");customer.tow(row,"confirm");driver.tow(row,"advance");driver.tow(row,"advance");customer.tow(row,"complete")
         assertEquals("completed",customer.ref("tow_requests",id).get(Source.SERVER).await().getString("status"))
     }
+    @Test fun ownedServiceCatalogAndPrivateCustomerOrder()=runBlocking {
+        val customer=client();val business=client();val stranger=client()
+        business.shop(mapOf("_id" to "unused","name" to "მაღაზია","phone" to "+995555123456","city" to "თბილისი","brand" to "*","model" to "*","category" to "*"))
+        val child=business.db.collection("pf_shops").document().id
+        business.shop(mapOf("_id" to child,"name" to "სერვისი","phone" to "+995555123456","city" to "თბილისი"),true)
+        val id="service_$child";approve("shops",id)
+        val item=business.db.collection("pf_shops").document().id
+        business.serviceRecord(id,"catalog",mapOf("_id" to item,"name" to "დიაგნოსტიკა","description" to "ტესტი","duration" to "30"))
+        business.serviceRecord(id,"hours",weekDefaults())
+        business.serviceRecord(id,"staff",weekDefaults()+mapOf("_id" to "staff1","name" to "ხელოსანი","specialty" to "დიაგნოსტიკა","serviceIds" to item))
+        assertEquals("დიაგნოსტიკა",customer.ref("shops",id).collection("catalog").document(item).get(Source.SERVER).await().getString("name"))
+        val order=customer.ref("shops",id).collection("serviceOrders").document()
+        order.set(mapOf("businessId" to id,"customerId" to customer.uid,"description" to "დიაგნოსტიკა მჭირდება","status" to "pending","createdAt" to customer.now(),"updatedAt" to customer.now())).await()
+        assertTrue(runCatching{stranger.db.document(order.path).get(Source.SERVER).await()}.isFailure)
+        business.db.document(order.path).update(mapOf("status" to "accepted","updatedAt" to business.now())).await()
+        assertEquals("accepted",customer.db.document(order.path).get(Source.SERVER).await().getString("status"))
+    }
 }
