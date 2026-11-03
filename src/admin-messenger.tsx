@@ -1,5 +1,6 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {addDoc,collection,doc,getDocs,limit,markRaw,orderBy,onSnapshot,query,serverTimestamp,setDoc,updateDoc,where} from 'firebase/firestore';
+import type {FormEvent,ReactNode} from 'react';
+import {addDoc,collection,doc,getDocs,limit,orderBy,onSnapshot,query,serverTimestamp,setDoc,updateDoc,where} from 'firebase/firestore';
 import {ArrowLeft,Check,CheckCheck,ChevronRight,ClipboardList,Clock3,Headset,Image as PhotoIcon,LockKeyhole,MessageCircle,Package,Search,Send,ShieldCheck,ShoppingBag,UserRound,Wrench,X} from 'lucide-react';
 import {db} from './firebase';
 import {chatClosed,joinChat,markChatRead,writeChatMessage} from './chat-workflow.mjs';
@@ -24,7 +25,7 @@ function Avatar({kind='shop',name='მ'}:{kind?:string,name?:string}){
  const Icon=kind==='shop'?ShoppingBag:kind==='driver'?Wrench:kind==='service'?Wrench:UserRound;
  return <span className={'pfm-avatar pfm-avatar-'+kind} aria-hidden="true"><Icon size={20}/></span>;
 }
-function MessengerFrame({title,eyebrow,count,screen,setScreen,inbox,thread,info}:{title:string,eyebrow:string,count:number,screen:Screen,setScreen:(s:Screen)=>void,inbox:React.ReactNode,thread:React.ReactNode,info:React.ReactNode}){
+function MessengerFrame({title,eyebrow,count,screen,setScreen,inbox,thread,info}:{title:string,eyebrow:string,count:number,screen:Screen,setScreen:(s:Screen)=>void,inbox:ReactNode,thread:ReactNode,info:ReactNode}){
  return <section className={'pfm pfm-screen-'+screen} aria-label={title}>
   <div className="pfm-heading"><div><span className="pfm-eyebrow">{eyebrow}</span><h2>{title}</h2><p>{count} საუბარი · ერთიანი სამუშაო სივრცე</p></div><span className="pfm-live"><i/> LIVE</span></div>
   <div className="pfm-shell">
@@ -39,7 +40,7 @@ function InboxHead({title,subtitle,search,setSearch,filters,filter,setFilter}:{t
  return <div className="pfm-inbox-head"><span className="pfm-kicker">{subtitle}</span><h3>{title}</h3><label className="pfm-search"><Search size={18}/><input aria-label="საუბრების ძებნა" value={search} onChange={e=>setSearch(e.target.value)} placeholder="მოძებნე საუბარი..."/></label><div className="pfm-filters">{filters.map(([key,name])=><button type="button" key={key} aria-pressed={filter===key} onClick={()=>setFilter(key)}>{name}</button>)}</div></div>;
 }
 function Empty({message}:{message:string}){return <div className="pfm-empty"><MessageCircle size={32}/><p>{message}</p></div>}
-function MessageComposer({value,setValue,send,disabled,placeholder='შეტყობინება...',note}:{value:string,setValue:(v:string)=>void,send:(e:React.FormEvent)=>void,disabled?:boolean,placeholder?:string,note?:string}){
+function MessageComposer({value,setValue,send,disabled,placeholder='შეტყობინება...',note}:{value:string,setValue:(v:string)=>void,send:(e:FormEvent)=>void,disabled?:boolean,placeholder?:string,note?:string}){
  return <div className="pfm-compose">{note&&<small>{note}</small>}<form onSubmit={send}><textarea rows={1} maxLength={2000} aria-label="შეტყობინება" placeholder={placeholder} value={value} disabled={disabled} onChange={e=>setValue(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();if(value.trim()&&!disabled)e.currentTarget.form?.requestSubmit()}}}/><button type="submit" disabled={disabled||!value.trim()} aria-label="შეტყობინების გაგზავნა"><Send size={19}/></button></form></div>;
 }
 export function AdminMessenger({mode,data,uid,targetOfferId}:{mode:'chat'|'support',data:Row,uid:string,targetOfferId?:string}){
@@ -67,7 +68,7 @@ function AdminBusinessMessages({data,uid,targetOfferId}:{data:Row,uid:string,tar
  const filtered=conversations.filter(o=>{const r=requestById.get(o.requestId),text=[o.shopName,r?.brand,r?.model,r?.part,r?.id].join(' ').toLocaleLowerCase('ka');return text.includes(search.trim().toLocaleLowerCase('ka'))&&(filter==='all'||filter==='unread'&&unread(o)>0||filter==='active'&&!chatClosed(r,o.id))});
  const choose=(id:string)=>{setSelected(id);setDraft('');setError('');setScreen('thread')};
  async function perform(fn:()=>Promise<void>){setBusy(true);setError('');try{await fn()}catch(e:any){setError(e.message||'მოქმედება ვერ შესრულდა')}finally{setBusy(false)}}
- const send=(e:React.FormEvent)=>{e.preventDefault();const value=draft.trim();if(!value||!offer||!joined.value||closed||busy)return;void perform(async()=>{await writeChatMessage(db,uid,offer.id,value,{admin:true});setDraft('')})};
+ const send=(e:FormEvent)=>{e.preventDefault();const value=draft.trim();if(!value||!offer||!joined.value||closed||busy)return;void perform(async()=>{await writeChatMessage(db,uid,offer.id,value,{admin:true});setDraft('')})};
  const related=offers.filter(o=>o.requestId===offer?.requestId).sort((a,b)=>Number(a.price||0)-Number(b.price||0));
  const photos:Array<string>=Array.isArray(request?.photos)?request.photos.filter((p:any)=>typeof p==='string'&&(p.startsWith('https://')||p.startsWith('data:image/'))).slice(0,6):[];
  const renderedMessages=[...messages.rows].reverse();
@@ -104,7 +105,7 @@ function AdminSupportMessages({uid}:{uid:string}){
  const choose=(id:string)=>{setSelected(id);setDraft('');setError('');setScreen('thread')};
  async function perform(fn:()=>Promise<void>){setBusy(true);setError('');try{await fn()}catch(e:any){setError(e.message||'მოქმედება ვერ შესრულდა')}finally{setBusy(false)}}
  const changeSession=(open:boolean)=>void perform(async()=>{const ref=doc(db,'pf_support_threads',selected);if(open&&!thread.value){if(!candidate)throw Error('მოძებნე და აირჩიე ადრესატი');await setDoc(ref,{ownerId:candidate.ownerId,kind:candidate.kind,status:'open',session:1,createdAt:serverTimestamp(),updatedAt:serverTimestamp()})}else if(thread.value){if((open&&active)||(!open&&!active))return;await updateDoc(ref,{status:open?'open':'closed',session:open?Number(thread.value.session||0)+1:Number(thread.value.session||1),updatedAt:serverTimestamp()})}});
- const send=(e:React.FormEvent)=>{e.preventDefault();const value=draft.trim();if(!value||!active||busy)return;void perform(async()=>{await addDoc(collection(db,'pf_support_threads',selected,'messages'),{senderId:uid,text:value,session:thread.value?.session||1,createdAt:serverTimestamp()});setDraft('')})};
+ const send=(e:FormEvent)=>{e.preventDefault();const value=draft.trim();if(!value||!active||busy)return;void perform(async()=>{await addDoc(collection(db,'pf_support_threads',selected,'messages'),{senderId:uid,text:value,session:thread.value?.session||1,createdAt:serverTimestamp()});setDraft('')})};
  const rendered=[...messages.rows].reverse();
  return <MessengerFrame title="მხარდაჭერა" eyebrow="PARTFLOW / ADMIN / SUPPORT" count={threads.rows.length} screen={screen} setScreen={setScreen}
  inbox={<><InboxHead title="მხარდაჭერა" subtitle="მომხმარებლები · მაღაზიები · მძღოლები" search={search} setSearch={setSearch} filter={filter} setFilter={setFilter} filters={[[ 'all','ყველა'],['open','აქტიური'],['closed','დასრულებული']]}/><div className="pfm-inbox-label">დახმარების საუბრები</div><div className="pfm-items">{filtered.map(t=><button key={t.id} className={'pfm-item'+(selected===t.id?' selected':'')} onClick={()=>choose(t.id)}><Avatar kind={t.kind==='driver'?'driver':t.kind==='shop'?'shop':'customer'}/><span className="pfm-item-main"><strong>{t.name||t.ownerId||t.id}</strong><small>{kindName(t.kind)} · საუბარი #{t.session||1}</small><em>{t.status==='open'?'აქტიური საუბარი':'დასრულებული საუბარი'}</em></span><span className="pfm-item-side"><time>{time(t.updatedAt)}</time><span className={'pfm-mini-status'+(t.status==='open'?' open':'')}/></span></button>)}{q&&extra.map(p=><button key={p.id} className="pfm-item" onClick={()=>choose(p.id)}><Avatar kind={p.kind==='shop'?'shop':p.kind==='driver'?'driver':'customer'}/><span className="pfm-item-main"><strong>{p.name}</strong><small>{kindName(p.kind)}</small><em>ახალი მხარდაჭერის საუბარი</em></span><ChevronRight size={16}/></button>)}{!filtered.length&&!extra.length&&<Empty message={q?'შედეგი ვერ მოიძებნა':'მხარდაჭერის ისტორია ჯერ ცარიელია'}/>}</div><div className="pfm-inbox-foot"><Headset size={16}/> ყველა სესიის ისტორია შენარჩუნებულია</div></>}
