@@ -4,3 +4,17 @@
 .commerce .pf-chat-confirm-card h3{font-size:13px;line-height:1.6}.commerce .pf-chat-message.admin-message .pf-chat-admin-label{color:#6d4994}
 
 .pf-chat-service-price{display:grid;grid-template-columns:1fr auto;gap:7px 12px;padding:10px;margin:10px 0;border-radius:8px;background:#f5f7f8;font-size:11px}.pf-chat-service-price span{color:#687f8b}.pf-chat-service-price strong{color:#193440;text-align:right}.pf-chat-service-toggle{display:flex!important;grid-column:1/-1;align-items:center;gap:8px}.commerce .pf-chat-terms-form .pf-chat-service-toggle input{width:18px;min-height:18px;accent-color:#e87739}
+
+.pf-chat-mode{display:flex;gap:5px;padding:10px;background:#f5f3fa;border-bottom:1px solid #e2e0e9}
+.commerce .pf-chat-mode button{flex:1;min-width:0;padding:10px 5px;border:0;border-radius:10px;background:transparent;font-size:12px;font-weight:700;color:#564c68}
+.commerce .pf-chat-mode button[aria-pressed=true]{background:#7428b5;color:#fff}
+.commerce .pf-chat-search{display:block;width:calc(100% - 28px);margin:0 14px 14px;border-radius:12px;background:#f5f3fa}
+.pf-chat-extra{padding:14px;border-top:1px solid #e2e0e9}.pf-chat-extra h3{font-size:13px;margin:0 0 9px}.pf-chat-extra p{font-size:12px;margin:7px 0}
+.commerce .pf-chat-extra button{width:100%;display:flex;justify-content:space-between;gap:12px;text-align:left;padding:13px;margin:5px 0;background:#f5f3fa;border-radius:12px}
+.pf-chat-extra button strong{color:#7428b5;white-space:nowrap}
+html[data-role="mobile-customer"] .pf-chat-mode{background:#211c30;border-color:#393047}
+html[data-role="mobile-customer"] .commerce .pf-chat-mode button{color:#d3c6e4}
+html[data-role="mobile-customer"] .commerce .pf-chat-mode button[aria-pressed=true]{background:#852cc9;color:white}
+html[data-role="mobile-customer"] .pf-chat-extra{border-color:#393047;color:#fff}
+html[data-role="mobile-customer"] .commerce .pf-chat-extra button{background:#292239;color:#fff}
+html[data-role="mobile-customer"] .pf-chat-extra button strong{color:#d39aff}
