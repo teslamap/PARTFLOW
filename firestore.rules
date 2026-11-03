@@ -329,6 +329,16 @@ function validPackage(d){return d.keys().hasAll(['name','createdAt','updatedAt']
       );
       allow delete: if false;
     }
+    match /pf_support_threads/{uid} {
+      allow read: if signed() && (request.auth.uid==uid || superadmin());
+      allow create: if signed() && request.auth.uid==uid && request.resource.data.keys().hasOnly(['ownerId','createdAt','updatedAt']) && request.resource.data.ownerId==uid && request.resource.data.createdAt==request.time && request.resource.data.updatedAt==request.time;
+      allow update,delete: if false;
+      match /messages/{id} {
+        allow read: if signed() && (request.auth.uid==uid || superadmin());
+        allow create: if signed() && (request.auth.uid==uid || superadmin()) && exists(/databases/$(database)/documents/pf_support_threads/$(uid)) && request.resource.data.keys().hasOnly(['senderId','text','createdAt']) && request.resource.data.senderId==request.auth.uid && text(request.resource.data.text,2000) && request.resource.data.createdAt==request.time;
+        allow update,delete: if false;
+      }
+    }
     match /{document=**} {allow read,write: if false;}
   }
 }
