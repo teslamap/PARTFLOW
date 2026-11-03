@@ -75,6 +75,7 @@ function validPackage(d){return d.keys().hasAll(['name','createdAt','updatedAt']
           && (!serviceBusiness(resource.data)||resource.data.status!='suspended')
           && request.resource.data.status in (serviceBusiness(resource.data)?['pending','pending_approval']:['pending'])
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','city','phone','rulesMap','status','businessType','mapLocation','mapAddress']))
+        || (superadmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['packageId','packageAssignedAt','packageExpiresAt']) && (!request.resource.data.keys().hasAny(['packageId']) || request.resource.data.packageId==null || (request.resource.data.packageId is string && exists(/databases/$(database)/documents/pf_packages/$(request.resource.data.packageId)))))
         || (admin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mapLocation','mapAddress']))
         || (!serviceBusiness(resource.data) && admin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
         || (serviceBusiness(resource.data) && superadmin()
