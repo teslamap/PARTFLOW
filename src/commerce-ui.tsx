@@ -10,9 +10,9 @@ import {SupportChat} from './support-chat';
 import {enableAndroidPush} from './push';
 import './commerce.css';
 type Row=Record<string,any>;
-function useRows(path:string[],filters:any[],key:string){
+function useRows(path:string[],filters:any[],key:string,enabled=true){
  const [rows,setRows]=useState<Row[]>([]),[error,setError]=useState('');
- useEffect(()=>{setRows([]);setError('');return onSnapshot(query(collection(db,path[0],...path.slice(1)),...filters),s=>{setRows(s.docs.map(d=>({...d.data(),id:d.id})));setError('')},e=>setError(e.message))},[key]);
+ useEffect(()=>{setRows([]);setError('');if(!enabled)return;return onSnapshot(query(collection(db,path[0],...path.slice(1)),...filters),s=>{setRows(s.docs.map(d=>({...d.data(),id:d.id})));setError('')},e=>setError(e.message))},[key,enabled]);
  return {rows,error};
 }
 const date=(v:any)=>v?.toDate?.().toLocaleString('ka-GE')||'იგზავნება…';
@@ -23,10 +23,10 @@ export function CommerceHub({data,admin=false,demo=false,onOpenRequest,target}:a
 function Hub({data,uid,admin,onOpenRequest,target}:any){const feature=useFeatures();
  const [tab,setTab]=useState('chat'),[offerId,setOfferId]=useState(''),[selected,setSelected]=useState(''),[error,setError]=useState(''),[marking,setMarking]=useState(false),[unreadOnly,setUnreadOnly]=useState(false);
  useEffect(()=>{if(target?.orderId){setSelected(target.orderId);setTab('orders')}else if(target?.offerId){setOfferId(target.offerId);setTab('chat')}},[target]);
- const orders=useRows(['pf_orders'],[...(admin?[]:[where(document.documentElement.dataset.role==='shop'?'shopId':'ownerId','==',uid)]),orderBy('createdAt','desc'),limit(300)],uid+':orders');
- const receipts=useRows(['pf_inbox',uid,'receipts'],[],uid+':receipts');
- const incoming=useRows(['pf_messages'],[where(document.documentElement.dataset.role==='shop'?'shopId':'ownerId','==',uid),orderBy('createdAt','desc'),limit(100)],uid+':incoming');
- const confirmations=useRows(['pf_confirmations'],[...(admin?[]:[where(document.documentElement.dataset.role==='shop'?'shopId':'ownerId','==',uid)]),orderBy('updatedAt','desc'),limit(300)],uid+':confirmations');
+ const orders=useRows(['pf_orders'],[...(admin?[]:[where(document.documentElement.dataset.role==='shop'?'shopId':'ownerId','==',uid)]),orderBy('createdAt','desc'),limit(300)],uid+':orders',tab==='orders'||tab==='notifications');
+ const receipts=useRows(['pf_inbox',uid,'receipts'],[],uid+':receipts',tab==='notifications');
+ const incoming=useRows(['pf_messages'],[where(document.documentElement.dataset.role==='shop'?'shopId':'ownerId','==',uid),orderBy('createdAt','desc'),limit(100)],uid+':incoming',tab==='notifications');
+ const confirmations=useRows(['pf_confirmations'],[...(admin?[]:[where(document.documentElement.dataset.role==='shop'?'shopId':'ownerId','==',uid)]),orderBy('updatedAt','desc'),limit(300)],uid+':confirmations',tab==='notifications');
  const read=new Set(receipts.rows.map(r=>r.id));
  const notices=buildNotifications({uid,requests:data.requests,offers:data.offers,orders:orders.rows,messages:incoming.rows,confirmations:confirmations.rows});
  const unread=notices.filter(n=>!read.has(n.id)).length;
