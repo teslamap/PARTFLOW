@@ -15,7 +15,7 @@ data class Record(val id: String, val path: String, val data: Map<String, Any?>)
     fun n(key: String) = (data[key] as? Number)?.toLong() ?: 0L
     fun b(key: String) = data[key] == true
 }
-data class Page(val records: List<Record>, val cached: Boolean, val pending: Boolean = false)
+data class Page(val records: List<Record>, val cached: Boolean, val pending: Boolean = false, val cursor: DocumentSnapshot? = null)
 fun DocumentSnapshot.record() = Record(id, reference.path, data.orEmpty())
 
 class Repository(val auth: FirebaseAuth, val db: FirebaseFirestore, val local: LocalDao, val catalog: JSONObject) {
@@ -29,6 +29,8 @@ class Repository(val auth: FirebaseAuth, val db: FirebaseFirestore, val local: L
     suspend fun member(): Record {
         val r = ref("members", uid)
         val user = auth.currentUser!!
+        val existing=r.get(Source.SERVER).await()
+        if(existing.exists())return existing.record()
         db.runTransaction { tx ->
             if (!tx.get(r).exists()) tx.set(r, mapOf("name" to (user.displayName ?: "მომხმარებელი"), "role" to "customer", "createdAt" to now()))
         }.await()
@@ -36,16 +38,22 @@ class Repository(val auth: FirebaseAuth, val db: FirebaseFirestore, val local: L
     }
     fun profile() = callbackFlow<Record?> {
         val registration = ref("members", uid).addSnapshotListener { s, e ->
-            if (e != null) close(e) else trySend(s?.takeIf { it.exists() }?.record())
+            if (e != null) close(e) else if(s!=null && !(s.metadata.isFromCache && !s.exists()))trySend(s.takeIf { it.exists() }?.record())
         }
         awaitClose { registration.remove() }
     }
     fun watch(query: Query) = callbackFlow<Page> {
         val registration = query.addSnapshotListener(MetadataChanges.INCLUDE) { snap, error ->
             if (error != null) close(error)
-            else if (snap != null) trySend(Page(snap.documents.map { it.record() }, snap.metadata.isFromCache, snap.metadata.hasPendingWrites()))
+            else if (snap != null) trySend(Page(snap.documents.map { it.record() }, snap.metadata.isFromCache, snap.metadata.hasPendingWrites(),snap.documents.lastOrNull()))
         }
         awaitClose { registration.remove() }
+    }
+    fun watchDocument(path: String) = callbackFlow<Record?> {
+        val registration=db.document(path).addSnapshotListener { s,e ->
+            if(e!=null)close(e) else if(s!=null && !(s.metadata.isFromCache && !s.exists()))trySend(s.takeIf{it.exists()}?.record())
+        }
+        awaitClose{registration.remove()}
     }
     fun query(collection: String, field: String? = null, value: Any? = null): Query {
         val q = db.collection("pf_$collection")

@@ -31,7 +31,8 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
     val owner=LocalLifecycleOwner.current
     LaunchedEffect(tab,owner) {
         owner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            r.watch(r.ref(if(tab=="available")"tow_drivers" else "shops",r.uid).parent.whereEqualTo(com.google.firebase.firestore.FieldPath.documentId(),r.uid)).collect { page -> profile=page.records.firstOrNull() }
+            try { r.watchDocument(r.ref(if(tab=="available")"tow_drivers" else "shops",r.uid).path).collect { profile=it } }
+            catch(e: Exception){if(e is kotlinx.coroutines.CancellationException)throw e; profile=null;vm.notice.value=e.localizedMessage.orEmpty()}
         }
     }
     val p=profile
@@ -81,6 +82,13 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
     var row by remember(original.path) { mutableStateOf(original) }
     val busy by vm.busy.collectAsStateWithLifecycle()
     var section by remember(original.path) { mutableStateOf("") }
+    val lifecycle=LocalLifecycleOwner.current
+    LaunchedEffect(row.path,lifecycle) {
+        lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            try { r.watchDocument(row.path).collect { value -> if(value!=null)row=value } }
+            catch(e: Exception){if(e is kotlinx.coroutines.CancellationException)throw e;vm.notice.value=e.localizedMessage.orEmpty()}
+        }
+    }
     val kind=row.path.substringBefore('/')
     val context=LocalContext.current
     val noteFields=listOf(Field("note","კომენტარი"))
@@ -98,6 +106,7 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
                     r.db.runTransaction { tx -> val ref=r.db.document(row.path);val old=tx.get(ref);val hidden=old.getString("status")=="hidden";tx.update(ref,mapOf("status" to if(hidden)old.getString("previousStatus") else "hidden","previousStatus" to if(hidden)old.getString("previousStatus") else old.getString("status"))) }.await()
                 })}){Text(if(row.s("status")=="hidden")"აღდგენა" else "დამალვა")}
                 TextButton(onClick={section=if(section=="offers")"" else "offers"}){Text("შეთავაზებების ნახვა")}
+                if(r.admin)OutlinedButton(enabled=!busy,onClick={edit("მოთხოვნისა და მიმოწერის სამუდამო წაშლა","delete:${row.id}",listOf(Field("confirm","დასადასტურებლად ჩაწერე DELETE")),emptyMap()){require(it["confirm"]=="DELETE");r.deleteRequest(row.id)}}){Text("სამუდამოდ წაშლა")}
             }
             "pf_offers" -> {
                 TextButton(onClick={section="chat"}){Text("ჩატი")}
@@ -127,6 +136,11 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
                 }){Text("მისამართი რუკაზე")}
             }
             "pf_shops","pf_tow_drivers" -> {
+                if(r.admin)TextButton(enabled=!busy,onClick={vm.run({
+                    val plans=r.query("packages").limit(100).get(Source.SERVER).await().documents.map{it.record()}.filter{it.data["active"]!=false}
+                    val options=plans.map{it.id+" · "+title(it)}
+                    edit("პაკეტის მინიჭება","assign:${row.id}",listOf(Field("plan","პაკეტი",options),Field("expires","ვადა YYYY-MM-DD",optional=true),Field("price","ინდივიდუალური ფასი",optional=true)),emptyMap()){v->val plan=plans.first{it.id==v.getValue("plan").substringBefore(" · ")};r.assignPackage(row,plan,v["expires"].orEmpty(),v["price"].orEmpty())}
+                })}){Text("პაკეტის მინიჭება")}
                 if(r.admin) listOf("approved","suspended","rejected").forEach { status ->
                     Button(enabled=!busy,onClick={edit("სტატუსი: $status","moderate:${row.id}:$status",listOf(Field("reason","მიზეზი",optional=status=="approved")),emptyMap()){r.moderate(row,status,it["reason"].orEmpty())}}){Text(mapOf("approved" to "დამტკიცება","suspended" to "შეჩერება","rejected" to "უარყოფა").getValue(status))}
                 }
@@ -135,8 +149,17 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
                     if(row.s("ownerId")==r.uid) {
                         Button(enabled=!busy,onClick={edit("მომსახურების დამატება","catalog:${row.id}",listOf(Field("name","სახელი"),Field("description","აღწერა",optional=true),Field("duration","ხანგრძლივობა წუთებში")),emptyMap()) { v -> val duration=v.getValue("duration").toInt();require(duration in 15..480 && duration%15==0);r.db.document(row.path).collection("catalog").document(v.getValue("_id")).set(mapOf("name" to Domain.text(v["name"],100),"description" to v["description"].orEmpty(),"durationMinutes" to duration,"active" to true,"createdAt" to r.now(),"updatedAt" to r.now())).await() }}){Text("+ მომსახურება")}
                         TextButton(onClick={section="serviceOrders"}){Text("სერვისის შეკვეთები")}
+                        OutlinedButton(enabled=!busy,onClick={edit("სამუშაო საათები","hours:${row.id}",weekFields(),weekDefaults()){r.serviceRecord(row.id,"hours",it)}}){Text("სამუშაო საათები")}
+                        OutlinedButton(enabled=!busy,onClick={vm.run({
+                            val catalog=r.db.document(row.path).collection("catalog").whereEqualTo("active",true).limit(100).get(Source.SERVER).await().documents
+                            require(catalog.isNotEmpty()){ "ჯერ დაამატე მომსახურება" }
+                            edit("თანამშრომლის დამატება","staff:${row.id}",listOf(Field("name","სახელი"),Field("specialty","სპეციალობა",optional=true),Field("serviceId","მომსახურება",catalog.map{it.id}))+weekFields(),weekDefaults()){r.serviceRecord(row.id,"staff",it)}
+                        })}){Text("+ თანამშრომელი")}
+                        OutlinedButton(enabled=!busy,onClick={edit("დასვენების დღე","closure:${row.id}",listOf(Field("date","თარიღი YYYY-MM-DD"),Field("staffId","თანამშრომლის კოდი (ცარიელი = ყველა)",optional=true)),emptyMap()){r.serviceRecord(row.id,"closures",it)}}){Text("+ დასვენების დღე")}
                     }
                     TextButton(onClick={section="catalog"}){Text("მომსახურებების სია")}
+                    TextButton(onClick={section="staff"}){Text("თანამშრომლები")}
+                    TextButton(onClick={section="closures"}){Text("დასვენების დღეები")}
                 }
             }
             "pf_support_threads" -> {
@@ -146,6 +169,8 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
                 TextButton(onClick={section="supportMessages"}){Text("ისტორია")}
             }
             "pf_archives" -> Button(enabled=!busy,onClick={vm.run({r.db.document(row.path).delete().await()})}){Text("არქივიდან აღდგენა")}
+            "pf_packages" -> if(r.admin)Button(enabled=!busy,onClick={edit("პაკეტის რედაქტირება","package:${row.id}",packageFields(),row.data.mapValues{it.value?.toString().orEmpty()}){r.packageSave(it,row)}}){Text("რედაქტირება")}
+            "pf_deletions" -> if(r.admin)Button(enabled=!busy,onClick={vm.run({r.deleteRequest(row.id)})}){Text("წაშლის გაგრძელება")}
             "pf_garage" -> {
                 Button(enabled=!busy,onClick={edit("ნაწილის მოთხოვნა","request-car:${row.id}",requestFields(r),row.data.mapValues{it.value?.toString().orEmpty()}){r.request(it)}}){Text("ამ ავტომობილისთვის ნაწილის ძებნა")}
                 OutlinedButton(enabled=!busy,onClick={vm.run({r.db.document(row.path).delete().await()})}){Text("ავტომობილის წაშლა")}
@@ -169,6 +194,7 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
         if(section=="supportMessages")FeedList(vm,Feed("support:${row.id}","მხარდაჭერა",r.db.document(row.path).collection("messages").orderBy("createdAt",Query.Direction.DESCENDING)))
         if(section=="catalog")FeedList(vm,Feed("catalog:${row.id}","კატალოგი",r.db.document(row.path).collection("catalog").let { if(row.s("ownerId")==r.uid || r.admin)it else it.whereEqualTo("active",true) }.orderBy("createdAt",Query.Direction.DESCENDING)))
         if(section=="serviceOrders")FeedList(vm,Feed("serviceOrders:${row.id}","შეკვეთები",r.db.document(row.path).collection("serviceOrders").orderBy("createdAt",Query.Direction.DESCENDING))) { selected -> row=selected;section="" }
+        if(section in listOf("staff","closures"))FeedList(vm,Feed("$section:${row.id}",section,r.db.document(row.path).collection(section).let { if(row.s("ownerId")==r.uid||r.admin)it else it.whereEqualTo("active",true) }.orderBy("createdAt",Query.Direction.DESCENDING)))
         Spacer(Modifier.height(24.dp))
     }
 }

@@ -53,7 +53,7 @@ data class Editor(val title: String, val key: String, val fields: List<Field>, v
     val choices = when(BuildConfig.ROLE) {
         "business" -> listOf("requests","offers","confirmations","orders","business","services","support")
         "tow" -> listOf("available","assigned","driver","support")
-        "superadmin" -> listOf("shops","drivers","requests","orders","members","categories","packages","support")
+        "superadmin" -> listOf("shops","drivers","requests","orders","members","categories","packages","deletions","support")
         else -> listOf("requests","offers","confirmations","orders","garage","tow","services","serviceOrders","support","archive")
     }
     LaunchedEffect(user?.uid) { tab=choices.first(); detail=null; editor=null }
@@ -97,6 +97,7 @@ data class Editor(val title: String, val key: String, val fields: List<Field>, v
             if(tab=="business")Button(enabled=!busy,onClick={edit("მაღაზიის განაცხადი","shop",listOf(Field("name","სახელი"),Field("phone","ტელეფონი"),Field("city","ქალაქი",r.options("cities")),Field("brand","მარკა",listOf("*")+r.brands()),Field("model","მოდელი",listOf("*")),Field("category","კატეგორია",listOf("*")+r.options("categories")))){r.shop(it)}}){Text("რეგისტრაცია / ხელახალი განხილვა")}
             if(tab=="services" && BuildConfig.ROLE=="business")Button(enabled=!busy,onClick={edit("ავტოსერვისის დამატება","service",listOf(Field("name","სახელი"),Field("phone","ტელეფონი"),Field("city","ქალაქი",r.options("cities")))) { r.shop(it,true) }}){Text("+ ავტოსერვისი")}
             if(tab=="categories" && r.admin)Button(enabled=!busy,onClick={edit("კატეგორია","category",listOf(Field("name","სახელი"))) { v -> val name=Domain.text(v["name"],80); require(name !in r.options("categories")); r.ref("categories",name).set(mapOf("name" to name,"createdAt" to r.now())).await() }}){Text("+ კატეგორია")}
+            if(tab=="packages" && r.admin)Button(enabled=!busy,onClick={edit("პაკეტის დამატება","package",packageFields(),mapOf("monthlyPriceGEL" to "100","maxServices" to "10","maxStaff" to "5","trialDays" to "30","graceDays" to "5")){r.packageSave(it)}}){Text("+ პაკეტი")}
             if(tab=="support" && !r.admin) {
                 val id=when(BuildConfig.ROLE){"business"->"shop_${r.uid}";"tow"->"driver_${r.uid}";else->r.uid}
                 Button(onClick={detail=Record(id,"pf_support_threads/$id",emptyMap())}){Text("მხარდაჭერის ჩატის გახსნა")}
@@ -139,6 +140,7 @@ fun feed(r: Repository,tab: String): Feed? {
         "services" -> if(BuildConfig.ROLE=="business")r.query("shops","ownerId",r.uid) else r.query("shops","businessType","auto_service").whereEqualTo("status","approved")
         "serviceOrders" -> return Feed(tab,label(tab),r.db.collectionGroup("serviceOrders").whereEqualTo("customerId",r.uid))
         "shops","members","categories","packages" -> r.query(tab)
+        "deletions" -> r.query(tab,"status","pending")
         "support" -> if(r.admin)r.query("support_threads") else return null
         "archive" -> r.db.collection("pf_archives").document(r.uid).collection("panels").document("customer").collection("items")
         else -> return null
