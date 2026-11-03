@@ -140,6 +140,11 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
                 }){Text("მისამართი რუკაზე")}
             }
             "pf_shops","pf_tow_drivers" -> {
+                if(kind=="pf_shops" && (row.s("ownerId")==r.uid || r.admin))OutlinedButton(enabled=!busy,onClick={edit("რუკის მდებარეობა","map:${row.id}",listOf(Field("lat","განედი"),Field("lng","გრძედი"),Field("address","მისამართი")),emptyMap()){v->
+                    val lat=v.getValue("lat").toDouble();val lng=v.getValue("lng").toDouble();require(lat.isFinite()&&lng.isFinite()&&kotlin.math.abs(lat)<=90&&kotlin.math.abs(lng)<=180)
+                    val patch=mapOf<String,Any?>("mapLocation" to mapOf("lat" to lat,"lng" to lng),"mapAddress" to Domain.text(v["address"],300)) + if(r.admin)emptyMap() else mapOf("status" to "pending")
+                    r.db.document(row.path).update(patch).await()
+                }}){Text("მდებარეობის შეცვლა")}
                 if(kind=="pf_shops" && row.s("ownerId")==r.uid && row.s("businessType")!="auto_service") {
                     val specialties=(row.data["rulesMap"] as? Map<*,*>)?.filterValues{it==true}?.keys?.map{it.toString()}.orEmpty()
                     specialties.forEach{Text(it.replace("~"," · "))}
@@ -162,11 +167,11 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
                     if(row.s("ownerId")==r.uid) {
                         Button(enabled=!busy,onClick={edit("მომსახურების დამატება","catalog:${row.id}",listOf(Field("name","სახელი"),Field("description","აღწერა",optional=true),Field("duration","ხანგრძლივობა წუთებში")),emptyMap()) { v -> val duration=v.getValue("duration").toInt();require(duration in 15..480 && duration%15==0);r.db.document(row.path).collection("catalog").document(v.getValue("_id")).set(mapOf("name" to Domain.text(v["name"],100),"description" to v["description"].orEmpty(),"durationMinutes" to duration,"active" to true,"createdAt" to r.now(),"updatedAt" to r.now())).await() }}){Text("+ მომსახურება")}
                         TextButton(onClick={section="serviceOrders"}){Text("სერვისის შეკვეთები")}
-                        OutlinedButton(enabled=!busy,onClick={edit("სამუშაო საათები","hours:${row.id}",weekFields(),weekDefaults()){r.serviceRecord(row.id,"hours",it)}}){Text("სამუშაო საათები")}
+                        OutlinedButton(enabled=!busy,onClick={vm.run({val old=r.db.document(row.path).collection("hours").document("weekly").get(Source.SERVER).await();edit("სამუშაო საათები","hours:${row.id}",weekFields(),weekInitial(old.data.orEmpty())){r.serviceRecord(row.id,"hours",it)}})}){Text("სამუშაო საათები")}
                         OutlinedButton(enabled=!busy,onClick={vm.run({
                             val catalog=r.db.document(row.path).collection("catalog").whereEqualTo("active",true).limit(100).get(Source.SERVER).await().documents
                             require(catalog.isNotEmpty()){ "ჯერ დაამატე მომსახურება" }
-                            edit("თანამშრომლის დამატება","staff:${row.id}",listOf(Field("name","სახელი"),Field("specialty","სპეციალობა",optional=true),Field("serviceId","მომსახურება",catalog.map{it.id}))+weekFields(),weekDefaults()){r.serviceRecord(row.id,"staff",it)}
+                            edit("თანამშრომლის დამატება","staff:${row.id}",listOf(Field("name","სახელი"),Field("specialty","სპეციალობა",optional=true),Field("serviceIds","მომსახურება",catalog.map{it.id},multiple=true,labels=catalog.associate{it.id to it.getString("name").orEmpty()}))+weekFields(),weekDefaults()){r.serviceRecord(row.id,"staff",it)}
                         })}){Text("+ თანამშრომელი")}
                         OutlinedButton(enabled=!busy,onClick={edit("დასვენების დღე","closure:${row.id}",listOf(Field("date","თარიღი YYYY-MM-DD"),Field("staffId","თანამშრომლის კოდი (ცარიელი = ყველა)",optional=true)),emptyMap()){r.serviceRecord(row.id,"closures",it)}}){Text("+ დასვენების დღე")}
                     }
@@ -184,7 +189,14 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
             "pf_archives" -> Button(enabled=!busy,onClick={vm.run({r.db.document(row.path).delete().await()})}){Text("არქივიდან აღდგენა")}
             "pf_packages" -> if(r.admin)Button(enabled=!busy,onClick={edit("პაკეტის რედაქტირება","package:${row.id}",packageFields(),row.data.mapValues{it.value?.toString().orEmpty()}){r.packageSave(it,row)}}){Text("რედაქტირება")}
             "pf_deletions" -> if(r.admin)Button(enabled=!busy,onClick={vm.run({r.deleteRequest(row.id)})}){Text("წაშლის გაგრძელება")}
-            "catalog","staff","closures" -> if(BuildConfig.ROLE=="business")OutlinedButton(enabled=!busy,onClick={vm.run({r.db.document(row.path).update(mapOf("active" to !row.b("active"),"updatedAt" to r.now())).await()})}){Text(if(row.b("active"))"გამორთვა" else "ჩართვა")}
+            "catalog","staff","closures" -> if(BuildConfig.ROLE=="business") {
+                OutlinedButton(enabled=!busy,onClick={vm.run({r.db.document(row.path).update(mapOf("active" to !row.b("active"),"updatedAt" to r.now())).await()})}){Text(if(row.b("active"))"გამორთვა" else "ჩართვა")}
+                if(kind=="catalog")OutlinedButton(enabled=!busy,onClick={edit("მომსახურების შეცვლა","edit:${row.path}",listOf(Field("name","სახელი"),Field("description","აღწერა",optional=true),Field("duration","ხანგრძლივობა წუთებში")),row.data.mapValues{it.value?.toString().orEmpty()}+mapOf("duration" to row.s("durationMinutes"))){r.serviceRecord(row.path.split('/')[1],"catalog",it,row.id)}}){Text("რედაქტირება")}
+                if(kind=="staff")OutlinedButton(enabled=!busy,onClick={vm.run({
+                    val catalog=r.ref("shops",row.path.split('/')[1]).collection("catalog").limit(100).get(Source.SERVER).await().documents
+                    edit("თანამშრომლის შეცვლა","edit:${row.path}",listOf(Field("name","სახელი"),Field("specialty","სპეციალობა",optional=true),Field("serviceIds","მომსახურებები",catalog.map{it.id},multiple=true,labels=catalog.associate{it.id to it.getString("name").orEmpty()}))+weekFields(),row.data.mapValues{it.value?.toString().orEmpty()}+weekInitial(row.data)+mapOf("serviceIds" to (row.data["serviceIds"] as? List<*>)?.joinToString(",").orEmpty())){r.serviceRecord(row.path.split('/')[1],"staff",it,row.id)}
+                })}){Text("რედაქტირება")}
+            }
             "pf_garage" -> {
                 Button(enabled=!busy,onClick={edit("ნაწილის მოთხოვნა","request-car:${row.id}",requestFields(r),row.data.mapValues{it.value?.toString().orEmpty()}){r.request(it)}}){Text("ამ ავტომობილისთვის ნაწილის ძებნა")}
                 OutlinedButton(enabled=!busy,onClick={vm.run({r.db.document(row.path).delete().await()})}){Text("ავტომობილის წაშლა")}
@@ -213,9 +225,9 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
         if(section=="offers")FeedList(vm,Feed("offers:${row.id}","შეთავაზებები",r.query("offers","requestId",row.id).let { if(r.admin)it else if(BuildConfig.ROLE=="business")it.whereEqualTo("shopId",r.uid) else it.whereEqualTo("ownerId",r.uid) }.orderBy("createdAt",Query.Direction.DESCENDING))) { selected -> row=selected;section="" }
         if(section=="events")FeedList(vm,Feed("events:${row.id}","ისტორია",r.db.document(row.path).collection("events").orderBy("createdAt",Query.Direction.DESCENDING)))
         if(section=="supportMessages")FeedList(vm,Feed("support:${row.id}","მხარდაჭერა",r.db.document(row.path).collection("messages").orderBy("createdAt",Query.Direction.DESCENDING)))
-        if(section=="catalog")FeedList(vm,Feed("catalog:${row.id}","კატალოგი",r.db.document(row.path).collection("catalog").let { if(row.s("ownerId")==r.uid || r.admin)it else it.whereEqualTo("active",true) }.orderBy("createdAt",Query.Direction.DESCENDING)))
+        if(section=="catalog")FeedList(vm,Feed("catalog:${row.id}","კატალოგი",r.db.document(row.path).collection("catalog").let { if(row.s("ownerId")==r.uid || r.admin)it else it.whereEqualTo("active",true) }.orderBy("createdAt",Query.Direction.DESCENDING))) { selected->row=selected;section="" }
         if(section=="serviceOrders")FeedList(vm,Feed("serviceOrders:${row.id}","შეკვეთები",r.db.document(row.path).collection("serviceOrders").orderBy("createdAt",Query.Direction.DESCENDING))) { selected -> row=selected;section="" }
-        if(section in listOf("staff","closures"))FeedList(vm,Feed("$section:${row.id}",section,r.db.document(row.path).collection(section).let { if(row.s("ownerId")==r.uid||r.admin)it else it.whereEqualTo("active",true) }.orderBy("createdAt",Query.Direction.DESCENDING)))
+        if(section in listOf("staff","closures"))FeedList(vm,Feed("$section:${row.id}",section,r.db.document(row.path).collection(section).let { if(row.s("ownerId")==r.uid||r.admin)it else it.whereEqualTo("active",true) }.orderBy("createdAt",Query.Direction.DESCENDING))) { selected->row=selected;section="" }
         Spacer(Modifier.height(24.dp))
     }
 }

@@ -27,4 +27,10 @@ class DomainTest {
         assertEquals("+995555123456",Domain.phone("+995555123456"))
         assertTrue(runCatching{Domain.year("1949")}.isFailure)
     }
+    @Test fun mapProjectionPreservesEquatorAndClampsPoles() {
+        assertEquals(16.0,MapProjection.x(0.0,5),0.00001)
+        assertEquals(16.0,MapProjection.y(0.0,5),0.00001)
+        assertTrue(MapProjection.y(90.0,5).isFinite())
+        assertTrue(MapProjection.y(-90.0,5).isFinite())
+    }
 }

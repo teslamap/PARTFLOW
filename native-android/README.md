@@ -23,7 +23,7 @@ The existing `(default)` Firestore database is STANDARD, region `eur3`.
 
 ## Implemented workflows
 
-- Email/password registration and sign-in, reset password, verify email, profile
+- Email/password and Credential Manager Google sign-in, reset password, verify email, profile
   name/city, persistent separate Firebase sessions, logout cache/draft purge.
 - Local vehicle/model/category/city catalogs extracted from the existing web source.
 - Requests with validated vehicle details, budget and native photo picker; up to
@@ -39,6 +39,10 @@ The existing `(default)` Firestore database is STANDARD, region `eur3`.
   staff creation, closures and active/inactive controls.
 - Support session open/close and immutable session-associated messages.
 - Private archives with live visibility filtering, a message inbox and chat read markers.
+- Native interactive map with business pins, pan/zoom and directory filtering.
+  Only visible OpenStreetMap tiles are requested, with attribution, an app-specific
+  user agent, conditional revalidation and a minimum seven-day cache; no bulk/offline
+  area download is offered.
 - Superadmin approvals/moderation, categories, package creation/editing/assignment,
   custom prices, disputes, audited feature settings, retention policy,
   explicit administrator chat participation and resumable permanent request cascade.
@@ -91,9 +95,8 @@ loopback address. No production account or record is created by these tests.
 
 ## Remaining release gates
 
-- Complete and test full web feature parity: Google sign-in, private phone
-  contact/verification and optional API-backed features; native in-app map and
-  directory filtering; full service record editing; background notifications;
+- Complete and test full web feature parity: private phone
+  contact/verification and optional API-backed features; background notifications;
   superadmin directory search and starting support sessions on behalf of users.
 - Finish device-based end-to-end UI checks for each role, including background
   recovery, offline restart, permission revocation, photo selection, accessibility,
@@ -101,6 +104,8 @@ loopback address. No production account or record is created by these tests.
 - Persistent release signing identity, SHA registration, Play Integrity/App Check
   configuration and release distribution. Current artifacts use runner debug
   signing, so replacing a previous build can require uninstalling that preview.
+  Google sign-in additionally requires registering the certificate SHA fingerprints
+  printed in each artifact's verification report before testing that build.
 
 Disabled web features that depend on absent SMS/payment/AI/push backends must not
 be advertised as available merely because an interface or APK builds.

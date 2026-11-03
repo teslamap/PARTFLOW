@@ -8,6 +8,14 @@ import java.time.ZoneOffset
 val weekdays=listOf("ორშაბათი","სამშაბათი","ოთხშაბათი","ხუთშაბათი","პარასკევი","შაბათი","კვირა")
 fun weekFields()=weekdays.mapIndexed{i,name->Field("day$i","$name: 09:00-18:00 ან closed")}
 fun weekDefaults()=(0..6).associate{"day$it" to if(it<5)"09:00-18:00" else "closed"}
+fun weekInitial(data: Map<String,Any?>): Map<String,String> {
+    val days=data["days"] as? List<*> ?: return weekDefaults()
+    return days.mapIndexed { i,value ->
+        val day=value as? Map<*,*> ?: emptyMap<String,Any>()
+        fun time(key:String)=(day[key] as? Number)?.toInt()?.let{String.format(java.util.Locale.ROOT,"%02d:%02d",it/60,it%60)}?:"00:00"
+        "day$i" to if(day["open"]==true)"${time("start")}-${time("end")}" else "closed"
+    }.toMap()
+}
 fun week(v: Map<String,String>)=(0..6).map { i ->
     val value=v.getValue("day$i").trim()
     if(value=="closed")mapOf("open" to false,"start" to 0,"end" to 0)
@@ -21,10 +29,13 @@ fun week(v: Map<String,String>)=(0..6).map { i ->
 suspend fun Repository.serviceRecord(businessId: String,kind: String,v: Map<String,String>,id: String?=null) {
     val value: Map<String,Any?> = when(kind) {
         "hours" -> mapOf("timezone" to "Asia/Tbilisi","days" to week(v))
-        "staff" -> mapOf("name" to Domain.text(v["name"],100),"specialty" to v["specialty"].orEmpty().take(200),"serviceIds" to listOf(v.getValue("serviceId")),"days" to week(v),"active" to true)
+        "staff" -> {
+            val ids=v.getValue("serviceIds").split(',').distinct();require(ids.size in 1..8 && ids.all{it.matches(Regex("[-a-zA-Z0-9_]{1,128}"))})
+            mapOf("name" to Domain.text(v["name"],100),"specialty" to v["specialty"].orEmpty().take(200),"serviceIds" to ids,"days" to week(v),"active" to (v["active"]!="false"))
+        }
         "catalog" -> {
             val duration=v.getValue("duration").toInt();require(duration in 15..480&&duration%15==0)
-            mapOf("name" to Domain.text(v["name"],100),"description" to v["description"].orEmpty().take(1000),"durationMinutes" to duration,"active" to true)
+            mapOf("name" to Domain.text(v["name"],100),"description" to v["description"].orEmpty().take(1000),"durationMinutes" to duration,"active" to (v["active"]!="false"))
         }
         "closures" -> {
             val date=LocalDate.parse(v.getValue("date"));require(date.year in 2020..2100)

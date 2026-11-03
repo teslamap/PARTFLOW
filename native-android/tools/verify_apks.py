@@ -20,7 +20,7 @@ for role in ['customer', 'business', 'tow', 'superadmin']:
     out.mkdir(parents=True, exist_ok=True)
     apk = out / f'PARTFLOW-native-{role}.apk'
     shutil.copyfile(source, apk)
-    signature = subprocess.check_output([str(build_tools / 'apksigner'), 'verify', '--verbose', str(apk)], text=True)
+    signature = subprocess.check_output([str(build_tools / 'apksigner'), 'verify', '--verbose', '--print-certs', str(apk)], text=True)
     info = subprocess.check_output([str(build_tools / 'aapt'), 'dump', 'badging', str(apk)], text=True)
     assert f"package: name='com.partflow.native.{role}'" in info, info
     assert "launchable-activity: name='com.partflow.nativeapp.MainActivity'" in info, info

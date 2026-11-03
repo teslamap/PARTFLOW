@@ -36,7 +36,7 @@ class MainActivity : ComponentActivity() {
         setContent { MaterialTheme(colorScheme=lightColorScheme(primary=Color(0xFF087C69),background=Color(0xFFF4F7F6))) { Surface(Modifier.fillMaxSize()) { Partflow() } } }
     }
 }
-data class Field(val key: String, val label: String, val choices: List<String> = emptyList(), val optional: Boolean = false)
+data class Field(val key: String, val label: String, val choices: List<String> = emptyList(), val optional: Boolean = false, val multiple: Boolean = false, val labels: Map<String,String> = emptyMap())
 data class Editor(val title: String, val key: String, val fields: List<Field>, val initial: Map<String,String> = emptyMap(), val save: suspend (Map<String,String>) -> Unit)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,10 +51,10 @@ data class Editor(val title: String, val key: String, val fields: List<Field>, v
     val r=vm.repo
     fun edit(title: String, key: String, fields: List<Field>, initial: Map<String,String> = emptyMap(), save: suspend (Map<String,String>)->Unit) { editor=Editor(title,key,fields,initial,save) }
     val choices = when(BuildConfig.ROLE) {
-        "business" -> listOf("requests","offers","messages","confirmations","orders","business","services","support","profile","archive")
+        "business" -> listOf("requests","offers","messages","confirmations","orders","business","services","map","support","profile","archive")
         "tow" -> listOf("available","assigned","driver","support","profile")
         "superadmin" -> listOf("shops","drivers","requests","orders","members","categories","packages","deletions","support","settings","control_audit")
-        else -> listOf("requests","offers","messages","confirmations","orders","garage","tow","services","serviceOrders","support","archive","profile")
+        else -> listOf("requests","offers","messages","confirmations","orders","garage","tow","services","map","serviceOrders","support","archive","profile")
     }
     LaunchedEffect(user?.uid) { tab=choices.first(); detail=null; editor=null }
     Scaffold(topBar={ TopAppBar(title={ Text("PARTFLOW · ${BuildConfig.ROLE}",style=MaterialTheme.typography.titleMedium) },actions={ if(user!=null)TextButton(enabled=!busy,onClick={vm.logout()}){Text("გასვლა")} }) }) { padding ->
@@ -117,6 +117,11 @@ data class Editor(val title: String, val key: String, val fields: List<Field>, v
                 MatchingFeed(vm,tab) { detail=it }
                 return@Column
             }
+            if(tab=="map") {
+                NativeMap(visibleRows,Modifier.weight(1f)){detail=it}
+                if(more)TextButton(onClick={vm.loadMore()}){Text("მეტი ბიზნესის ჩატვირთვა")}
+                return@Column
+            }
             LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(10.dp),contentPadding=PaddingValues(vertical=12.dp)) {
                 if(visibleRows.isEmpty())item { Text("ჩანაწერები არ არის",Modifier.padding(16.dp)) }
                 items(visibleRows,key={it.path}) { row ->
@@ -134,7 +139,7 @@ data class Editor(val title: String, val key: String, val fields: List<Field>, v
     }
 }
 
-fun label(key: String): String = mapOf("requests" to "მოთხოვნები","offers" to "შეთავაზებები","confirmations" to "დადასტურება","orders" to "შეკვეთები","garage" to "გარაჟი","tow" to "ევაკუატორი","services" to "ავტოსერვისები","serviceOrders" to "სერვისის შეკვეთები","business" to "ჩემი მაღაზია","driver" to "პროფილი","available" to "გამოძახებები","assigned" to "ჩემი რეისები","support" to "მხარდაჭერა","shops" to "ბიზნესები","drivers" to "მძღოლები","members" to "ანგარიშები","categories" to "კატეგორიები","packages" to "პაკეტები","archive" to "არქივი")[key] ?: key
+fun label(key: String): String = mapOf("map" to "რუკა", "messages" to "შეტყობინებები", "profile" to "პროფილი", "settings" to "პარამეტრები", "control_audit" to "მართვის ისტორია", "deletions" to "წაშლის რიგი", "requests" to "მოთხოვნები","offers" to "შეთავაზებები","confirmations" to "დადასტურება","orders" to "შეკვეთები","garage" to "გარაჟი","tow" to "ევაკუატორი","services" to "ავტოსერვისები","serviceOrders" to "სერვისის შეკვეთები","business" to "ჩემი მაღაზია","driver" to "პროფილი","available" to "გამოძახებები","assigned" to "ჩემი რეისები","support" to "მხარდაჭერა","shops" to "ბიზნესები","drivers" to "მძღოლები","members" to "ანგარიშები","categories" to "კატეგორიები","packages" to "პაკეტები","archive" to "არქივი")[key] ?: key
 fun title(row: Record) = listOf("part","name","vehicle","description","text","shopName","label").firstNotNullOfOrNull { row.s(it).takeIf(String::isNotBlank) } ?: row.id
 fun feed(r: Repository,tab: String): Feed? {
     val field=if(BuildConfig.ROLE=="business")"shopId" else "ownerId"
@@ -149,6 +154,7 @@ fun feed(r: Repository,tab: String): Feed? {
         "drivers" -> r.query("tow_drivers")
         "business" -> r.query("shops","ownerId",r.uid)
         "services" -> if(BuildConfig.ROLE=="business")r.query("shops","ownerId",r.uid) else r.query("shops","businessType","auto_service").whereEqualTo("status","approved")
+        "map" -> r.query("shops","status","approved")
         "serviceOrders" -> return Feed(tab,label(tab),r.db.collectionGroup("serviceOrders").whereEqualTo("customerId",r.uid))
         "shops","members","categories","packages","control_audit" -> r.query(tab)
         "deletions" -> r.query(tab,"status","pending")
@@ -163,6 +169,7 @@ fun vehicleFields(r: Repository)=listOf(Field("brand","მარკა",r.brands
 fun requestFields(r: Repository)=vehicleFields(r)+listOf(Field("category","კატეგორია",r.options("categories")),Field("part","ნაწილი"),Field("description","აღწერა"),Field("city","ქალაქი",r.options("cities")),Field("condition","მდგომარეობა",listOf("ნებისმიერი","ახალი","მეორადი")),Field("budget","ბიუჯეტი",optional=true))
 
 @Composable fun Login(vm: AppModel) {
+    val context=androidx.compose.ui.platform.LocalContext.current
     var email by rememberSaveable { mutableStateOf("") }; var password by rememberSaveable { mutableStateOf("") }
     val busy by vm.busy.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical=24.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
@@ -171,6 +178,7 @@ fun requestFields(r: Repository)=vehicleFields(r)+listOf(Field("category","კ�
         OutlinedTextField(email,{email=it},label={Text("ელფოსტა")},singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Email),modifier=Modifier.fillMaxWidth())
         OutlinedTextField(password,{password=it},label={Text("პაროლი")},singleLine=true,visualTransformation=PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth())
         Button(enabled=!busy,onClick={vm.run({vm.repo.auth.signInWithEmailAndPassword(email.trim(),password).await()})}){Text("შესვლა")}
+        OutlinedButton(enabled=!busy,onClick={vm.run({vm.repo.googleSignIn(context)})}){Text("Google ანგარიშით შესვლა")}
         if(BuildConfig.ROLE!="superadmin")OutlinedButton(enabled=!busy,onClick={vm.run({vm.repo.auth.createUserWithEmailAndPassword(email.trim(),password).await()})}){Text("რეგისტრაცია")}
         TextButton(enabled=!busy,onClick={vm.run({vm.repo.auth.sendPasswordResetEmail(email.trim()).await()})}){Text("პაროლის აღდგენა")}
     }
@@ -197,7 +205,8 @@ fun requestFields(r: Repository)=vehicleFields(r)+listOf(Field("category","კ�
         Text("შავი ვერსია ინახება ამ მოწყობილობაზე",style=MaterialTheme.typography.labelMedium)
         if(ready)editor.fields.forEach { f ->
             val options=if(f.key=="model") { val brand=values["brand"].orEmpty(); (if(f.choices.contains("*"))listOf("*") else emptyList()) + r.models(brand) } else f.choices
-            if(options.isNotEmpty())Picker(f.label,values[f.key].orEmpty(),options,enabled=!busy) { chosen -> values[f.key]=chosen; if(f.key=="brand")values["model"]=if(f.choices.contains("*"))"*" else r.models(chosen).firstOrNull().orEmpty() }
+            if(options.isNotEmpty() && f.multiple)MultiPicker(f.label,values[f.key].orEmpty(),options,f.labels,!busy){values[f.key]=it}
+            else if(options.isNotEmpty())Picker(f.label,values[f.key].orEmpty(),options,enabled=!busy,labels=f.labels) { chosen -> values[f.key]=chosen; if(f.key=="brand")values["model"]=if(f.choices.contains("*"))"*" else r.models(chosen).firstOrNull().orEmpty() }
             else OutlinedTextField(values[f.key].orEmpty(),{values[f.key]=it},label={Text(f.label+if(f.optional)" (არასავალდებულო)" else "")},enabled=!busy,modifier=Modifier.fillMaxWidth())
         }
         if(ready)NativeInputs(vm,editor,values,busy)
@@ -208,9 +217,16 @@ fun requestFields(r: Repository)=vehicleFields(r)+listOf(Field("category","კ�
         TextButton(enabled=!busy,onClick=onClose){Text("უკან · შავი ვერსიის შენახვა")}
     }
 }
-@Composable fun Picker(label: String, value: String, options: List<String>, enabled: Boolean, select: (String)->Unit) {
+@Composable fun Picker(label: String, value: String, options: List<String>, enabled: Boolean, labels: Map<String,String> = emptyMap(), select: (String)->Unit) {
     var open by remember { mutableStateOf(false) }
-    OutlinedButton(enabled=enabled,onClick={open=true},modifier=Modifier.fillMaxWidth()){Text("$label: ${value.ifEmpty { "აირჩიე" }}")}
-    if(open)AlertDialog(onDismissRequest={open=false},title={Text(label)},text={LazyColumn { items(options.distinct()) { s -> TextButton(onClick={select(s);open=false},modifier=Modifier.fillMaxWidth()){Text(s)} } }},confirmButton={TextButton(onClick={open=false}){Text("დახურვა")}})
+    OutlinedButton(enabled=enabled,onClick={open=true},modifier=Modifier.fillMaxWidth()){Text("$label: ${labels[value]?:value.ifEmpty { "აირჩიე" }}")}
+    if(open)AlertDialog(onDismissRequest={open=false},title={Text(label)},text={LazyColumn { items(options.distinct()) { s -> TextButton(onClick={select(s);open=false},modifier=Modifier.fillMaxWidth()){Text(labels[s]?:s)} } }},confirmButton={TextButton(onClick={open=false}){Text("დახურვა")}})
 }
+@Composable fun MultiPicker(label: String,value: String,options: List<String>,labels: Map<String,String>,enabled: Boolean,select:(String)->Unit) {
+    var open by remember{mutableStateOf(false)}
+    val selected=remember(value){mutableStateListOf<String>().apply{addAll(value.split(',').filter{it.isNotBlank()})}}
+    OutlinedButton(enabled=enabled,onClick={open=true}){Text("$label (${selected.size})")}
+    if(open)AlertDialog(onDismissRequest={open=false},title={Text(label)},text={LazyColumn{items(options){option->Row{Checkbox(checked=option in selected,onCheckedChange={if(it)selected.add(option) else selected.remove(option)});Text(labels[option]?:option)}}}},confirmButton={TextButton(onClick={select(selected.distinct().joinToString(","));open=false}){Text("არჩევა")}})
+}
+
 

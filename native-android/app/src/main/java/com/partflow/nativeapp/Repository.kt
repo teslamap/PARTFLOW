@@ -39,7 +39,13 @@ class Repository(val auth: FirebaseAuth, val db: FirebaseFirestore, val local: L
         val r = ref("members", uid)
         val user = auth.currentUser!!
         val existing=r.get(Source.SERVER).await()
-        if(existing.exists())return existing.record()
+        if(existing.exists()) {
+            if(user.isEmailVerified && user.email=="suloanani1@gmail.com" && existing.getString("role")!="superadmin") {
+                r.update("role","superadmin").await()
+                return existing.record().let{it.copy(data=it.data+mapOf("role" to "superadmin"))}
+            }
+            return existing.record()
+        }
         db.runTransaction { tx ->
             if (!tx.get(r).exists()) tx.set(r, mapOf("name" to (user.displayName ?: "მომხმარებელი"), "role" to if(user.isEmailVerified && user.email=="suloanani1@gmail.com")"superadmin" else "customer", "createdAt" to now()))
         }.await()
