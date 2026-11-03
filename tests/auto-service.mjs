@@ -7,8 +7,10 @@ try {
  await env.clearFirestore();
  const owner=env.authenticatedContext('service').firestore(),other=env.authenticatedContext('other').firestore(),admin=env.authenticatedContext('admin').firestore(),superDb=env.authenticatedContext('super').firestore(),anon=env.unauthenticatedContext().firestore();
  await env.withSecurityRulesDisabled(async c=>{for(const [id,role] of [['service','customer'],['other','customer'],['admin','admin'],['super','superadmin']])await setDoc(doc(c.firestore(),'pf_members',id),{name:id,role,createdAt:Timestamp.now()})});
- const ref=db=>doc(db,'pf_shops/service');
- const service={ownerId:'service',businessType:'auto_service',name:'Service',city:'თბილისი',phone:'+995 555 000 000',rulesMap:{'*~*~*':true},status:'pending_approval',createdAt:serverTimestamp()};
+ const serviceId='service_AAAAAAAAAAAAAAAAAAAA';
+ const ref=db=>doc(db,'pf_shops',serviceId);
+ await env.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),'pf_shops/service'),{ownerId:'service',businessType:'parts_shop',name:'Parent Shop',city:'თბილისი',phone:'+995555000000',rulesMap:{'*~*~*':true},status:'approved',createdAt:Timestamp.now()}));
+ const service={ownerId:'service',parentShopId:'service',businessType:'auto_service',name:'Service',city:'თბილისი',phone:'+995 555 000 000',rulesMap:{'*~*~*':true},status:'pending_approval',createdAt:serverTimestamp()};
  for(const patch of [{status:'approved'},{ownerId:'other'},{businessType:'invalid'},{reviewReason:'forged',reviewedBy:'super',reviewedAt:serverTimestamp()},{extra:true},{name:'x'.repeat(101)}])await assertFails(setDoc(ref(owner),{...service,...patch}));
  await assertSucceeds(setDoc(ref(owner),service));
  await assertFails(getDoc(ref(anon)));await assertFails(getDoc(ref(other)));
@@ -42,6 +44,7 @@ try {
  // Legacy shop migration is additive and preserves existing approval/access.
  const {businessType,...legacy}=service;
  await env.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),'pf_shops/other'),{...legacy,ownerId:'other',status:'approved'}));
- await assertSucceeds(updateDoc(doc(admin,'pf_shops/other'),{status:'suspended'}));
+ await assertFails(updateDoc(doc(admin,'pf_shops/other'),{status:'suspended'}));
+ await assertSucceeds(updateDoc(doc(superDb,'pf_shops/other'),{status:'suspended'}));
  console.log('Auto-service security and public query tests passed');
 } finally {await env.cleanup()}
