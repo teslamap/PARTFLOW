@@ -12,7 +12,7 @@ async function seed(id,patch={}){await env.withSecurityRulesDisabled(async c=>{a
 async function request(d=details){return (await createTowRequest(alice,'alice',d)).id}
 try{
  await env.clearFirestore();
- await env.withSecurityRulesDisabled(async c=>{for(const [uid,role] of [['alice','customer'],['bob','customer'],['carol','customer'],['other','customer'],['admin','admin']])await setDoc(doc(c.firestore(),'pf_members',uid),{name:uid,role,createdAt:Timestamp.now()})});
+ await env.withSecurityRulesDisabled(async c=>{for(const [uid,role] of [['alice','customer'],['bob','customer'],['carol','customer'],['other','customer'],['admin','superadmin']])await setDoc(doc(c.firestore(),'pf_members',uid),{name:uid,role,createdAt:Timestamp.now()})});
  for(const [d,id,city] of [[bob,'bob','ბათუმი'],[carol,'carol','ბათუმი'],[other,'other','თბილისი']])await assertSucceeds(applyTowDriver(d,id,{name:id,phone:'+995555123456',city,truck:'Tow AB-123 capacity 3t'}));
  await assertFails(updateDoc(dr(bob,'bob'),{status:'approved',updatedAt:serverTimestamp()}));
  await assertSucceeds(applyTowDriver(admin,'admin',{name:'Admin',phone:'+995555123456',city:'ბათუმი',truck:'Tow'}));
@@ -73,3 +73,4 @@ try{
  await assertFails(setDoc(dr(anon,'anon'),{ownerId:'anon',name:'n',phone:'+995555123456',city:'ბათუმი',truck:'Tow',status:'pending',updatedAt:serverTimestamp()}));
  console.log('Towing rules: routing, queries, first-claim concurrency, consent, state transitions and adversarial validation passed');
 }finally{await env.cleanup()}
+
