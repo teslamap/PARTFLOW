@@ -10,7 +10,7 @@ const terms={price:380,condition:'მეორადი',delivery:'დღეს 
 try{
  await env.clearFirestore();
  await env.withSecurityRulesDisabled(async c=>{const d=c.firestore(),now=Timestamp.now();
- for(const [uid,role] of [['buyer','customer'],['shop','customer'],['other','customer'],['admin','admin'],['root','superadmin']])await setDoc(doc(d,'pf_members',uid),{name:uid,role,createdAt:now});
+ for(const [uid,role] of [['buyer','customer'],['shop','customer'],['other','customer'],['admin','superadmin'],['root','superadmin']])await setDoc(doc(d,'pf_members',uid),{name:uid,role,createdAt:now});
  for(const uid of ['shop','other'])await setDoc(doc(d,'pf_shops',uid),{ownerId:uid,name:uid,city:'თბილისი',phone:'555000000',status:'approved',rulesMap:{'*~*~*':true},createdAt:now});
  const r={ownerId:'buyer',brand:'Toyota',model:'Prius',year:2015,engine:'1.8',vin:'',category:'განათება',part:'ფარი',description:'Test',city:'თბილისი',condition:'მეორადი',budget:400,photos:[],status:'open',previousStatus:'open',acceptedOfferId:null,createdAt:now};
  for(const id of ['r','race','legacy']){await setDoc(doc(d,'pf_requests',id),r);for(const uid of ['shop','other'])await setDoc(doc(d,'pf_offers',id+'_'+uid),{requestId:id,ownerId:'buyer',shopId:uid,shopName:uid,...terms,status:'pending',createdAt:now})}
