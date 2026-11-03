@@ -10,7 +10,7 @@ export function ProfileEditor({uid,name,city,demo=false}:any){
  const enabled=useFeatures(),contactEnabled=enabled('phoneContact');
  const [value,setValue]=useState(name||''),[cityValue,setCityValue]=useState(city||'თბილისი'),[phone,setPhone]=useState(''),[originalPhone,setOriginalPhone]=useState(''),[busy,setBusy]=useState(false),[status,setStatus]=useState(''),[phoneError,setPhoneError]=useState('');
  useEffect(()=>{setValue(name||'');setCityValue(city||'თბილისი');setStatus('')},[uid,name,city]);
- useEffect(()=>{setPhone('');setOriginalPhone('');setPhoneError('');if(!uid||demo||!contactEnabled)return onSnapshot(doc(db,'pf_contacts',uid),s=>{const p=s.data()?.phone||'';setPhone(p);setOriginalPhone(p)},()=>setPhoneError('საკონტაქტო ნომერი ვერ ჩაიტვირთა.'));},[uid,demo,contactEnabled]);
+ useEffect(()=>{setPhone('');setOriginalPhone('');setPhoneError('');if(!uid||demo||!contactEnabled)return;return onSnapshot(doc(db,'pf_contacts',uid),s=>{const p=s.data()?.phone||'';setPhone(p);setOriginalPhone(p)},()=>setPhoneError('საკონტაქტო ნომერი ვერ ჩაიტვირთა.'));},[uid,demo,contactEnabled]);
  const cleanPhone=phone.replace(/[\s()-]/g,'');
  const changed=value.trim()!==(name||'').trim()||cityValue!==(city||'თბილისი')||(contactEnabled&&cleanPhone!==originalPhone);
  const validPhone=!contactEnabled||(!cleanPhone||/^\+9955\d{8}$/.test(cleanPhone));
