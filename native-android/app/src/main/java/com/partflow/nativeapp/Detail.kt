@@ -63,13 +63,15 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
         }
     }
     val rows by vm.rows.collectAsStateWithLifecycle()
+    val archived by vm.archives.collectAsStateWithLifecycle()
+    val visibleRows=rows.filter{row->!(row.path.startsWith("pf_requests/")&&"requests_${row.id}" in archived || row.path.startsWith("pf_offers/")&&"offers_${row.id}" in archived)}
     val more by vm.more.collectAsStateWithLifecycle()
     val cached by vm.cached.collectAsStateWithLifecycle()
     Column {
         if(cached)Text("შენახული ოფლაინ ასლი",style=MaterialTheme.typography.labelSmall)
         LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp),contentPadding=PaddingValues(vertical=8.dp),modifier=Modifier.heightIn(max=550.dp)) {
-            if(rows.isEmpty())item{Text("ჩანაწერები არ არის")}
-            items(rows,key={it.path}) { row -> Card(onClick={select(row)},modifier=Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) {
+            if(visibleRows.isEmpty())item{Text("ჩანაწერები არ არის")}
+            items(visibleRows,key={it.path}) { row -> Card(onClick={select(row)},modifier=Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) {
                 Text(title(row)); Text(listOf(row.s("status"),row.s("city"),row.s("note")).filter{it.isNotBlank()}.joinToString(" · "),style=MaterialTheme.typography.bodySmall)
             } } }
             if(more)item{TextButton(onClick={vm.loadMore()}){Text("მეტის ჩატვირთვა")}}
@@ -113,6 +115,7 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
                 TextButton(onClick={section="chat"}){Text("ჩატი")}
                 if(row.s("shopId")==r.uid)Button(enabled=!busy,onClick={vm.run({r.confirmation(row)})}){Text("დადასტურების გაგზავნა")}
             }
+            "pf_messages" -> Button(enabled=!busy,onClick={vm.run({row=r.ref("offers",row.s("offerId")).get(Source.SERVER).await().record();section="chat"})}){Text("საუბრის გახსნა")}
             "pf_confirmations" -> if(row.s("status")=="pending") {
                 if(row.s("ownerId")==r.uid)Button(enabled=!busy,onClick={vm.run({r.accept(row)})}){Text("მიღება და შეკვეთის შექმნა")}
                 OutlinedButton(enabled=!busy,onClick={vm.run({r.db.document(row.path).update(mapOf("status" to if(row.s("ownerId")==r.uid)"declined" else "withdrawn","updatedAt" to r.now())).await()})}){Text("უარყოფა / გაუქმება")}
@@ -137,12 +140,21 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
                 }){Text("მისამართი რუკაზე")}
             }
             "pf_shops","pf_tow_drivers" -> {
+                if(kind=="pf_shops" && row.s("ownerId")==r.uid && row.s("businessType")!="auto_service") {
+                    val specialties=(row.data["rulesMap"] as? Map<*,*>)?.filterValues{it==true}?.keys?.map{it.toString()}.orEmpty()
+                    specialties.forEach{Text(it.replace("~"," · "))}
+                    OutlinedButton(enabled=!busy && specialties.size<10,onClick={edit("სპეციალიზაციის დამატება","specialty:${row.id}",listOf(Field("brand","მარკა",listOf("*")+r.brands()),Field("model","მოდელი",listOf("*")),Field("category","კატეგორია",listOf("*")+r.options("categories"))),emptyMap()){v->
+                        val key=listOf(v["brand"],v["model"],v["category"]).joinToString("~")
+                        r.db.runTransaction { tx -> val target=r.db.document(row.path);val old=tx.get(target);val map=(old.get("rulesMap") as? Map<String,Boolean>).orEmpty()+mapOf(key to true);require(map.size<=10);tx.update(target,mapOf("rulesMap" to map,"status" to "pending")) }.await()
+                    }}){Text("+ სპეციალიზაცია · ხელახალი განხილვა")}
+                    if(specialties.size>1)specialties.forEach{key->TextButton(enabled=!busy,onClick={vm.run({r.db.runTransaction{tx->val target=r.db.document(row.path);val old=tx.get(target);val map=(old.get("rulesMap") as? Map<String,Boolean>).orEmpty()-key;require(map.isNotEmpty());tx.update(target,mapOf("rulesMap" to map,"status" to "pending"))}.await()})}){Text("სპეციალიზაციის წაშლა: ${key.replace("~"," · ")}")}}
+                }
                 if(r.admin)TextButton(enabled=!busy,onClick={vm.run({
                     val plans=r.query("packages").limit(100).get(Source.SERVER).await().documents.map{it.record()}.filter{it.data["active"]!=false}
                     val options=plans.map{it.id+" · "+title(it)}
                     edit("პაკეტის მინიჭება","assign:${row.id}",listOf(Field("plan","პაკეტი",options),Field("expires","ვადა YYYY-MM-DD",optional=true),Field("price","ინდივიდუალური ფასი",optional=true)),emptyMap()){v->val plan=plans.first{it.id==v.getValue("plan").substringBefore(" · ")};r.assignPackage(row,plan,v["expires"].orEmpty(),v["price"].orEmpty())}
                 })}){Text("პაკეტის მინიჭება")}
-                if(r.admin) listOf("approved","suspended","rejected").forEach { status ->
+                if(r.admin) (if(kind=="pf_shops"&&row.s("businessType")!="auto_service")listOf("approved","suspended") else listOf("approved","suspended","rejected")).forEach { status ->
                     Button(enabled=!busy,onClick={edit("სტატუსი: $status","moderate:${row.id}:$status",listOf(Field("reason","მიზეზი",optional=status=="approved")),emptyMap()){r.moderate(row,status,it["reason"].orEmpty())}}){Text(mapOf("approved" to "დამტკიცება","suspended" to "შეჩერება","rejected" to "უარყოფა").getValue(status))}
                 }
                 if(kind=="pf_shops" && row.s("businessType")=="auto_service") {
@@ -188,6 +200,13 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
             r.db.collection("pf_archives").document(r.uid).collection("panels").document(if(BuildConfig.ROLE=="business")"shop" else "customer").collection("items").document("${type}_${row.id}").set(mapOf("type" to type,"targetId" to row.id,"label" to title(row).take(120),"createdAt" to r.now())).await()
         })}){Text("არქივში შენახვა")}
         if(section=="chat") {
+            if(r.admin)OutlinedButton(enabled=!busy,onClick={vm.run({r.message(row,"ადმინისტრატორი შემოუერთდა ჩატს",true)})}){Text("ჩატში შეერთება")}
+            LaunchedEffect(row.id) {
+                runCatching {
+                    val activity=r.ref("chat_activity",row.id).get(Source.SERVER).await()
+                    if(activity.exists())r.ref("chat_reads",r.uid).collection("threads").document(row.id).set(mapOf("version" to (activity.getLong("version")?:0),"updatedAt" to r.now())).await()
+                }
+            }
             Button(enabled=!busy,onClick={edit("ჩატი","message:${row.id}",listOf(Field("text","შეტყობინება")),emptyMap()){r.message(row,it.getValue("text"))}}){Text("შეტყობინების გაგზავნა")}
             FeedList(vm,Feed("chat:${row.id}","ჩატი",r.query("messages","offerId",row.id).orderBy("createdAt",Query.Direction.DESCENDING)))
         }

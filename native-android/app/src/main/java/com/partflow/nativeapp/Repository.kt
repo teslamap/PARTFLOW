@@ -19,11 +19,20 @@ data class Page(val records: List<Record>, val cached: Boolean, val pending: Boo
 fun DocumentSnapshot.record() = Record(id, reference.path, data.orEmpty())
 
 class Repository(val auth: FirebaseAuth, val db: FirebaseFirestore, val local: LocalDao, val catalog: JSONObject) {
+    val customCategories=kotlinx.coroutines.flow.MutableStateFlow<List<String>>(emptyList())
     val uid get() = auth.currentUser?.uid ?: error("შესვლა აუცილებელია")
     val admin get() = BuildConfig.ROLE == "superadmin"
     fun ref(collection: String, id: String) = db.collection("pf_$collection").document(id)
     fun now() = FieldValue.serverTimestamp()
-    fun options(key: String) = catalog.getJSONArray(key).let { a -> (0 until a.length()).map(a::getString) }
+    fun options(key: String) = catalog.getJSONArray(key).let { a -> (0 until a.length()).map(a::getString) }.let{if(key=="categories")(it+customCategories.value).distinct() else it}
+    suspend fun refreshCategories() {
+        val account=uid
+        val savedPage=local.page(account,"_categories")
+        customCategories.value=cached("_categories",account).map{it.s("name")}
+        if(savedPage!=null && System.currentTimeMillis()-savedPage.savedAt<86_400_000L)return
+        val records=query("categories").limit(300).get(Source.SERVER).await().documents.map{it.record()}
+        if(auth.currentUser?.uid==account) { customCategories.value=records.map{it.s("name")};saveCache("_categories",records,account) }
+    }
     fun brands() = catalog.getJSONObject("vehicles").keys().asSequence().toList().sorted()
     fun models(brand: String) = catalog.getJSONObject("vehicles").optJSONArray(brand)?.let { a -> (0 until a.length()).map(a::getString) }.orEmpty()
     suspend fun member(): Record {
@@ -124,19 +133,28 @@ class Repository(val auth: FirebaseAuth, val db: FirebaseFirestore, val local: L
         require(shop.getString("status") == "approved" && request.s("ownerId") != uid)
         ref("offers", "${request.id}_$uid").set(mapOf("requestId" to request.id,"ownerId" to request.s("ownerId"),"shopId" to uid,"shopName" to shop.getString("name"),"price" to Domain.money(v["price"].orEmpty()),"serviceAvailable" to false,"servicePrice" to 0,"condition" to v["condition"],"delivery" to Domain.text(v["delivery"],120),"note" to Domain.text(v["note"],1000),"status" to "pending","createdAt" to now())).await()
     }
-    suspend fun message(offer: Record, text: String) {
+    suspend fun message(offer: Record, text: String, join: Boolean = false) {
         val message = db.collection("pf_messages").document()
         val activity = ref("chat_activity", offer.id)
         db.runTransaction { tx ->
             val o = tx.get(ref("offers", offer.id)).record()
             val r = tx.get(ref("requests",o.s("requestId"))).record()
             val a = tx.get(activity)
-            require(uid in listOf(o.s("ownerId"),o.s("shopId")))
+            val profile=if(admin)tx.get(ref("members",uid)) else null
+            val joinRef=ref("chat_admins","${offer.id}_$uid")
+            val participation=if(admin)tx.get(joinRef) else null
+            if(admin) {
+                require(profile?.getString("role")=="superadmin")
+                if(join && participation?.exists()==true)return@runTransaction
+                require(join || participation?.exists()==true){"ჯერ შემოუერთდი ჩატს"}
+            } else require(uid in listOf(o.s("ownerId"),o.s("shopId")))
             require(r.s("status") != "hidden" && (r.s("status") != "closed" || r.s("acceptedOfferId") == offer.id)) { "ჩატი დახურულია" }
             val body = Domain.text(text,2000)
             val common = mapOf("offerId" to offer.id,"requestId" to o.s("requestId"),"ownerId" to o.s("ownerId"),"shopId" to o.s("shopId"))
-            tx.set(message,common + mapOf("senderId" to uid,"recipientId" to if(uid==o.s("ownerId"))o.s("shopId") else o.s("ownerId"),"text" to body,"createdAt" to now()))
-            tx.set(activity,common + mapOf("lastMessageId" to message.id,"lastSenderId" to uid,"lastText" to body,"lastKind" to "message","customerReplied" to (a.getBoolean("customerReplied")==true || uid==o.s("ownerId")),"shopReplied" to (a.getBoolean("shopReplied")==true || uid==o.s("shopId")),"version" to ((a.getLong("version")?:0)+1),"createdAt" to (a.getTimestamp("createdAt")?:now()),"updatedAt" to now()))
+            val extra=if(admin)mapOf("kind" to if(join)"admin_join" else "admin","senderName" to profile!!.getString("name"),"recipientIds" to listOf(o.s("ownerId"),o.s("shopId"))) else emptyMap()
+            if(admin && join)tx.set(joinRef,common+mapOf("adminId" to uid,"adminName" to profile!!.getString("name"),"messageId" to message.id,"createdAt" to now()))
+            tx.set(message,common + mapOf("senderId" to uid,"recipientId" to if(uid==o.s("ownerId"))o.s("shopId") else o.s("ownerId"),"text" to body,"createdAt" to now())+extra)
+            tx.set(activity,common + mapOf("lastMessageId" to message.id,"lastSenderId" to uid,"lastText" to body,"lastKind" to if(admin)if(join)"admin_join" else "admin" else "message","customerReplied" to (a.getBoolean("customerReplied")==true || !admin&&uid==o.s("ownerId")),"shopReplied" to (a.getBoolean("shopReplied")==true || !admin&&uid==o.s("shopId")),"version" to ((a.getLong("version")?:0)+1),"createdAt" to (a.getTimestamp("createdAt")?:now()),"updatedAt" to now()))
         }.await()
     }
     suspend fun confirmation(offer: Record) {

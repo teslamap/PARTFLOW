@@ -51,10 +51,10 @@ data class Editor(val title: String, val key: String, val fields: List<Field>, v
     val r=vm.repo
     fun edit(title: String, key: String, fields: List<Field>, initial: Map<String,String> = emptyMap(), save: suspend (Map<String,String>)->Unit) { editor=Editor(title,key,fields,initial,save) }
     val choices = when(BuildConfig.ROLE) {
-        "business" -> listOf("requests","offers","confirmations","orders","business","services","support","profile")
+        "business" -> listOf("requests","offers","messages","confirmations","orders","business","services","support","profile","archive")
         "tow" -> listOf("available","assigned","driver","support","profile")
-        "superadmin" -> listOf("shops","drivers","requests","orders","members","categories","packages","deletions","support")
-        else -> listOf("requests","offers","confirmations","orders","garage","tow","services","serviceOrders","support","archive","profile")
+        "superadmin" -> listOf("shops","drivers","requests","orders","members","categories","packages","deletions","support","settings","control_audit")
+        else -> listOf("requests","offers","messages","confirmations","orders","garage","tow","services","serviceOrders","support","archive","profile")
     }
     LaunchedEffect(user?.uid) { tab=choices.first(); detail=null; editor=null }
     Scaffold(topBar={ TopAppBar(title={ Text("PARTFLOW · ${BuildConfig.ROLE}",style=MaterialTheme.typography.titleMedium) },actions={ if(user!=null)TextButton(enabled=!busy,onClick={vm.logout()}){Text("გასვლა")} }) }) { padding ->
@@ -64,6 +64,7 @@ data class Editor(val title: String, val key: String, val fields: List<Field>, v
             if(user==null) { Login(vm); return@Column }
             if(member==null) { Text("ანგარიშის შემოწმება…"); TextButton(onClick={vm.run({vm.member.value=r.member()})}){Text("ხელახლა ცდა")}; return@Column }
             if(r.admin && member?.s("role")!="superadmin") { Text("ამ აპში შესვლა მხოლოდ სუპერადმინს შეუძლია."); return@Column }
+            if(!r.admin && member?.s("role")=="superadmin") { Text("ამ ანგარიშისთვის გამოიყენე PARTFLOW Superadmin აპი."); return@Column }
             editor?.let { form ->
                 BackHandler(enabled=!busy) { editor=null }
                 EditForm(vm,form,onClose={editor=null})
@@ -87,6 +88,8 @@ data class Editor(val title: String, val key: String, val fields: List<Field>, v
                 } else { vm.stop(); vm.rows.value=emptyList() }
             }
             val rows by vm.rows.collectAsStateWithLifecycle()
+            val archived by vm.archives.collectAsStateWithLifecycle()
+            val visibleRows=rows.filter { row -> (tab !in listOf("requests","offers") || "${tab}_${row.id}" !in archived) && (tab!="services" || row.s("businessType")=="auto_service") }
             val cached by vm.cached.collectAsStateWithLifecycle()
             val more by vm.more.collectAsStateWithLifecycle()
             if(cached)Text("ოფლაინ ასლი · ცვლილებისთვის საჭიროა კავშირი",style=MaterialTheme.typography.labelMedium)
@@ -105,6 +108,7 @@ data class Editor(val title: String, val key: String, val fields: List<Field>, v
                 TextButton(enabled=!busy,onClick={vm.run({r.auth.currentUser!!.sendEmailVerification().await()})}){Text("ელფოსტის დადასტურების გაგზავნა")}
                 TextButton(enabled=!busy,onClick={vm.run({r.auth.currentUser!!.reload().await();r.auth.currentUser!!.getIdToken(true).await();vm.member.value=r.member()})}){Text("დადასტურებული ელფოსტის განახლება")}
             }
+            if(tab=="settings" && r.admin)Settings(vm,::edit)
             if(tab=="support" && !r.admin) {
                 val id=when(BuildConfig.ROLE){"business"->"shop_${r.uid}";"tow"->"driver_${r.uid}";else->r.uid}
                 Button(onClick={detail=Record(id,"pf_support_threads/$id",emptyMap())}){Text("მხარდაჭერის ჩატის გახსნა")}
@@ -114,8 +118,8 @@ data class Editor(val title: String, val key: String, val fields: List<Field>, v
                 return@Column
             }
             LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(10.dp),contentPadding=PaddingValues(vertical=12.dp)) {
-                if(rows.isEmpty())item { Text("ჩანაწერები არ არის",Modifier.padding(16.dp)) }
-                items(rows,key={it.path}) { row ->
+                if(visibleRows.isEmpty())item { Text("ჩანაწერები არ არის",Modifier.padding(16.dp)) }
+                items(visibleRows,key={it.path}) { row ->
                     Card(onClick={detail=row},modifier=Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
                             Text(title(row),style=MaterialTheme.typography.titleMedium)
@@ -136,7 +140,7 @@ fun feed(r: Repository,tab: String): Feed? {
     val field=if(BuildConfig.ROLE=="business")"shopId" else "ownerId"
     val q: Query = when(tab) {
         "requests" -> if(r.admin)r.query("requests") else if(BuildConfig.ROLE=="business")return null else r.query("requests","ownerId",r.uid)
-        "offers","confirmations","orders" -> if(r.admin)r.query(tab) else r.query(tab,field,r.uid)
+        "offers","confirmations","orders","messages" -> if(r.admin)r.query(tab) else r.query(tab,field,r.uid)
         "garage" -> r.db.collection("pf_garage").document(r.uid).collection("vehicles")
         "tow" -> r.query("tow_requests","ownerId",r.uid)
         "assigned" -> r.query("tow_requests","driverId",r.uid)
@@ -146,10 +150,10 @@ fun feed(r: Repository,tab: String): Feed? {
         "business" -> r.query("shops","ownerId",r.uid)
         "services" -> if(BuildConfig.ROLE=="business")r.query("shops","ownerId",r.uid) else r.query("shops","businessType","auto_service").whereEqualTo("status","approved")
         "serviceOrders" -> return Feed(tab,label(tab),r.db.collectionGroup("serviceOrders").whereEqualTo("customerId",r.uid))
-        "shops","members","categories","packages" -> r.query(tab)
+        "shops","members","categories","packages","control_audit" -> r.query(tab)
         "deletions" -> r.query(tab,"status","pending")
         "support" -> if(r.admin)r.query("support_threads") else return null
-        "archive" -> r.db.collection("pf_archives").document(r.uid).collection("panels").document("customer").collection("items")
+        "archive" -> r.db.collection("pf_archives").document(r.uid).collection("panels").document(if(BuildConfig.ROLE=="business")"shop" else "customer").collection("items")
         else -> return null
     }
     val time=if(tab in listOf("driver","drivers","support","confirmations"))"updatedAt" else "createdAt"

@@ -21,6 +21,7 @@ class AppModel(application: Application) : AndroidViewModel(application) {
     val busy = MutableStateFlow(false)
     val cached = MutableStateFlow(false)
     val more = MutableStateFlow(false)
+    val archives = MutableStateFlow<Set<String>>(emptySet())
     private var active: Job? = null
     private var profileJob: Job? = null
     private var generation = 0
@@ -32,13 +33,22 @@ class AppModel(application: Application) : AndroidViewModel(application) {
         val previous = user.value?.uid
         user.value = auth.currentUser
         if(previous != auth.currentUser?.uid) {
-            stop(); rows.value=emptyList(); member.value=null
+            stop(); rows.value=emptyList(); member.value=null;repo.customCategories.value=emptyList();archives.value=emptySet()
             profileJob?.cancel()
             if(auth.currentUser != null) profileJob = viewModelScope.launch {
                 try {
                     val account=repo.uid
                     repo.cached("_member",account).firstOrNull()?.let { if(!repo.admin)member.value=it }
                     withTimeoutOrNull(8000) { repo.member() }
+                    launch { runCatching{withTimeout(8000){repo.refreshCategories()}} }
+                    if(BuildConfig.ROLE in listOf("customer","business"))launch {
+                        try {
+                            archives.value=repo.cached("_archives",account).map{it.id}.toSet()
+                            val panel=if(BuildConfig.ROLE=="business")"shop" else "customer"
+                            val q=repo.db.collection("pf_archives").document(account).collection("panels").document(panel).collection("items").orderBy("createdAt",Query.Direction.DESCENDING).limit(500)
+                            repo.watch(q).collect { page -> if(!page.cached || page.records.isNotEmpty()) { archives.value=page.records.map{it.id}.toSet();if(!page.cached)repo.saveCache("_archives",page.records,account) } }
+                        } catch(e: Exception){if(e is CancellationException)throw e;archives.value=emptySet()}
+                    }
                     repo.profile().collect { m ->
                         val old = member.value
                         member.value=m
