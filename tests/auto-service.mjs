@@ -9,7 +9,7 @@ try {
  await env.withSecurityRulesDisabled(async c=>{for(const [id,role] of [['service','customer'],['other','customer'],['admin','admin'],['super','superadmin']])await setDoc(doc(c.firestore(),'pf_members',id),{name:id,role,createdAt:Timestamp.now()})});
  const serviceId='service_AAAAAAAAAAAAAAAAAAAA';
  const ref=db=>doc(db,'pf_shops',serviceId);
- await env.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),'pf_shops/service'),{ownerId:'service',businessType:'parts_shop',name:'Parent Shop',city:'თბილისი',phone:'+995555000000',rulesMap:{'*~*~*':true},status:'approved',createdAt:Timestamp.now()}));
+ await env.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),'pf_shops/service'),{ownerId:'service',businessType:'parts_shop',name:'Parent Shop',city:'თბილისი',phone:'+995555000000',rulesMap:{'*~*~*':true},status:'pending',createdAt:Timestamp.now()}));
  const service={ownerId:'service',parentShopId:'service',businessType:'auto_service',name:'Service',city:'თბილისი',phone:'+995 555 000 000',rulesMap:{'*~*~*':true},status:'pending_approval',createdAt:serverTimestamp()};
  for(const patch of [{status:'approved'},{ownerId:'other'},{businessType:'invalid'},{reviewReason:'forged',reviewedBy:'super',reviewedAt:serverTimestamp()},{extra:true},{name:'x'.repeat(101)}])await assertFails(setDoc(ref(owner),{...service,...patch}));
  await assertSucceeds(setDoc(ref(owner),service));
