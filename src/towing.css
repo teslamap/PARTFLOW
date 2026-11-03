@@ -1,2 +1,38 @@
 .tow-panel{padding:24px}.tow-tabs,.tow-actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.tow-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.tow-form label{display:grid;gap:6px}.tow-form input,.tow-form select,.tow-form textarea,.tow-quote{width:100%;padding:11px;border:1px solid var(--border,#dce1e8);border-radius:8px;background:var(--surface,#fff);color:inherit}.tow-card{border:1px solid var(--border,#dce1e8);border-radius:12px;padding:18px;margin:14px 0}.tow-card h3{margin-top:0}.tow-card p{overflow-wrap:anywhere}.tow-status{font-weight:700}.tow-quote{max-width:180px}.tow-form button{align-self:end}.tow-panel [role=alert]{color:#bd3434}.tow-panel details{margin-top:24px}.tow-panel summary{cursor:pointer;font-weight:700}@media(max-width:650px){.tow-form{grid-template-columns:1fr}.tow-panel{padding:16px}}
 .mc-app .tow-form{grid-template-columns:1fr}.mc-app .tow-actions>button{width:100%}
+
+/* Driver dashboard — mirrors PARTFLOW shop workspace */
+.tow-driver-dashboard{background:#f5f7fa;color:#122033;min-height:100vh;padding:34px clamp(18px,4vw,72px);font-family:inherit}
+.tow-driver-topline{display:flex;justify-content:space-between;align-items:center;color:#8b98a8;font-size:11px;letter-spacing:.08em;margin-bottom:27px}
+.tow-driver-status{color:#219c63;letter-spacing:0}
+.tow-driver-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:25px}
+.tow-driver-heading h2{font-size:clamp(24px,2.2vw,34px);letter-spacing:-.035em;margin:4px 0 8px;color:#142034}
+.tow-eyebrow{font-size:10px;color:#9aa7b7;letter-spacing:.17em;text-transform:uppercase}
+.tow-muted{font-size:13px;color:#96a2b2;margin:6px 0}
+.tow-driver-settings{background:#fb8847;color:white!important;border-radius:7px;padding:13px 20px;text-decoration:none;font-weight:700;font-size:12px;white-space:nowrap}
+.tow-driver-hero{display:flex;align-items:center;justify-content:space-between;gap:30px;overflow:hidden;min-height:238px;padding:32px 38px;background:linear-gradient(105deg,#112131 0%,#15273b 68%,#1d3044 100%);border-radius:13px;color:white;position:relative}
+.tow-driver-hero>div:first-child{position:relative;z-index:1;max-width:660px}
+.tow-driver-hero h2{color:white;font-size:clamp(23px,2.3vw,36px);line-height:1.28;max-width:660px;margin:15px 0}
+.tow-driver-hero p{color:#b9c8d9;max-width:500px;font-size:13px;line-height:1.7}
+.tow-driver-hero a{display:inline-block;color:#ff8a4d;font-weight:700;text-decoration:none;margin-top:12px;font-size:13px}
+.tow-hero-tag{font-size:11px;color:#b9c8d9}.tow-hero-tag:first-letter{color:#ff8a4d}
+.tow-hero-illustration{font-size:clamp(90px,11vw,180px);filter:drop-shadow(0 14px 20px #070f18);opacity:.9;transform:scaleX(-1);line-height:1}
+.tow-driver-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px;margin:20px 0 28px}
+.tow-driver-stats>div{background:white;border:1px solid #e2e7ee;border-radius:11px;padding:23px 20px;min-width:0;box-shadow:0 2px 6px #15273b05}
+.tow-driver-stats span{display:block;font-size:12px;color:#7e8c9e}.tow-driver-stats strong{display:block;font-size:30px;color:#112033;margin:11px 0;font-weight:800}
+.tow-driver-stats small{font-size:10px;color:#39996c}
+.tow-driver-orders{margin-top:20px}.tow-driver-orders-head{display:flex;justify-content:space-between;align-items:center;gap:20px}
+.tow-driver-orders h3{font-size:19px;color:#152235;margin:0}
+.tow-driver-orders-head input{border:1px solid #e0e6ed;border-radius:7px;background:white;padding:12px 14px;width:min(100%,290px);font-size:12px;color:#142034}
+.tow-driver-tabs{display:flex;gap:26px;border-bottom:1px solid #e1e7ee;margin:18px 0 16px}
+.tow-driver-tabs button{border:0;background:transparent;color:#8c98a8;padding:12px 4px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent}
+.tow-driver-tabs button.selected{color:#f47e3e;border-bottom-color:#f47e3e}
+.tow-driver-dashboard .tow-card{background:#fff;border:1px solid #e2e8ef;border-radius:10px;padding:19px 22px;box-shadow:0 2px 5px #16253806}
+.tow-driver-dashboard .tow-card h3{color:#18273b;font-size:17px}.tow-driver-dashboard .tow-card p{color:#637187;font-size:13px}
+.tow-driver-dashboard .tow-card .primary,.tow-driver-dashboard .tow-form .primary{background:#f58242;color:#fff;border:0;border-radius:7px;padding:11px 17px;font-weight:700;cursor:pointer}
+.tow-driver-dashboard .tow-card .secondary{background:#fff;color:#263a51;border:1px solid #dce4ed;border-radius:7px;padding:10px 15px}
+.tow-driver-dashboard .tow-quote{max-width:160px}.tow-driver-empty{padding:45px 20px;text-align:center;border:1px dashed #dce4ed;border-radius:10px;color:#8d9bab;background:white}
+.tow-driver-map,.tow-driver-profile{background:#fff;border:1px solid #e2e7ee;border-radius:10px;margin-top:18px;padding:20px}
+.tow-driver-map summary,.tow-driver-profile summary{font-weight:700;color:#192a3d}
+@media(max-width:1050px){.tow-driver-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.tow-hero-illustration{font-size:100px}}
+@media(max-width:650px){.tow-driver-dashboard{padding:18px 14px}.tow-driver-heading,.tow-driver-orders-head{align-items:stretch;flex-direction:column}.tow-driver-settings{align-self:flex-start}.tow-driver-hero{padding:24px;min-height:220px}.tow-hero-illustration{display:none}.tow-driver-stats{gap:9px}.tow-driver-stats>div{padding:15px}.tow-driver-stats strong{font-size:24px}.tow-driver-tabs{gap:10px;overflow-x:auto}.tow-driver-tabs button{white-space:nowrap;font-size:12px}.tow-driver-orders-head input{width:100%}}
