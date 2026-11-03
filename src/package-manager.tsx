@@ -31,7 +31,7 @@ export function PackageManager({packages=[],audit=[],shops=[],drivers=[],act,bus
  const [message,setMessage]=useState('');
  const currentKind=kinds.find(k=>k.id===kind)!;
  const plans=useMemo(()=>packages.filter(p=>legacyType(p)===kind),[packages,kind]);
- const recipients=useMemo(()=>kind==='tow_driver'?drivers.map(d=>({...d,targetType:'tow_driver'})):shops.filter(s=>(s.businessType||'parts_shop')===kind).map(s=>({...s,targetType:'shop'})),[kind,shops,drivers]);
+ const recipients=useMemo<Row[]>(()=>kind==='tow_driver'?drivers.map((d:Row):Row=>({...d,targetType:'tow_driver'})):shops.filter((s:Row)=>(s.businessType||'parts_shop')===kind).map((s:Row):Row=>({...s,targetType:'shop'})),[kind,shops,drivers]);
  const filteredRecipients=recipients.filter(r=>[r.name,r.city,r.phone].join(' ').toLowerCase().includes(search.trim().toLowerCase()));
  const choices=plans.filter(p=>p.active!==false);
  const current=packages.find(p=>p.id===editing);
