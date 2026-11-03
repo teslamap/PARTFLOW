@@ -22,6 +22,7 @@ export function ChatWorkspace({data,uid,admin,targetOfferId,notificationReceipts
  const confirmations=useRows(['pf_confirmations'],[...scope,orderBy('updatedAt','desc'),limit(300)],uid+':'+admin+':'+isShop+':confirmations');
  const reads=useRows(['pf_chat_reads',uid,'threads'],[],uid+':reads');
  const [expanded,setExpanded]=useState<Set<string>>(new Set()),[selected,setSelected]=useState(''),[detail,setDetail]=useState(false),[error,setError]=useState('');
+ const [search,setSearch]=useState(''),[mode,setMode]=useState<'chats'|'offers'|'status'>('chats');
  const mobile=document.documentElement.dataset.role==='mobile-customer';
  const [narrow,setNarrow]=useState(()=>mobile||matchMedia('(max-width: 760px)').matches);
  const rows=data.offers||[];
@@ -67,10 +68,13 @@ export function ChatWorkspace({data,uid,admin,targetOfferId,notificationReceipts
  function toggle(id:string){setExpanded(old=>{const n=new Set(old);n.has(id)?n.delete(id):n.add(id);return n})}
  return <div className={'pf-chat-shell '+(detail?'is-detail':'is-list')}>
   <aside className="pf-chat-list" aria-label="მოთხოვნები და საუბრები">
-   <div className="pf-chat-list-heading"><h2>{admin?'ჩატების მართვა':isShop?'მომხმარებლის ჩატები':'ჩემი ჩატები'}</h2><span>{groups.length} მოთხოვნა</span></div>
+   <nav className="pf-chat-mode"><button type="button" aria-pressed={mode==='chats'} onClick={()=>setMode('chats')}>ჩატები</button><button type="button" aria-pressed={mode==='offers'} onClick={()=>setMode('offers')}>შეთავაზებები</button><button type="button" aria-pressed={mode==='status'} onClick={()=>setMode('status')}>სტატუსი</button></nav><div className="pf-chat-list-heading"><h2>{admin?'ჩატების მართვა':isShop?'მომხმარებლის ჩატები':'ჩემი ჩატები'}</h2><span>{groups.length} მოთხოვნა</span></div>
+   {mode==='chats'&&<input className="pf-chat-search" aria-label="მოძებნე საუბარი" placeholder="მოძებნე მაღაზია ან ნაწილი…" value={search} onChange={e=>setSearch(e.target.value)}/>}
+   {mode==='offers'&&groups.map((r:Row)=><section className="pf-chat-extra" key={r.id}><h3>{r.part}</h3>{r.conversations.slice().sort((a:Row,b:Row)=>Number(a.price||Infinity)-Number(b.price||Infinity)).map((o:Row)=><button key={o.id} type="button" onClick={()=>{select(o);setMode('chats')}}><span>{o.shopName||'მაღაზია'}</span><strong>{money(o.price)}</strong></button>)}</section>)}
+   {mode==='status'&&groups.map((r:Row)=><section className="pf-chat-extra" key={r.id}><h3>{r.part}</h3><p>მოთხოვნა შექმნილია ✓</p><p>შეთავაზებები: {r.conversations.length}</p><p>{r.acceptedOfferId?'შეთავაზება არჩეულია ✓':'შეთავაზების არჩევის მოლოდინი'}</p></section>)}
    {[activity.error,confirmations.error,reads.error,error].filter(Boolean).map((e,i)=><p className="pf-chat-error" role="alert" key={i}>{e}</p>)}
    {!groups.length&&<div className="pf-chat-empty"><MessageSquare size={30}/><p>საუბრები აქ გამოჩნდება მაღაზიის შეთავაზების შემდეგ.</p></div>}
-   {groups.map((r:Row)=><div className="pf-chat-group" key={r.id}>
+   {(mode==='chats'?groups.filter((r:Row)=>(r.part+' '+r.brand+' '+r.conversations.map((o:Row)=>o.shopName).join(' ')).toLocaleLowerCase().includes(search.toLocaleLowerCase())):[]).map((r:Row)=><div className="pf-chat-group" key={r.id}>
     <button type="button" className="pf-chat-group-toggle" aria-expanded={expanded.has(r.id)} aria-controls={'chat-group-'+r.id} onClick={()=>toggle(r.id)}><Package size={18}/><span><strong>{r.part}</strong><small>{r.brand} {r.model} · {r.year} · #{r.id.slice(0,6)}</small>{r.acceptedOfferId&&<em>✓ შეკვეთა დადასტურებულია</em>}</span>{expanded.has(r.id)?<ChevronDown size={16}/>:<ChevronRight size={16}/>}</button>
     {expanded.has(r.id)&&<div id={'chat-group-'+r.id}>{!r.conversations.length&&<p className="pf-chat-no-offer">შეთავაზებები ჯერ არ არის.</p>}{r.conversations.map((o:Row)=>{
      const s=summaries.get(o.id),c=cards.get(o.id),closed=chatClosed(r,o.id),won=r.acceptedOfferId===o.id;
