@@ -331,7 +331,7 @@ function validPackage(d){return d.keys().hasAll(['name','createdAt','updatedAt']
     }
     match /pf_support_threads/{uid} {
       allow read: if signed() && (request.auth.uid==uid || superadmin());
-      allow create: if signed() && request.auth.uid==uid && request.resource.data.keys().hasOnly(['ownerId','createdAt','updatedAt']) && request.resource.data.ownerId==uid && request.resource.data.createdAt==request.time && request.resource.data.updatedAt==request.time;
+      allow create: if signed() && request.auth.uid==uid && request.resource.data.keys().hasOnly(['ownerId','kind','createdAt','updatedAt']) && request.resource.data.ownerId==uid && request.resource.data.kind in ['customer','shop'] && (request.resource.data.kind=='customer' || exists(/databases/$(database)/documents/pf_shops/$(uid))) && request.resource.data.createdAt==request.time && request.resource.data.updatedAt==request.time;
       allow update,delete: if false;
       match /messages/{id} {
         allow read: if signed() && (request.auth.uid==uid || superadmin());
