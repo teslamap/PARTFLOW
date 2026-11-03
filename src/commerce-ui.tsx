@@ -16,13 +16,13 @@ function useRows(path:string[],filters:any[],key:string,enabled=true){
  return {rows,error};
 }
 const date=(v:any)=>v?.toDate?.().toLocaleString('ka-GE')||'იგზავნება…';
-export function CommerceHub({data,admin=false,demo=false,onOpenRequest,target}:any){
+export function CommerceHub({data,admin=false,demo=false,onOpenRequest,target,onlyTab}:any){
  const uid=data.user?.id;
- return demo?<p>ჩატი და შეკვეთები ხელმისაწვდომია ანგარიშით შესვლის შემდეგ.</p>:uid?<Hub key={uid+':'+admin} data={data} uid={uid} admin={admin} onOpenRequest={onOpenRequest} target={target}/>:null;
+ return demo?<p>ჩატი და შეკვეთები ხელმისაწვდომია ანგარიშით შესვლის შემდეგ.</p>:uid?<Hub key={uid+':'+admin} data={data} uid={uid} admin={admin} onOpenRequest={onOpenRequest} target={target} onlyTab={onlyTab}/>:null;
 }
-function Hub({data,uid,admin,onOpenRequest,target}:any){const feature=useFeatures();
- const [tab,setTab]=useState('chat'),[offerId,setOfferId]=useState(''),[selected,setSelected]=useState(''),[error,setError]=useState(''),[marking,setMarking]=useState(false),[unreadOnly,setUnreadOnly]=useState(false);
- useEffect(()=>{if(target?.orderId){setSelected(target.orderId);setTab('orders')}else if(target?.offerId){setOfferId(target.offerId);setTab('chat')}},[target]);
+function Hub({data,uid,admin,onOpenRequest,target,onlyTab}:any){const feature=useFeatures();
+ const [tab,setTab]=useState(onlyTab||'chat'),[offerId,setOfferId]=useState(''),[selected,setSelected]=useState(''),[error,setError]=useState(''),[marking,setMarking]=useState(false),[unreadOnly,setUnreadOnly]=useState(false);
+ useEffect(()=>{if(onlyTab)return;if(target?.orderId){setSelected(target.orderId);setTab('orders')}else if(target?.offerId){setOfferId(target.offerId);setTab('chat')}},[target]);
  const orders=useRows(['pf_orders'],[...(admin?[]:[where(document.documentElement.dataset.role==='shop'?'shopId':'ownerId','==',uid)]),orderBy('createdAt','desc'),limit(300)],uid+':orders');
  const receipts=useRows(['pf_inbox',uid,'receipts'],[],uid+':receipts');
  const incoming=useRows(['pf_messages'],[where(document.documentElement.dataset.role==='shop'?'shopId':'ownerId','==',uid),orderBy('createdAt','desc'),limit(100)],uid+':incoming');
@@ -33,7 +33,7 @@ function Hub({data,uid,admin,onOpenRequest,target}:any){const feature=useFeature
  async function markAll(){setMarking(true);setError('');try{const pending=notices.filter(n=>!read.has(n.id));for(let start=0;start<pending.length;start+=400){const batch=writeBatch(db);pending.slice(start,start+400).forEach(n=>batch.set(doc(db,'pf_inbox',uid,'receipts',n.id),{createdAt:serverTimestamp()}));await batch.commit()}}catch(e:any){setError(e.message)}finally{setMarking(false)}}
  async function openNotice(n:any){try{await setDoc(doc(db,'pf_inbox',uid,'receipts',n.id),{createdAt:serverTimestamp()});if(n.orderId){setSelected(n.orderId);setTab('orders')}else{setOfferId(n.offerId);setTab('chat')}onOpenRequest?.(n.requestId)}catch(e:any){setError(e.message)}}
  return <section className="commerce">{[orders.error,receipts.error,incoming.error,confirmations.error,error].filter(Boolean).map((e,i)=><p role="alert" key={i}>{e}</p>)}
- <nav className="commerce-actions" aria-label="ჩატი და შეტყობინებები">{[['chat','ჩატი'],['orders','შეკვეთები'],['notifications','შეტყობინებები'+(unread?' ('+unread+')':'')],['support','მხარდაჭერა']].map(([id,label])=><button type="button" key={id} aria-pressed={tab===id} onClick={()=>setTab(id)}>{label}</button>)}</nav>
+ {!onlyTab&&<nav className="commerce-actions" aria-label="ჩატი და შეტყობინებები">{[['chat','ჩატი'],['orders','შეკვეთები'],['notifications','შეტყობინებები'+(unread?' ('+unread+')':'')],['support','მხარდაჭერა']].map(([id,label])=><button type="button" key={id} aria-pressed={tab===id} onClick={()=>setTab(id)}>{label}</button>)}</nav>}
  {tab==='notifications'&&<><div className="commerce-actions"><button type="button" aria-pressed={unreadOnly} onClick={()=>setUnreadOnly(!unreadOnly)}>მხოლოდ წაუკითხავი</button><button type="button" disabled={marking||!unread} onClick={()=>void markAll()}>ყველას წაკითხულად მონიშვნა</button></div>{feature('pushNotifications')&&<button type="button" onClick={async()=>{try{await enableAndroidPush(uid);setError('Android Push ჩართულია')}catch(e:any){setError(e.message)}}}>Android Push-ის ჩართვა</button>}{!notices.length&&<p>შეტყობინებები ჯერ არ არის.</p>}{unreadOnly&&!unread&&<p>წაუკითხავი შეტყობინებები არ არის.</p>}{notices.filter(n=>!unreadOnly||!read.has(n.id)).map(n=><button className="commerce-notice" type="button" key={n.id} onClick={()=>void openNotice(n)}>{read.has(n.id)?'✓':'●'} {n.label} · #{n.requestId.slice(0,6)}</button>)}</>}
  {tab==='support'&&<SupportChat uid={uid} admin={admin} shop={document.documentElement.dataset.role==='shop'}/>}
  {tab==='chat'&&<ChatWorkspace notificationReceipts={receipts.rows} data={data} uid={uid} admin={admin} targetOfferId={offerId}/>}
