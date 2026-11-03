@@ -3,7 +3,7 @@ import {doc,onSnapshot,setDoc,serverTimestamp,updateDoc} from 'firebase/firestor
 import {auth,db} from './firebase';
 import {CITIES} from './core.mjs';
 import {useFeatures} from './use-features';
-import {UserRound,MapPin,Phone,ShieldCheck,Save,LockKeyhole,CheckCircle2} from 'lucide-react';
+import {UserRound,MapPin,Phone,ShieldCheck,Save,LockKeyhole,CheckCircle2,Mail} from 'lucide-react';
 import './profile.css';
 
 export function ProfileEditor({uid,name,city,demo=false,accountType='customer'}:any){
@@ -22,6 +22,7 @@ export function ProfileEditor({uid,name,city,demo=false,accountType='customer'}:
  return <section className="panel pf-profile">
   <div className="pf-profile-head"><div className="pf-profile-avatar"><UserRound size={28}/></div><div><span className="pf-profile-eyebrow">PARTFLOW · {accountLabel}</span><h2>ჩემი პროფილი</h2><p>პირადი მონაცემები, საკონტაქტო ინფორმაცია და ანგარიშის პარამეტრები ერთ სივრცეში.</p></div><span className="pf-profile-private"><LockKeyhole size={14}/> პირადი</span></div>
   <form onSubmit={save} className="pf-profile-form"><div className="pf-profile-section"><h3><UserRound size={17}/> პირადი ინფორმაცია</h3><div className="pf-profile-grid"><label>სახელი და გვარი<input value={value} maxLength={100} required autoComplete="name" disabled={demo||busy} placeholder="შენი სახელი" onChange={e=>setValue(e.target.value)}/></label><label><span><MapPin size={14}/> ქალაქი</span><select value={cityValue} disabled={demo||busy} onChange={e=>setCityValue(e.target.value)}>{CITIES.map((c:string)=><option key={c}>{c}</option>)}</select></label></div></div>
+  <div className="pf-profile-section"><h3><Mail size={17}/> ანგარიშის უსაფრთხოება</h3><div className="pf-profile-grid"><label>ელფოსტა<input type="email" readOnly value={demo?'დემო ანგარიში':auth.currentUser?.email||'ელფოსტა არ არის მითითებული'} aria-label="ანგარიშის ელფოსტა"/></label><div className="pf-profile-hint"><ShieldCheck size={19}/><span>{demo?'დემო რეჟიმში მონაცემები არ ინახება.':auth.currentUser?.emailVerified?'ელფოსტა დადასტურებულია.':'ელფოსტა ჯერ არ არის დადასტურებული. უსაფრთხოების მიზნით გადაამოწმე ანგარიშის პარამეტრები.'} ელფოსტის შეცვლა ამ ფორმიდან არ ხდება.</span></div></div></div>
   {contactEnabled&&<div className="pf-profile-section"><h3><Phone size={17}/> საკონტაქტო ინფორმაცია</h3><div className="pf-profile-grid"><label>მობილურის ნომერი<input type="tel" inputMode="tel" autoComplete="tel" value={phone} maxLength={20} disabled={demo||busy} placeholder="+9955XXXXXXXX" aria-invalid={!validPhone} onChange={e=>setPhone(e.target.value)}/></label><div className="pf-profile-hint"><ShieldCheck size={19}/><span>ეს პირადი საკონტაქტო ნომერია და არ ცვლის მაღაზიის ან ევაკუატორის სამუშაო ნომერს. ნომერი მხოლოდ შენს ანგარიშზე ჩანს; შეცვლისას დადასტურება განულდება.</span></div></div>{!validPhone&&<p className="pf-profile-error">გამოიყენე ფორმატი +9955XXXXXXXX</p>}{phoneError&&<p className="pf-profile-error">{phoneError}</p>}</div>}
   <div className="pf-profile-footer"><span><CheckCircle2 size={16}/> ცვლილებები შეინახება მხოლოდ შენს ანგარიშზე.</span><button type="submit" className="primary" disabled={demo||busy||!value.trim()||!validPhone||!changed}><Save size={17}/>{busy?'ინახება...':'ცვლილებების შენახვა'}</button></div>{status&&<p role="status" className="pf-profile-status">{status}</p>}</form>
  </section>;
