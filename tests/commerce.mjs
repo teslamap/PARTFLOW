@@ -6,7 +6,7 @@ import {requestConfirmation} from '../src/chat-workflow.mjs';
 import {ensureMemberRecord} from '../src/member-write.mjs';
 import {confirmOrder,changeOrder,sendMessage,nextStatuses,canChangeOrder} from '../src/commerce.mjs';
 const env=await initializeTestEnvironment({projectId:'demo-partflow',firestore:{host:'127.0.0.1',port:Number(process.env.FIRESTORE_EMULATOR_PORT||8080),rules:readFileSync('firestore.rules','utf8')}});
-const db=id=>env.authenticatedContext(id).firestore(),alice=db('alice'),shop=db('shop'),outsider=db('outsider'),admin=db('admin'),anon=env.unauthenticatedContext().firestore();
+const db=id=>env.authenticatedContext(id,id==='admin'?{email:'suloanani1@gmail.com',email_verified:true}:{}).firestore(),alice=db('alice'),shop=db('shop'),outsider=db('outsider'),admin=db('admin'),anon=env.unauthenticatedContext().firestore();
 const r=(d,c,id)=>doc(d,'pf_'+c,id);
 async function observed(db,c,filters,action,predicate){
  let stop=()=>{},timer;
@@ -19,7 +19,7 @@ try{
  assert.ok(['First','Second'].includes((await getDoc(r(signup,'members','signup'))).data().name));
  await env.withSecurityRulesDisabled(async c=>{
   const d=c.firestore(),now=Timestamp.now();
-  for(const [id,role] of [['alice','customer'],['shop','customer'],['admin','admin']])await setDoc(r(d,'members',id),{name:id,role,createdAt:now});
+  for(const [id,role] of [['alice','customer'],['shop','customer'],['admin','superadmin']])await setDoc(r(d,'members',id),{name:id,role,createdAt:now});
   await setDoc(r(d,'shops','shop'),{ownerId:'shop',name:'Shop',city:'თბილისი',phone:'555000000',status:'approved',rulesMap:{'*~*~*':true},createdAt:now});
   const request={ownerId:'alice',brand:'Toyota',model:'Prius',year:2015,engine:'1.8',vin:'',category:'განათება',part:'ფარი',description:'ფარი',city:'თბილისი',condition:'მეორადი',budget:400,photos:[],status:'open',previousStatus:'open',acceptedOfferId:null,createdAt:now};
   for(const id of ['r1','r2','r3','r4']){
