@@ -19,6 +19,10 @@ try{
  await assertFails(updateDoc(dr(admin,'admin'),{status:'approved',updatedAt:serverTimestamp()}));
  await assertFails(applyTowDriver(bob,'carol',{name:'spoof',phone:'+995555123456',city:'ბათუმი',truck:'Tow'}));
  await assertFails(getDoc(dr(alice,'bob')));
+ await assertSucceeds(setDoc(doc(admin,'pf_packages','tow-package'),{name:'ევაკუატორის პაკეტი',description:'',maxServices:10,maxStaff:5,trialDays:30,createdBy:'admin',createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
+ await assertFails(updateDoc(dr(bob,'bob'),{packageId:'tow-package',packageAssignedAt:serverTimestamp(),packageExpiresAt:null,updatedAt:serverTimestamp()}));
+ await assertSucceeds(updateDoc(dr(admin,'bob'),{packageId:'tow-package',packageAssignedAt:serverTimestamp(),packageExpiresAt:null,updatedAt:serverTimestamp()}));
+ await assert.equal((await getDoc(dr(admin,'bob'))).data().packageId,'tow-package');
  await assertSucceeds(getDocs(collection(admin,'pf_tow_drivers')));
  await assertFails(updateDoc(dr(bob,'bob'),{truck:'x'.repeat(161),updatedAt:serverTimestamp()}));
  const id=await request();
