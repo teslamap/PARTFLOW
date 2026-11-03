@@ -8,7 +8,7 @@ const unique=values=>[...new Map(values.flat().map(v=>[v.id,v])).values()];
 // All queries mirror the existing participant/approval-based security rules.
 // Rebuild listeners when role or shop specializations change, and detach on logout.
 export function subscribePanelData(db,identity,next,error,{panel='customer'}={}){
- const isShop=panel==='shop',isCustomer=['customer','mobile-customer'].includes(panel),adminPanel=['admin','superadmin'].includes(panel);
+ const isShop=panel==='shop',isCustomer=['customer','mobile-customer'].includes(panel),adminPanel=panel==='superadmin';
  let stopped=false,generation=0,profile=null,shop=null,profileReady=false,shopReady=!isShop,signature='',children=[];
  const own=c=>doc(db,'pf_'+c,identity.id);
  function rebuild(){
@@ -18,7 +18,7 @@ export function subscribePanelData(db,identity,next,error,{panel='customer'}={})
   for(const stop of children)stop();children=[];const g=++generation;
   const requestSets=new Map(),offerSets=new Map(),extras=new Map(),extraStops=new Map(),pending=new Set();
   let categories=CATEGORIES,archives=[],shops=[],users=[],building=true;
-  const isAdmin=adminPanel&&['admin','superadmin'].includes(profile?.role);
+  const isAdmin=adminPanel&&profile?.role==='superadmin';
   if(adminPanel&&(!isAdmin||panel==='superadmin'&&profile?.role!=='superadmin')){next({user:{...identity,...profile},shop:null,categories:CATEGORIES,requests:[],offers:[],archives:[],shops:[],users:[]});error(new Error('ამ პანელის უფლება აღარ გაქვს.'));return;}
   function current(){return !stopped&&g===generation}
   function emit(){
