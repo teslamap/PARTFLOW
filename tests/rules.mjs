@@ -111,7 +111,7 @@ await assertFails(updateDoc(doc(owner,'pf_control_audit/entry'),{action:'rollbac
 await assertSucceeds(getDocs(collection(owner,'pf_members')));
 await assertFails(setDoc(doc(alice,'pf_categories/test'),{name:'Test',createdAt:serverTimestamp()}));
 await assertSucceeds(setDoc(doc(owner,'pf_categories/test'),{name:'Test',createdAt:serverTimestamp()}));
-await assertSucceeds(setDoc(doc(admin,'pf_categories/admin-added'),{name:'Admin category',createdAt:serverTimestamp()}));
+await assertFails(setDoc(doc(admin,'pf_categories/admin-added'),{name:'Admin category',createdAt:serverTimestamp()}));
 await assertFails(setDoc(doc(admin,'pf_categories/admin-added'),{name:'Overwrite',createdAt:serverTimestamp()}));
 await assertFails(setDoc(doc(alice,'orders/legacy'),{open:true}));
 // Disabled features are denied even with a valid signed-in session.
