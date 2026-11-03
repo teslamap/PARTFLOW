@@ -23,10 +23,10 @@ export function CommerceHub({data,admin=false,demo=false,onOpenRequest,target}:a
 function Hub({data,uid,admin,onOpenRequest,target}:any){const feature=useFeatures();
  const [tab,setTab]=useState('chat'),[offerId,setOfferId]=useState(''),[selected,setSelected]=useState(''),[error,setError]=useState(''),[marking,setMarking]=useState(false),[unreadOnly,setUnreadOnly]=useState(false);
  useEffect(()=>{if(target?.orderId){setSelected(target.orderId);setTab('orders')}else if(target?.offerId){setOfferId(target.offerId);setTab('chat')}},[target]);
- const orders=useRows(['pf_orders'],[...(admin?[]:[where(document.documentElement.dataset.role==='shop'?'shopId':'ownerId','==',uid)]),orderBy('createdAt','desc'),limit(300)],uid+':orders',tab==='orders'||tab==='notifications');
- const receipts=useRows(['pf_inbox',uid,'receipts'],[],uid+':receipts',tab==='notifications');
- const incoming=useRows(['pf_messages'],[where(document.documentElement.dataset.role==='shop'?'shopId':'ownerId','==',uid),orderBy('createdAt','desc'),limit(100)],uid+':incoming',tab==='notifications');
- const confirmations=useRows(['pf_confirmations'],[...(admin?[]:[where(document.documentElement.dataset.role==='shop'?'shopId':'ownerId','==',uid)]),orderBy('updatedAt','desc'),limit(300)],uid+':confirmations',tab==='notifications');
+ const orders=useRows(['pf_orders'],[...(admin?[]:[where(document.documentElement.dataset.role==='shop'?'shopId':'ownerId','==',uid)]),orderBy('createdAt','desc'),limit(300)],uid+':orders');
+ const receipts=useRows(['pf_inbox',uid,'receipts'],[],uid+':receipts');
+ const incoming=useRows(['pf_messages'],[where(document.documentElement.dataset.role==='shop'?'shopId':'ownerId','==',uid),orderBy('createdAt','desc'),limit(100)],uid+':incoming');
+ const confirmations=useRows(['pf_confirmations'],[...(admin?[]:[where(document.documentElement.dataset.role==='shop'?'shopId':'ownerId','==',uid)]),orderBy('updatedAt','desc'),limit(300)],uid+':confirmations');
  const read=new Set(receipts.rows.map(r=>r.id));
  const notices=buildNotifications({uid,requests:data.requests,offers:data.offers,orders:orders.rows,messages:incoming.rows,confirmations:confirmations.rows});
  const unread=notices.filter(n=>!read.has(n.id)).length;
