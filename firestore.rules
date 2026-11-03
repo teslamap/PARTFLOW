@@ -329,13 +329,15 @@ function validPackage(d){return d.keys().hasAll(['name','createdAt','updatedAt']
       );
       allow delete: if false;
     }
-    match /pf_support_threads/{uid} {
-      allow read: if signed() && (request.auth.uid==uid || superadmin());
-      allow create: if signed() && request.auth.uid==uid && request.resource.data.keys().hasOnly(['ownerId','kind','createdAt','updatedAt']) && request.resource.data.ownerId==uid && request.resource.data.kind in ['customer','shop'] && (request.resource.data.kind=='customer' || exists(/databases/$(database)/documents/pf_shops/$(uid))) && request.resource.data.createdAt==request.time && request.resource.data.updatedAt==request.time;
+    match /pf_support_threads/{threadId} {
+      function supportOwner(){return get(/databases/$(database)/documents/pf_support_threads/$(threadId)).data.ownerId;}
+      function supportAccess(){return signed() && (superadmin() || (exists(/databases/$(database)/documents/pf_support_threads/$(threadId)) && supportOwner()==request.auth.uid));}
+      allow get,list: if supportAccess();
+      allow create: if signed() && request.resource.data.keys().hasOnly(['ownerId','kind','createdAt','updatedAt']) && request.resource.data.ownerId==request.auth.uid && request.resource.data.kind in ['customer','shop'] && ((request.resource.data.kind=='customer' && threadId==request.auth.uid) || (request.resource.data.kind=='shop' && threadId=='shop_'+request.auth.uid && exists(/databases/$(database)/documents/pf_shops/$(request.auth.uid)))) && request.resource.data.createdAt==request.time && request.resource.data.updatedAt==request.time;
       allow update,delete: if false;
       match /messages/{id} {
-        allow read: if signed() && (request.auth.uid==uid || superadmin());
-        allow create: if signed() && (request.auth.uid==uid || superadmin()) && exists(/databases/$(database)/documents/pf_support_threads/$(uid)) && request.resource.data.keys().hasOnly(['senderId','text','createdAt']) && request.resource.data.senderId==request.auth.uid && text(request.resource.data.text,2000) && request.resource.data.createdAt==request.time;
+        allow read: if supportAccess();
+        allow create: if supportAccess() && request.resource.data.keys().hasOnly(['senderId','text','createdAt']) && request.resource.data.senderId==request.auth.uid && text(request.resource.data.text,2000) && request.resource.data.createdAt==request.time;
         allow update,delete: if false;
       }
     }
