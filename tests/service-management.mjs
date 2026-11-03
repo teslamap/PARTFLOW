@@ -16,7 +16,7 @@ try{
  const owner=account('service'),other=account('other'),parts=account('parts'),admin=account('admin'),anon=env.unauthenticatedContext().firestore();
  await env.withSecurityRulesDisabled(async c=>{
   for(const [id,type] of [['service','auto_service'],['other','auto_service'],['parts','parts_shop']])await setDoc(doc(c.firestore(),'pf_shops',id),{ownerId:id,businessType:type,status:type==='auto_service'?'pending_approval':'approved'});
-  for(const id of ['service','other','parts','admin'])await setDoc(doc(c.firestore(),'pf_members',id),{name:id,role:id==='admin'?'admin':'customer',createdAt:Timestamp.now()});
+  for(const id of ['service','other','parts','admin'])await setDoc(doc(c.firestore(),'pf_members',id),{name:id,role:id==='admin'?'superadmin':'customer',createdAt:Timestamp.now()});
  });
  const item={name:'ზეთის შეცვლა',description:'ძრავის ზეთი',durationMinutes:30,active:true};
  const itemRef=db=>doc(db,'pf_shops/service/catalog/oil');
@@ -69,3 +69,4 @@ try{
  await assertFails(getDoc(staffRef(owner)));await assertFails(getDoc(staffRef(anon)));
  console.log('PASS: service setup CRUD, weekly schedules, real dates, local assignments, approval gates, inactive records, immutable timestamps, orphan denial and owner isolation.');
 }finally{await env.cleanup()}
+

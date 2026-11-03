@@ -17,7 +17,7 @@ try{
  await denied(setDoc(ref(owner,'customer'),value)); // Branch IDs cannot squat another Auth account's business document.
  await denied(setDoc(ref(other,'service_EEEEEEEEEEEEEEEEEEEE'),{...value,ownerId:'other',parentShopId:'other'}));
  const independent={...value,ownerId:'other'};delete independent.parentShopId;
- await ok(setDoc(ref(other,'other'),independent));
+ await denied(setDoc(ref(other,'other'),independent)); // Registration requires an owned parts-shop parent.
  await denied(setDoc(ref(other,'not-independent'),independent));
  await denied(getDoc(ref(anon,'service_AAAAAAAAAAAAAAAAAAAA')));await denied(getDoc(ref(customer,'service_AAAAAAAAAAAAAAAAAAAA')));
  await ok(getDocs(query(collection(owner,'pf_shops'),where('ownerId','==','shop'))));
@@ -73,3 +73,4 @@ try{
  await denied(updateDoc(doc(customer,'pf_members/customer'),{role:'superadmin'}));
  console.log('Owned services: registration, approval, ownership, schema, tenant isolation, suspended access and order transitions passed');
 }finally{await env.cleanup()}
+

@@ -42,9 +42,10 @@ try {
  await assertSucceeds(updateDoc(ref(superDb),review('suspended','დროებით შეჩერებული')));
  await assertFails(getDoc(ref(anon)));
  // Legacy shop migration is additive and preserves existing approval/access.
- const {businessType,...legacy}=service;
+ const {businessType,parentShopId,...legacy}=service;
  await env.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),'pf_shops/other'),{...legacy,ownerId:'other',status:'approved'}));
  await assertFails(updateDoc(doc(admin,'pf_shops/other'),{status:'suspended'}));
  await assertSucceeds(updateDoc(doc(superDb,'pf_shops/other'),{status:'suspended'}));
  console.log('Auto-service security and public query tests passed');
 } finally {await env.cleanup()}
+
