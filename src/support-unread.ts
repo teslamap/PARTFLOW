@@ -4,19 +4,19 @@ import {db} from './firebase';
 export function useSupportUnread(uid:string,enabled:boolean){
  const [count,setCount]=useState(0);
  useEffect(()=>{if(!enabled||!uid){setCount(0);return}
- const stops=new Map<string,()=>void>(),totals=new Map<string,number>();
+ const stops=new Map<string,()=>void>(),totals=new Map<string,number>(),cached=new Map<string,any[]>();
  const refresh=()=>setCount([...totals.values()].reduce((a,b)=>a+b,0));
+ const reread=()=>{for(const [id,rows] of cached){const seen=Number(localStorage.getItem('pf_support_seen_'+uid+'_'+id)||0);totals.set(id,rows.filter(m=>m.senderId!==uid&&m.createdAt>seen).length)}refresh()};window.addEventListener('pf-support-read',reread);
  const root=onSnapshot(collection(db,'pf_support_threads'),snap=>{
   const ids=new Set(snap.docs.map(d=>d.id));
-  for(const [id,stop] of stops)if(!ids.has(id)){stop();stops.delete(id);totals.delete(id)}
+  for(const [id,stop] of stops)if(!ids.has(id)){stop();stops.delete(id);totals.delete(id);cached.delete(id)}
   for(const d of snap.docs){if(stops.has(d.id))continue;const id=d.id;
    const stop=onSnapshot(query(collection(db,'pf_support_threads',id,'messages'),orderBy('createdAt','asc')),messages=>{
-    const seen=Number(localStorage.getItem('pf_support_seen_'+uid+'_'+id)||0);
-    totals.set(id,messages.docs.filter(m=>m.data().senderId!==uid&&((m.data().createdAt?.toMillis?.()||0)>seen)).length);refresh();
+    cached.set(id,messages.docs.map(m=>({senderId:m.data().senderId,createdAt:m.data().createdAt?.toMillis?.()||0})));reread();
    },()=>{totals.set(id,0);refresh()});stops.set(id,stop)
   }refresh();
  },()=>setCount(0));
- return()=>{root();for(const stop of stops.values())stop()}
+ return()=>{root();window.removeEventListener('pf-support-read',reread);for(const stop of stops.values())stop()}
  },[uid,enabled]);
  return count;
 }
