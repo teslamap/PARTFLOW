@@ -93,6 +93,7 @@ function validPackage(d){return d.keys().hasAll(['name','createdAt','updatedAt']
     function serviceOwner(uid){return signed() && request.auth.uid==serviceParent(uid).ownerId && serviceBusiness(serviceParent(uid));}
     function servicePublic(uid){let p=serviceParent(uid);return serviceBusiness(p) && p.status=='approved';}
     function serviceInspect(uid){return serviceOwner(uid) || (signed() && admin() && serviceBusiness(serviceParent(uid)));}
+    function packageActive(uid){let p=serviceParent(uid);return !p.keys().hasAny(['packageExpiresAt']) || p.packageExpiresAt==null || (p.packageExpiresAt is timestamp && p.packageExpiresAt>request.time);}
     // Service orders live under their business, independently of parts orders.
     // Only the customer, business owner and superadmin can read them.
     function validServiceOrder(uid,d){return d.keys().hasAll(['businessId','customerId','description','status','createdAt','updatedAt']) && d.keys().hasOnly(['businessId','customerId','description','status','createdAt','updatedAt']) && d.businessId==uid && text(d.businessId,128) && text(d.customerId,128) && text(d.description,2000) && d.status in ['pending','accepted','completed','cancelled'] && d.createdAt is timestamp && d.updatedAt==request.time;}
@@ -121,12 +122,12 @@ function validPackage(d){return d.keys().hasAll(['name','createdAt','updatedAt']
     function validServiceClosure(uid,id,d){return d.keys().hasAll(['date','day','staffId','active','createdAt','updatedAt']) && d.keys().hasOnly(['date','day','staffId','active','createdAt','updatedAt']) && d.day is timestamp && d.day==timestamp.date(d.day.year(),d.day.month(),d.day.day()) && d.day.year()>=2020 && d.day.year()<=2100 && d.date is string && d.date.size()==10 && d.date==string(d.day.year())+'-'+twoDigits(d.day.month())+'-'+twoDigits(d.day.day()) && d.staffId is string && d.staffId.size()<=128 && (d.staffId==''||exists(/databases/$(database)/documents/pf_shops/$(uid)/staff/$(d.staffId))) && id==d.date+'_'+(d.staffId==''?'all':'staff_'+d.staffId) && d.active is bool && setupTimes(d);}
     match /pf_shops/{uid}/catalog/{id} {
       allow read: if serviceInspect(uid) || (servicePublic(uid) && resource.data.active==true);
-      allow create: if serviceOwner(uid) && validServiceItem(request.resource.data) && request.resource.data.createdAt==request.time;
+      allow create: if serviceOwner(uid) && packageActive(uid) && validServiceItem(request.resource.data) && request.resource.data.createdAt==request.time;
       allow update: if serviceOwner(uid) && validServiceItem(request.resource.data) && request.resource.data.createdAt==resource.data.createdAt;
     }
     match /pf_shops/{uid}/staff/{id} {
       allow read: if serviceInspect(uid) || (servicePublic(uid) && resource.data.active==true);
-      allow create: if serviceOwner(uid) && validServiceStaff(uid,request.resource.data) && request.resource.data.createdAt==request.time;
+      allow create: if serviceOwner(uid) && packageActive(uid) && validServiceStaff(uid,request.resource.data) && request.resource.data.createdAt==request.time;
       allow update: if serviceOwner(uid) && validServiceStaff(uid,request.resource.data) && request.resource.data.createdAt==resource.data.createdAt;
     }
     match /pf_shops/{uid}/hours/{id} {
