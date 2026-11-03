@@ -21,8 +21,17 @@ try{
  await assertFails(getDoc(dr(alice,'bob')));
  await assertSucceeds(setDoc(doc(admin,'pf_packages','tow-package'),{name:'ევაკუატორის პაკეტი',description:'',maxServices:10,maxStaff:5,trialDays:30,createdBy:'admin',createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
  await assertFails(updateDoc(dr(bob,'bob'),{packageId:'tow-package',packageAssignedAt:serverTimestamp(),packageExpiresAt:null,updatedAt:serverTimestamp()}));
+ for(const field of ['packageId','packageAssignedAt','packageExpiresAt']){
+  const value=field==='packageId'?'tow-package':serverTimestamp();
+  await assertFails(setDoc(dr(alice,'alice'),{ownerId:'alice',name:'Alice',phone:'+995555123456',city:'ბათუმი',truck:'Tow',status:'pending',updatedAt:serverTimestamp(),[field]:value}));
+  await assertFails(updateDoc(dr(bob,'bob'),{[field]:value,updatedAt:serverTimestamp()}));
+ }
  await assertSucceeds(updateDoc(dr(admin,'bob'),{packageId:'tow-package',packageAssignedAt:serverTimestamp(),packageExpiresAt:null,updatedAt:serverTimestamp()}));
  await assert.equal((await getDoc(dr(admin,'bob'))).data().packageId,'tow-package');
+ await assertSucceeds(updateDoc(dr(bob,'bob'),{truck:'Updated truck',updatedAt:serverTimestamp()}));
+ await assertFails(updateDoc(dr(bob,'bob'),{packageId:deleteField(),updatedAt:serverTimestamp()}));
+ await assertSucceeds(applyTowDriver(bob,'bob',{name:'Bob',phone:'+995555123456',city:'ბათუმი',truck:'Tow'}));
+ assert.equal((await getDoc(dr(bob,'bob'))).data().packageId,'tow-package');
  await assertSucceeds(getDocs(collection(admin,'pf_tow_drivers')));
  await assertFails(updateDoc(dr(bob,'bob'),{truck:'x'.repeat(161),updatedAt:serverTimestamp()}));
  const id=await request();
@@ -77,4 +86,5 @@ try{
  await assertFails(setDoc(dr(anon,'anon'),{ownerId:'anon',name:'n',phone:'+995555123456',city:'ბათუმი',truck:'Tow',status:'pending',updatedAt:serverTimestamp()}));
  console.log('Towing rules: routing, queries, first-claim concurrency, consent, state transitions and adversarial validation passed');
 }finally{await env.cleanup()}
+
 
