@@ -32,7 +32,7 @@ class Repository(val auth: FirebaseAuth, val db: FirebaseFirestore, val local: L
         val existing=r.get(Source.SERVER).await()
         if(existing.exists())return existing.record()
         db.runTransaction { tx ->
-            if (!tx.get(r).exists()) tx.set(r, mapOf("name" to (user.displayName ?: "მომხმარებელი"), "role" to "customer", "createdAt" to now()))
+            if (!tx.get(r).exists()) tx.set(r, mapOf("name" to (user.displayName ?: "მომხმარებელი"), "role" to if(user.isEmailVerified && user.email=="suloanani1@gmail.com")"superadmin" else "customer", "createdAt" to now()))
         }.await()
         return r.get(Source.SERVER).await().record()
     }
@@ -88,11 +88,13 @@ class Repository(val auth: FirebaseAuth, val db: FirebaseFirestore, val local: L
         require(v["brand"] in brands() && v["model"] in models(v["brand"].orEmpty()))
         require(v["category"] in options("categories") && v["city"] in options("cities"))
         val budget = v["budget"].orEmpty().takeIf { it.isNotBlank() }?.let(Domain::money)
+        val attachments=if(photos.isNotEmpty())photos else v["_photos"]?.let { raw -> JSONArray(raw).let { a -> (0 until a.length()).map(a::getString) } }.orEmpty()
+        require(attachments.size<=4 && attachments.all{it.startsWith("data:image/jpeg;base64,")&&it.length<=180000})
         db.collection("pf_requests").document(v.getValue("_id")).set(mapOf(
             "brand" to v["brand"], "model" to v["model"], "year" to Domain.year(v["year"].orEmpty()),
             "engine" to Domain.text(v["engine"], 80), "vin" to Domain.vin(v["vin"].orEmpty()),
             "category" to v["category"], "part" to Domain.text(v["part"],120), "description" to Domain.text(v["description"],2000),
-            "city" to v["city"], "condition" to v["condition"], "budget" to budget, "photos" to photos,
+            "city" to v["city"], "condition" to v["condition"], "budget" to budget, "photos" to attachments,
             "ownerId" to uid, "status" to "open", "previousStatus" to "open", "acceptedOfferId" to null, "createdAt" to now()
         )).await()
     }

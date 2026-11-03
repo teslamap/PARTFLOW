@@ -94,6 +94,7 @@ typealias Edit = (String,String,List<Field>,Map<String,String>,suspend (Map<Stri
     val noteFields=listOf(Field("note","კომენტარი"))
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)) {
         Text(title(row),style=MaterialTheme.typography.headlineSmall)
+        (row.data["photos"] as? List<*>)?.filterIsInstance<String>()?.take(4)?.forEach{Photo(it)}
         listOf("status","city","brand","model","year","engine","vin","category","description","phone","truck","origin","destination","vehicle","quote","price","delivery","note","reviewReason","role","dispute").forEach { key ->
             if(row.s(key).isNotEmpty())Text("${fieldLabel(key)}: ${row.s(key)}")
         }

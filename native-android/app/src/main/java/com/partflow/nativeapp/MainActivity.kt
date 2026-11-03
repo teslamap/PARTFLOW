@@ -189,6 +189,7 @@ fun requestFields(r: Repository)=vehicleFields(r)+listOf(Field("category","კ�
             if(options.isNotEmpty())Picker(f.label,values[f.key].orEmpty(),options,enabled=!busy) { chosen -> values[f.key]=chosen; if(f.key=="brand")values["model"]=if(f.choices.contains("*"))"*" else r.models(chosen).firstOrNull().orEmpty() }
             else OutlinedTextField(values[f.key].orEmpty(),{values[f.key]=it},label={Text(f.label+if(f.optional)" (არასავალდებულო)" else "")},enabled=!busy,modifier=Modifier.fillMaxWidth())
         }
+        if(ready)NativeInputs(vm,editor,values,busy)
         Button(enabled=!busy&&ready,onClick={vm.run({
             editor.fields.filter{!it.optional}.forEach { Domain.text(values[it.key],3000) }
             editor.save(values.toMap()); r.local.deleteDraft(r.uid,editor.key)
