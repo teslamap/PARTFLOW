@@ -13,11 +13,11 @@ service cloud.firestore {
     // Trusted bootstrap identity. A verified email is required; registration order never grants admin.
     function founder(){return signed() && request.auth.token.email_verified == true && request.auth.token.email == 'suloanani1@gmail.com';}
     function superadmin(){return founder() || (signed() && get(/databases/$(database)/documents/pf_members/$(request.auth.uid)).data.role == 'superadmin');}
-    function admin(){return superadmin() || (signed() && get(/databases/$(database)/documents/pf_members/$(request.auth.uid)).data.role == 'admin');}
+    function admin(){return superadmin();}
     function deleting(id){return exists(/databases/$(database)/documents/pf_deletions/$(id));}
     function deletingBySuperadmin(id){return superadmin() && get(/databases/$(database)/documents/pf_deletions/$(id)).data.status=='pending';}
     function text(v,n){return v is string && v.size()>0 && v.size()<=n;}
-    function validMember(d){return d.keys().hasAll(['name','role','createdAt']) && d.keys().hasOnly(['name','role','createdAt','city']) && (!('city' in d) || (d.city is string && d.city.size()>0 && d.city.size()<=80)) && text(d.name,100) && d.role in ['customer','admin','superadmin'] && d.createdAt is timestamp;}
+    function validMember(d){return d.keys().hasAll(['name','role','createdAt']) && d.keys().hasOnly(['name','role','createdAt','city']) && (!('city' in d) || (d.city is string && d.city.size()>0 && d.city.size()<=80)) && text(d.name,100) && d.role in ['customer','superadmin'] && d.createdAt is timestamp;}
 function validPackage(d){return d.keys().hasAll(['name','createdAt','updatedAt']) && d.keys().hasOnly(['name','description','maxServices','maxStaff','trialDays','createdAt','updatedAt','createdBy']) && text(d.name,100) && d.description is string && d.description.size()<=500 && d.maxServices is int && d.maxServices>=1 && d.maxServices<=10000 && d.maxStaff is int && d.maxStaff>=1 && d.maxStaff<=10000 && d.trialDays is int && d.trialDays>=0 && d.trialDays<=3650 && d.createdAt is timestamp && d.updatedAt is timestamp && text(d.createdBy,128);}
     function validGarageVehicle(d){return d.keys().hasAll(['brand','model','year','engine','vin','trim','fuel','createdAt']) && d.keys().hasOnly(['brand','model','year','engine','vin','trim','fuel','createdAt','plate']) && (!d.keys().hasAny(['plate']) || (d.plate is string && d.plate.matches('[A-Z0-9 -]{1,12}'))) && text(d.brand,60) && text(d.model,80) && d.year is int && d.year>=1950 && d.year<=request.time.year()+1 && text(d.engine,80) && d.vin is string && (d.vin==''||d.vin.matches('[A-HJ-NPR-Z0-9]{17}')) && d.trim is string && d.trim.size()<=80 && d.fuel is string && d.fuel.size()<=50 && d.createdAt is timestamp;}
     function serviceBusiness(d){return d.get('businessType','parts_shop')=='auto_service';}
@@ -43,7 +43,7 @@ function validPackage(d){return d.keys().hasAll(['name','createdAt','updatedAt']
     match /pf_members/{uid} {
       allow read: if signed() && (request.auth.uid==uid || superadmin());
       allow create: if signed() && uid==request.auth.uid && validMember(request.resource.data) && request.resource.data.createdAt==request.time && (request.resource.data.role=='customer'||(founder()&&request.resource.data.role=='superadmin'));
-      allow update: if validMember(request.resource.data) && request.resource.data.createdAt==resource.data.createdAt && ((signed()&&uid==request.auth.uid&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','city'])) || (superadmin()&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']) && ((uid!=request.auth.uid&&resource.data.role!='superadmin'&&request.resource.data.role in ['customer','admin'])||(founder()&&uid==request.auth.uid&&request.resource.data.role=='superadmin'))));
+      allow update: if validMember(request.resource.data) && request.resource.data.createdAt==resource.data.createdAt && ((signed()&&uid==request.auth.uid&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','city'])) || (superadmin()&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']) && ((uid!=request.auth.uid&&resource.data.role!='superadmin'&&request.resource.data.role in ['customer'])||(founder()&&uid==request.auth.uid&&request.resource.data.role=='superadmin'))));
     }
     match /pf_packages/{id} {
       allow read: if signed();
@@ -161,9 +161,9 @@ function validPackage(d){return d.keys().hasAll(['name','createdAt','updatedAt']
     // {type(enum), targetId(string <=300), label(string <=120), createdAt(timestamp)}.
     function archiveScope(panel,type,id){
 
-      return (type=='requests' && !deleting(id) && ((panel in ['admin','superadmin'] && admin()) || (panel in ['customer','mobile-customer'] && get(/databases/$(database)/documents/pf_requests/$(id)).data.ownerId==request.auth.uid) || (panel=='shop' && requestRead(get(/databases/$(database)/documents/pf_requests/$(id)).data,id))))
-        || (type=='offers' && !deleting(get(/databases/$(database)/documents/pf_offers/$(id)).data.requestId) && ((panel in ['admin','superadmin'] && admin()) || (panel in ['customer','mobile-customer'] && get(/databases/$(database)/documents/pf_offers/$(id)).data.ownerId==request.auth.uid) || (panel=='shop' && get(/databases/$(database)/documents/pf_offers/$(id)).data.shopId==request.auth.uid)))
-        || (type=='shops' && ((panel in ['admin','superadmin'] && admin()) || (panel=='shop' && id==request.auth.uid && exists(/databases/$(database)/documents/pf_shops/$(id)))))
+      return (type=='requests' && !deleting(id) && ((panel in ['superadmin'] && admin()) || (panel in ['customer','mobile-customer'] && get(/databases/$(database)/documents/pf_requests/$(id)).data.ownerId==request.auth.uid) || (panel=='shop' && requestRead(get(/databases/$(database)/documents/pf_requests/$(id)).data,id))))
+        || (type=='offers' && !deleting(get(/databases/$(database)/documents/pf_offers/$(id)).data.requestId) && ((panel in ['superadmin'] && admin()) || (panel in ['customer','mobile-customer'] && get(/databases/$(database)/documents/pf_offers/$(id)).data.ownerId==request.auth.uid) || (panel=='shop' && get(/databases/$(database)/documents/pf_offers/$(id)).data.shopId==request.auth.uid)))
+        || (type=='shops' && ((panel in ['superadmin'] && admin()) || (panel=='shop' && id==request.auth.uid && exists(/databases/$(database)/documents/pf_shops/$(id)))))
         || (type=='members' && panel=='superadmin' && superadmin() && exists(/databases/$(database)/documents/pf_members/$(id)))
         || (type=='categories' && panel=='superadmin' && superadmin());
     }
@@ -172,7 +172,7 @@ function validPackage(d){return d.keys().hasAll(['name','createdAt','updatedAt']
       allow read: if signed() && (request.auth.uid==uid || deletableArchive(resource.data));
       allow delete: if signed() && (request.auth.uid==uid || deletableArchive(resource.data));
       allow create,update: if signed() && request.auth.uid==uid
-        && panel in ['customer','mobile-customer','shop','admin','superadmin']
+        && panel in ['customer','mobile-customer','shop','superadmin']
         && request.resource.data.keys().hasAll(['type','targetId','label','createdAt'])
         && request.resource.data.keys().hasOnly(['type','targetId','label','createdAt'])
         && request.resource.data.type in ['requests','offers','shops','members','categories']
