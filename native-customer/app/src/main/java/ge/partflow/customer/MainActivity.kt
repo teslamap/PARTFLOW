@@ -82,6 +82,7 @@ class MainActivity:ComponentActivity(){
  var mode by remember { mutableStateOf("შესვლა") }
  var detail by remember { mutableStateOf(false) }
  var garageCreate by remember { mutableStateOf(false) }
+ var towCreate by remember { mutableStateOf(false) }
  BackHandler(drawer||detail||garageCreate||page!="მთავარი"){when{drawer->drawer=false;detail->detail=false;garageCreate->garageCreate=false;else->page="მთავარი"}}
  Box(Modifier.fillMaxSize().background(Bg)){
  Column {
@@ -174,6 +175,7 @@ class MainActivity:ComponentActivity(){
      "ჩატი"->{SupportChat()}
      "SOS / დაგეგმილი"->{
       Txt("ევაკუატორი",23,Ink,true);Spacer(Modifier.height(16.dp))
+      Action("+ გამოძახება",{if(!demo)towCreate=true})
       if(towError!=null)Txt(towError!!,11,Color(0xFFB54730))
       if(towRequests.isEmpty())Panel { Txt("გამოძახებები ჯერ არ არის",13,Muted) }
       towRequests.forEach { tow->Panel {
@@ -207,6 +209,9 @@ class MainActivity:ComponentActivity(){
    }
    Spacer(Modifier.weight(1f).fillMaxHeight().clickable{drawer=false})
   }
+ }
+ if(towCreate&&!demo&&logged) Dialog(onDismissRequest={towCreate=false}) {
+  Box(Modifier.fillMaxWidth().fillMaxHeight(.88f).clip(RoundedCornerShape(20.dp)).background(Bg)) { TowForm(onClose={towCreate=false}) }
  }
  if(garageCreate&&!demo&&logged) Dialog(onDismissRequest={garageCreate=false}) {
   Box(Modifier.fillMaxWidth().fillMaxHeight(.88f).clip(RoundedCornerShape(20.dp)).background(Bg)){
