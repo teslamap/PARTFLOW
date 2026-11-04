@@ -1,0 +1,47 @@
+name: Superadmin Native APK (isolated)
+on:
+  push:
+    branches: [feature/superadmin-native-build]
+    paths:
+      - 'native/superadmin/**'
+      - '.github/workflows/superadmin-native-build.yml'
+  workflow_dispatch:
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK 35
+        run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Unpack isolated Android sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p superadmin-build
+          sed '1d;$d' native/superadmin/source-v19.tar.xz.base64.txt | tr -d '\r\n' | base64 -d > /tmp/superadmin.tar.xz
+          tar -xJf /tmp/superadmin.tar.xz -C superadmin-build
+          test -f superadmin-build/app/build.gradle.kts
+      - name: Compile native APK
+        working-directory: superadmin-build
+        env:
+          PARTFLOW_FIREBASE_ANDROID_APP_ID: ${{ secrets.PARTFLOW_FIREBASE_ANDROID_APP_ID }}
+          PARTFLOW_FIREBASE_API_KEY: ${{ secrets.PARTFLOW_FIREBASE_API_KEY }}
+        run: gradle --no-daemon --stacktrace :app:assembleDebug
+      - name: Upload compiled APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: partflow-superadmin-native-debug
+          path: superadmin-build/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
