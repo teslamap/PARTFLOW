@@ -1,0 +1,50 @@
+name: Build PARTFLOW Superadmin Native V19 APK
+on:
+  push:
+    branches: [build/superadmin-native-v19]
+    paths:
+      - 'superadmin-build/**'
+      - '.github/workflows/partflow-superadmin-v19.yml'
+  pull_request:
+    paths:
+      - 'superadmin-build/**'
+      - '.github/workflows/partflow-superadmin-v19.yml'
+  workflow_dispatch:
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack native source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p superadmin-native
+          base64 --decode superadmin-build/v19-source.b64 > /tmp/native-v19.tar.xz
+          echo "f96863e0b4929a12c0cbed3b7f35951a59bf70fe75bb91a31aaca792d5c24820  /tmp/native-v19.tar.xz" | sha256sum --check -
+          tar -xJf /tmp/native-v19.tar.xz -C superadmin-native
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android platform and build tools
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Compile debug APK
+        working-directory: superadmin-native
+        env:
+          PARTFLOW_FIREBASE_ANDROID_APP_ID: ${{ secrets.PARTFLOW_FIREBASE_ANDROID_APP_ID }}
+          PARTFLOW_FIREBASE_API_KEY: ${{ secrets.PARTFLOW_FIREBASE_API_KEY }}
+        run: gradle --no-daemon --stacktrace :app:assembleDebug
+      - name: Upload installable APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: partflow-superadmin-v19-debug-apk
+          path: superadmin-native/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
