@@ -56,12 +56,15 @@ class MainActivity:ComponentActivity(){
  var live by remember { mutableStateOf(CustomerSnapshot()) }
  var garage by remember { mutableStateOf(emptyList<GarageVehicle>()) }
  var garageError by remember { mutableStateOf<String?>(null) }
+ var towRequests by remember { mutableStateOf(emptyList<TowRequest>()) }
+ var towError by remember { mutableStateOf<String?>(null) }
+ val towStore=remember { TowingData() }
  val garageStore=remember { GarageData() }
  val store=remember { CustomerData() }
  val uid=if(logged)com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid else null
  DisposableEffect(uid) {
-  if(uid!=null){store.observe(uid){live=it};garageStore.observe(uid){cars,error->garage=cars;garageError=error}} else {live=CustomerSnapshot();garage=emptyList();garageError=null}
-  onDispose { store.close();garageStore.close() }
+  if(uid!=null){store.observe(uid){live=it};garageStore.observe(uid){cars,error->garage=cars;garageError=error};towStore.observe { rows,error->towRequests=rows;towError=error }} else {live=CustomerSnapshot();garage=emptyList();garageError=null}
+  onDispose { store.close();garageStore.close();towStore.close() }
  }
  var authError by remember { mutableStateOf("") }
  var email by remember { mutableStateOf("") }
@@ -167,6 +170,17 @@ class MainActivity:ComponentActivity(){
        Txt(listOf(car.engine,car.fuel,car.vin).filter { it.isNotBlank() }.joinToString(" · "),11,Muted)
       } }
       Action("+ ავტომობილის დამატება",{if(!demo)garageCreate=true})
+     }
+     "SOS / დაგეგმილი"->{
+      Txt("ევაკუატორი",23,Ink,true);Spacer(Modifier.height(16.dp))
+      if(towError!=null)Txt(towError!!,11,Color(0xFFB54730))
+      if(towRequests.isEmpty())Panel { Txt("გამოძახებები ჯერ არ არის",13,Muted) }
+      towRequests.forEach { tow->Panel {
+       Txt(if(tow.mode=="sos")"SOS გამოძახება" else "ქალაქთაშორისი",15,Ink,true)
+       Txt("${tow.origin} → ${tow.destination}",12,Muted)
+       Txt("სტატუსი: ${tow.status}",12,Ink)
+       if(tow.price.isNotBlank())Txt("ფასი: ${tow.price} ₾",12,Ink,true)
+      } }
      }
      "პროფილი"->{Txt("პროფილი",23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("დემო მომხმარებელი",16,Ink,true);Txt("შენი ავტომობილი. შენი ნაწილი.",11,Muted);Action(if(demo)"დემოდან გამოსვლა" else "ანგარიშიდან გასვლა",{if(!demo)NativeAuth.signOut();demo=false;page="მთავარი"},false)}}
      else->{Txt(page,23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("ამ განყოფილების სრული Native ფუნქციონალი ჯერ დასამუშავებელია.",12,Muted)}}
