@@ -40,15 +40,20 @@ jobs:
           arch: x86_64
           disable-animations: true
           script: |
-            (cd native-customer && gradle --no-daemon connectedDebugAndroidTest)
+            mkdir -p evidence
             adb install -r native-customer/app/build/outputs/apk/debug/app-debug.apk
+            adb install -r native-customer/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell am instrument -w -r ge.partflow.customer.preview.test/androidx.test.runner.AndroidJUnitRunner > evidence/instrumentation.txt
+            cat evidence/instrumentation.txt
+            adb pull /sdcard/Android/data/ge.partflow.customer.preview/files/evidence evidence/components || true
+            grep -q 'OK (4 tests)' evidence/instrumentation.txt
+            test "$(find evidence/components -name '*.png' | wc -l)" -ge 13
+            adb shell am force-stop ge.partflow.customer.preview
             adb shell am start -W -n ge.partflow.customer.preview/ge.partflow.customer.MainActivity
             sleep 5
             adb shell pidof ge.partflow.customer.preview
-            mkdir -p evidence
             adb shell screencap -p /sdcard/login.png
             adb pull /sdcard/login.png evidence/login.png
-            adb pull /sdcard/Android/data/ge.partflow.customer.preview/files/evidence evidence/components
       - name: Verify standalone signed APK
         run: |
           APK=native-customer/app/build/outputs/apk/debug/app-debug.apk

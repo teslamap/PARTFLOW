@@ -29,4 +29,4 @@ val VehicleCatalog:Map<String,List<String>> = sortedMapOf(
 "Infiniti" to listOf("FX35","FX37","QX50","QX60","QX70"),
 "Acura" to listOf("MDX","RDX","TLX","TSX"),
 "Land Rover" to listOf("Range Rover","Range Rover Sport","Discovery","Freelander","Defender")
-)
+).mapValues{(_,models)->models.sortedBy{it.lowercase()}}

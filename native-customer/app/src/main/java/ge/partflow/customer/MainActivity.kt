@@ -54,17 +54,17 @@ class MainActivity:ComponentActivity(){
 @Composable private fun CustomerApp(){
  var accountId by remember { mutableStateOf(com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid) }
  val logged=accountId!=null
+ val uid=accountId
  var authBusy by remember { mutableStateOf(false) }
- var live by remember { mutableStateOf(CustomerSnapshot()) }
- var garage by remember { mutableStateOf(emptyList<GarageVehicle>()) }
- var garageError by remember { mutableStateOf<String?>(null) }
- var towRequests by remember { mutableStateOf(emptyList<TowRequest>()) }
- var towError by remember { mutableStateOf<String?>(null) }
+ var live by remember(uid) { mutableStateOf(CustomerSnapshot()) }
+ var garage by remember(uid) { mutableStateOf(emptyList<GarageVehicle>()) }
+ var garageError by remember(uid) { mutableStateOf<String?>(null) }
+ var towRequests by remember(uid) { mutableStateOf(emptyList<TowRequest>()) }
+ var towError by remember(uid) { mutableStateOf<String?>(null) }
  var towActionError by remember { mutableStateOf("") }
  val towStore=remember { TowingData() }
  val garageStore=remember { GarageData() }
  val store=remember { CustomerData() }
- val uid=accountId
  DisposableEffect(uid) {
   if(uid!=null){store.observe(uid){live=it};garageStore.observe(uid){cars,error->garage=cars;garageError=error};towStore.observe { rows,error->towRequests=rows;towError=error }} else {live=CustomerSnapshot();garage=emptyList();garageError=null}
   onDispose { store.close();garageStore.close();towStore.close() }
@@ -89,7 +89,7 @@ class MainActivity:ComponentActivity(){
  var query by remember { mutableStateOf("") }
  var filter by remember { mutableStateOf("ყველა") }
  var actionError by remember { mutableStateOf("") }
- var archives by remember { mutableStateOf(emptyMap<String,Map<String,Any>>()) }
+ var archives by remember(uid) { mutableStateOf(emptyMap<String,Map<String,Any>>()) }
  DisposableEffect(uid){
   val db=com.google.firebase.firestore.FirebaseFirestore.getInstance()
   val a=uid?.let{db.collection("pf_archives").document(it).collection("panels").document("mobile-customer").collection("items").addSnapshotListener{s,e->if(e==null)archives=s?.documents?.associate{it.id to it.data.orEmpty()}.orEmpty()else actionError="არქივი ვერ ჩაიტვირთა."}}
@@ -100,8 +100,10 @@ class MainActivity:ComponentActivity(){
  var garageCreate by remember { mutableStateOf(false) }
  var towCreate by remember { mutableStateOf(false) }
  var selectedShopChat by remember { mutableStateOf<CustomerOffer?>(null) }
- LaunchedEffect(uid){selectedRequest=null;selectedShopChat=null;detail=false;garageCreate=false;towCreate=false;actionError="";towActionError=""}
+ LaunchedEffect(uid){password="";name="";selectedRequest=null;selectedShopChat=null;detail=false;garageCreate=false;towCreate=false;actionError="";towActionError=""}
  BackHandler(selectedRequest!=null||drawer||detail||garageCreate||towCreate||selectedShopChat!=null||page!="მთავარი"){when{selectedRequest!=null->selectedRequest=null;drawer->drawer=false;selectedShopChat!=null->selectedShopChat=null;towCreate->towCreate=false;detail->detail=false;garageCreate->garageCreate=false;else->page="მთავარი"}}
+ val mainScroll=rememberScrollState()
+ LaunchedEffect(page,logged,demo){mainScroll.scrollTo(0)}
  Box(Modifier.fillMaxSize().background(Bg).systemBarsPadding().imePadding()){
  Column {
   Row(Modifier.fillMaxWidth().background(White).border(1.dp,Line).padding(horizontal=22.dp,vertical=18.dp),
@@ -111,7 +113,7 @@ class MainActivity:ComponentActivity(){
    Spacer(Modifier.weight(1f))
    if(logged||demo)Txt(page,10,Muted)
   }
-  Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=22.dp,vertical=26.dp)){
+  Column(Modifier.fillMaxSize().verticalScroll(mainScroll).padding(horizontal=22.dp,vertical=26.dp)){
    if(!logged&&!demo){
     Txt("შენი ავტომობილი. შენი ნაწილი.",10,Muted)
     Spacer(Modifier.height(14.dp))
@@ -154,10 +156,12 @@ class MainActivity:ComponentActivity(){
     Txt("შენი მოთხოვნები და გარაჟი დაცულია პირად ანგარიშში.",10,Muted)
    } else {
     if(demo) { Txt("დემო ვერსია",11,Muted);Spacer(Modifier.height(12.dp)) }
+    if(!demo&&live.loading)Txt("მონაცემები იტვირთება…",11,Muted)
+    if(live.error!=null)Txt(live.error!!,12,Color(0xFFB54730))
     if(actionError.isNotBlank())Txt(actionError,12,Color(0xFFB54730))
     val gate=mapOf("გარაჟი" to "garage","შეთავაზებები" to "offers","ჩატი" to "chat")[page]
     if(gate!=null&&!featureEnabled(gate))Panel{Txt("ფუნქცია დროებით გამორთულია",13,Muted)}else when(page){
-     "მთავარი"->HomePage({openRequest()},{page="გარაჟი"},{page="შეთავაზებები"},live,if(demo)"დემო მომხმარებელი" else com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.displayName.orEmpty())
+     "მთავარი"->HomePage({openRequest()},{page="გარაჟი"},{page="შეთავაზებები"},live.copy(requests=live.requests.filterNot{archives.containsKey("requests_"+it.id)},offers=live.offers.filterNot{archives.containsKey("offers_"+it.id)}),if(demo)"დემო მომხმარებელი" else com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.displayName.orEmpty(),{page="მოთხოვნები"})
      "მოთხოვნები"->{
       Txt("ჩემი მოთხოვნები",23,Ink,true);Spacer(Modifier.height(16.dp))
       if(live.error!=null)Txt(live.error!!,11,Color(0xFFB54730))
@@ -179,7 +183,7 @@ class MainActivity:ComponentActivity(){
      }
      "შეთავაზებები"->{
       Txt("შეთავაზებები",23,Ink,true);Spacer(Modifier.height(16.dp))
-      if(!demo)CustomerOrders()
+      if(!demo)CustomerOrders(live.requests)
       if(live.offers.isEmpty())Panel { Txt("შეთავაზებები ჯერ არ არის",13,Muted) }
       live.offers.filterNot{archives.containsKey("offers_"+it.id)}.forEach { offer->Panel {
        Txt(offer.shopName,14,Ink,true)
@@ -295,7 +299,7 @@ class MainActivity:ComponentActivity(){
    modifier=Modifier.fillMaxWidth())
  }
 }
-@Composable private fun HomePage(requests:()->Unit,garage:()->Unit,offers:()->Unit,live:CustomerSnapshot,name:String){
+@Composable private fun HomePage(requests:()->Unit,garage:()->Unit,offers:()->Unit,live:CustomerSnapshot,name:String,viewRequests:()->Unit=requests){
  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Column{Txt("მოგესალმები,",10,Muted);Txt(name.ifBlank { "მომხმარებელი" },20,Ink,true)};Txt("✦",18,Orange)}
  Spacer(Modifier.height(20.dp))
  Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(23.dp)).background(Ink).padding(23.dp)){
@@ -306,7 +310,7 @@ class MainActivity:ComponentActivity(){
  }
  Spacer(Modifier.height(18.dp))
  Row(horizontalArrangement=Arrangement.spacedBy(12.dp)){
-  Box(Modifier.weight(1f)){Stat(live.requests.size.toString(),"ჩემი მოთხოვნები",requests)}
+  Box(Modifier.weight(1f)){Stat(live.requests.size.toString(),"ჩემი მოთხოვნები",viewRequests)}
   Box(Modifier.weight(1f)){Stat(live.offers.size.toString(),"შეთავაზებები",offers)}
  }
  Spacer(Modifier.height(24.dp));Txt("ბოლო მოთხოვნები",18,Ink,true);Spacer(Modifier.height(12.dp))

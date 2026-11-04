@@ -35,7 +35,7 @@ Do not describe this preview as a fully verified production app.
 Remaining parity work: optional push registration/inbox badges and deep links,
 SMS/phone recovery, optional rewards/referrals/vouchers and AI tools, full Georgian
 certificate-field OCR (current local OCR extracts Latin VIN only), native service
-booking where enabled, order event timeline, richer chat media/read receipts,
+booking where enabled, richer chat media/read receipts,
 and complete device/back/offline/accessibility/visual parity testing.
 The referenced design-concept video was not available in the imported chat attachments;
 the two supplied Android screenshots and the actual web source were reviewed.

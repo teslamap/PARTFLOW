@@ -19,9 +19,9 @@ private val vehicles=VehicleCatalog
 private val categories=listOf("ძრავა და კომპონენტები","გადაცემათა კოლოფი","ძარის ნაწილები","განათება","სავალი ნაწილი","სამუხრუჭე სისტემა","ელექტროობა","სალონი","საბურავები და დისკები","გაგრილება და კონდიცირება","გამონაბოლქვის სისტემა","კლაჩი და გადაბმულობა","მინის ნაწილები და საწმენდები","საწვავის სისტემა","საჭის სისტემა","უსაფრთხოების სისტემა და აირბაგები","ჰიბრიდული და ელექტრო სისტემები","ზეთი, ფილტრები და სითხეები","აქსესუარები და ტიუნინგი")
 private val cities=listOf("თბილისი","ბათუმი","ქუთაისი","რუსთავი","გორი","ზუგდიდი","ფოთი","თელავი","სხვა")
 @Composable private fun Choose(label:String,options:List<String>,value:String,onChange:(String)->Unit){PfChoice(label,value,options,onChange)}
-@Composable private fun Entry(label:String,value:String,onChange:(String)->Unit,numeric:Boolean=false){
+@Composable private fun Entry(label:String,value:String,onChange:(String)->Unit,numeric:Boolean=false,multiline:Boolean=false,decimal:Boolean=false){
  PfField(value=value,onValueChange=onChange,label={Text(label)},modifier=Modifier.fillMaxWidth(),
-  keyboardOptions=KeyboardOptions(keyboardType=if(numeric)KeyboardType.Number else KeyboardType.Text),singleLine=true)
+  keyboardOptions=KeyboardOptions(keyboardType=if(decimal)KeyboardType.Decimal else if(numeric)KeyboardType.Number else KeyboardType.Text),singleLine=!multiline)
 }
 @Composable fun RequestCreate(onClose:()->Unit,vehicle:GarageVehicle?=null){
  var brand by remember { mutableStateOf(vehicle?.brand.orEmpty()) };var model by remember { mutableStateOf(vehicle?.model.orEmpty()) }
@@ -42,15 +42,20 @@ private val cities=listOf("თბილისი","ბათუმი","ქუ�
   verticalArrangement=Arrangement.spacedBy(9.dp)){
   PfHeading("ახალი მოთხოვნა","შესაბამისი მაღაზიების შეთავაზებები",onClose)
   Entry("ნაწილის დასახელება",part,{part=it.take(120)})
-  Choose("მარკა",vehicles.keys.sorted(),brand){brand=it;model=""}
-  Choose("მოდელი",vehicles[brand].orEmpty(),model){model=it}
-  Entry("წელი",year,{year=it},true);Entry("ძრავა",engine,{engine=it})
+  Row(horizontalArrangement=Arrangement.spacedBy(12.dp)){
+   Box(Modifier.weight(1f)){Choose("მარკა",vehicles.keys.sorted(),brand){brand=it;model=""}}
+   Box(Modifier.weight(1f)){Choose("მოდელი",vehicles[brand].orEmpty(),model){model=it}}
+  }
+  Row(horizontalArrangement=Arrangement.spacedBy(12.dp)){
+   Box(Modifier.weight(1f)){Entry("წელი",year,{year=it.filter(Char::isDigit).take(4)},true)}
+   Box(Modifier.weight(1f)){Entry("ძრავა",engine,{engine=it.take(80)})}
+  }
   Entry("VIN (არასავალდებულო)",vin,{vin=it.uppercase().take(17)})
   Choose("კატეგორია",(categories+customCategories).distinct().sorted(),category){category=it}
-  Entry("აღწერა",description,{description=it.take(2000)})
+  Entry("აღწერა",description,{description=it.take(2000)},multiline=true)
   Choose("ქალაქი",cities,city){city=it}
   Choose("მდგომარეობა",listOf("ნებისმიერი","ახალი","მეორადი"),condition){condition=it}
-  Entry("ბიუჯეტი ₾ (არასავალდებულო)",budget,{budget=it},true)
+  Entry("ბიუჯეტი ₾ (არასავალდებულო)",budget,{budget=it},decimal=true)
   RequestPhotos(photos,{photos=it},{error=it},{preparingPhotos=it})
   if(error.isNotBlank())Text(error,color=Color(0xFFB54730))
   PfButton(enabled=!busy&&!preparingPhotos,onClick={
@@ -61,7 +66,7 @@ private val cities=listOf("თბილისი","ბათუმი","ქუ�
     brand.isBlank()||model.isBlank()||category.isBlank()||city.isBlank()||part.isBlank()||engine.isBlank()||description.isBlank()->"შეავსე სავალდებულო ველები."
     y==null||y<1950||y>Calendar.getInstance().get(Calendar.YEAR)+1->"წელი არასწორია."
     vin.isNotBlank()&&!Regex("[A-HJ-NPR-Z0-9]{17}").matches(vin)->"VIN უნდა შეიცავდეს 17 სწორ სიმბოლოს."
-    budget.isNotBlank()&&(b==null||b<=0||b>1000000)->"ბიუჯეტი არასწორია."
+    budget.isNotBlank()&&(b==null||!b.isFinite()||b<=0||b>1000000)->"ბიუჯეტი არასწორია."
     else->""
    }
    if(error.isBlank()&&uid!=null&&y!=null){

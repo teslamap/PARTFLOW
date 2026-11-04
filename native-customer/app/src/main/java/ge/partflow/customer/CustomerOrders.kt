@@ -9,7 +9,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.*
 
 fun statusLabel(value:String)=mapOf("open" to "აქტიური","closed" to "დახურული","hidden" to "შეჩერებული","confirmed" to "დადასტურებული","preparing" to "მომზადება","shipped" to "გაგზავნილი","delivered" to "მიწოდებული","completed" to "დასრულებული","cancelled" to "გაუქმებული","searching" to "მძღოლის ძებნა","offered" to "შეთავაზება მიღებულია","pending" to "მოლოდინში")[value]?:value
-@Composable fun CustomerOrders(){
+@Composable fun CustomerOrders(requests:List<CustomerRequest> = emptyList()){
  if(!featureEnabled("orders"))return
  val uid=FirebaseAuth.getInstance().currentUser?.uid?:return
  var orders by remember(uid){mutableStateOf(emptyList<Pair<String,Map<String,Any>>>())}
@@ -22,14 +22,18 @@ fun statusLabel(value:String)=mapOf("open" to "აქტიური","closed" t
  Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
   Text("ჩემი შეკვეთები",color=Pf.ink,fontSize=18.sp)
   if(orders.isEmpty())Text("შეკვეთები ჯერ არ არის.",color=Pf.muted,fontSize=12.sp)
-  orders.forEach{(id,o)->OrderCard(id,o)}
+  orders.forEach{(id,o)->OrderCard(id,o,requests.find{it.id==id}?.part.orEmpty())}
   if(error.isNotBlank())Text(error,color=Pf.muted,fontSize=12.sp)
  }
 }
-@Composable private fun OrderCard(id:String,order:Map<String,Any>){
+@Composable private fun OrderCard(id:String,order:Map<String,Any>,title:String){
+ var timeline by remember{mutableStateOf(false)}
  var action by remember{mutableStateOf("")};var note by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)};var error by remember{mutableStateOf("")}
  val status=order["status"].toString();val dispute=order["dispute"].toString()
  PfCard(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+  if(title.isNotBlank())Text(title,color=Pf.ink,fontSize=16.sp)
+  PfTextButton({timeline=!timeline}){Text(if(timeline)"ისტორიის დამალვა" else "შეკვეთის ისტორია",color=Pf.muted)}
+  if(timeline)OrderTimeline(id)
   Text(statusLabel(status),color=Pf.ink,fontSize=16.sp)
   if(dispute=="open")Text("დავა განხილვაშია",color=Pf.muted,fontSize=12.sp)
   if(dispute!="open"&&status=="delivered")PfOutlineButton({action="completed"}){Text("მიღების დადასტურება")}
