@@ -30,7 +30,7 @@ private val models=VehicleCatalog
   PfField(value=value,onValueChange=onChange,placeholder={Text(placeholder,color=muted)},singleLine=true,modifier=Modifier.fillMaxWidth(),keyboardOptions=KeyboardOptions(keyboardType=if(numeric)KeyboardType.Number else KeyboardType.Text))
  }
 }
-@Composable private fun WizardChoice(label:String,value:String,options:List<String>,onChange:(String)->Unit){PfChoice(label,value,options,onChange)}
+@Composable private fun WizardChoice(label:String,value:String,options:List<String>,onChange:(String)->Unit){PfChoice(label,value,options,onChange,enabled=options.isNotEmpty())}
 @Composable private fun WizardButton(label:String,onClick:()->Unit,enabled:Boolean=true,primary:Boolean=true){
  if(primary)PfButton(onClick,enabled=enabled){Text(label)} else PfOutlineButton(onClick,enabled=enabled){Text(label)}
 }
@@ -44,6 +44,7 @@ private val models=VehicleCatalog
  var engine by remember { mutableStateOf("") }
  var vin by remember { mutableStateOf("") }
  var trim by remember { mutableStateOf("") }
+ var plate by remember { mutableStateOf("") }
  var fuel by remember { mutableStateOf("") }
  var busy by remember { mutableStateOf(false) }
  var error by remember { mutableStateOf("") }
@@ -82,12 +83,13 @@ private val models=VehicleCatalog
    }
    else->{
     WizardChoice("მარკა",brand,brands){brand=it;model=""}
-    WizardChoice("მოდელი",model,models[brand].orEmpty().ifEmpty { listOf("სხვა") }){model=it}
+    WizardChoice("მოდელი",model,models[brand].orEmpty()){model=it}
     WizardInput("გამოშვების წელი",year,{year=it.filter(Char::isDigit).take(4)},"მაგ. 2018",true)
     WizardInput("ძრავი",engine,{engine=it.take(80)},"მაგ. 2.0 დიზელი / უცნობია")
+    WizardInput("სახელმწიფო ნომერი",plate,{plate=it.uppercase().filter{c->c in 'A'..'Z'||c in '0'..'9'||c==' '||c=='-'}.take(12)},"არასავალდებულო")
     WizardInput("კომპლექტაცია",trim,{trim=it.take(80)},"არასავალდებულო")
     WizardInput("საწვავი",fuel,{fuel=it.take(50)},"არასავალდებულო")
-    WizardInput("VIN-კოდი",vin,{vin=it.uppercase().filter { c->c.isDigit()||c in 'A'..'Z' }.take(17)},"არასავალდებულო · 17 სიმბოლო")
+    WizardInput("VIN-კოდი",vin,{vin=it.uppercase().filter { c->c in '0'..'9'||c in 'A'..'Z' && c !in "IOQ" }.take(17)},"არასავალდებულო · 17 სიმბოლო")
     PfCheck(confirmed,{confirmed=it},"ვადასტურებ, რომ მონაცემები გადავამოწმე.")
     WizardButton(if(busy)"ინახება..." else "✓  მანქანის შენახვა",enabled=!busy&&confirmed,onClick={
      val y=year.toIntOrNull()
@@ -100,7 +102,7 @@ private val models=VehicleCatalog
      }
      if(error.isEmpty()){
       busy=true
-      store.add(brand,model,y!!,engine,vin,trim,fuel){message->busy=false;if(message==null)onClose() else error=message}
+      store.add(brand,model,y!!,engine,vin,trim,fuel,plate){message->busy=false;if(message==null)onClose() else error=message}
      }
     })
     WizardButton("← უკან",onClick={step=if(method=="vin")1 else 0},primary=false)

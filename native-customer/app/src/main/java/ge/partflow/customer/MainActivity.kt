@@ -52,7 +52,8 @@ class MainActivity:ComponentActivity(){
   .background(White).border(1.dp,Line,RoundedCornerShape(17.dp)).padding(17.dp),content=content)
 }
 @Composable private fun CustomerApp(){
- var logged by remember { mutableStateOf(com.google.firebase.auth.FirebaseAuth.getInstance().currentUser!=null) }
+ var accountId by remember { mutableStateOf(com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid) }
+ val logged=accountId!=null
  var authBusy by remember { mutableStateOf(false) }
  var live by remember { mutableStateOf(CustomerSnapshot()) }
  var garage by remember { mutableStateOf(emptyList<GarageVehicle>()) }
@@ -63,7 +64,7 @@ class MainActivity:ComponentActivity(){
  val towStore=remember { TowingData() }
  val garageStore=remember { GarageData() }
  val store=remember { CustomerData() }
- val uid=if(logged)com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid else null
+ val uid=accountId
  DisposableEffect(uid) {
   if(uid!=null){store.observe(uid){live=it};garageStore.observe(uid){cars,error->garage=cars;garageError=error};towStore.observe { rows,error->towRequests=rows;towError=error }} else {live=CustomerSnapshot();garage=emptyList();garageError=null}
   onDispose { store.close();garageStore.close();towStore.close() }
@@ -74,7 +75,7 @@ class MainActivity:ComponentActivity(){
  var name by remember { mutableStateOf("") }
  DisposableEffect(Unit) {
   val auth=com.google.firebase.auth.FirebaseAuth.getInstance()
-  val listener=com.google.firebase.auth.FirebaseAuth.AuthStateListener { logged=it.currentUser!=null }
+  val listener=com.google.firebase.auth.FirebaseAuth.AuthStateListener { accountId=it.currentUser?.uid }
   auth.addAuthStateListener(listener)
   onDispose { auth.removeAuthStateListener(listener) }
  }
@@ -99,6 +100,7 @@ class MainActivity:ComponentActivity(){
  var garageCreate by remember { mutableStateOf(false) }
  var towCreate by remember { mutableStateOf(false) }
  var selectedShopChat by remember { mutableStateOf<CustomerOffer?>(null) }
+ LaunchedEffect(uid){selectedRequest=null;selectedShopChat=null;detail=false;garageCreate=false;towCreate=false;actionError="";towActionError=""}
  BackHandler(selectedRequest!=null||drawer||detail||garageCreate||towCreate||selectedShopChat!=null||page!="მთავარი"){when{selectedRequest!=null->selectedRequest=null;drawer->drawer=false;selectedShopChat!=null->selectedShopChat=null;towCreate->towCreate=false;detail->detail=false;garageCreate->garageCreate=false;else->page="მთავარი"}}
  Box(Modifier.fillMaxSize().background(Bg).systemBarsPadding().imePadding()){
  Column {
@@ -153,7 +155,8 @@ class MainActivity:ComponentActivity(){
    } else {
     if(demo) { Txt("დემო ვერსია",11,Muted);Spacer(Modifier.height(12.dp)) }
     if(actionError.isNotBlank())Txt(actionError,12,Color(0xFFB54730))
-    when(page){
+    val gate=mapOf("გარაჟი" to "garage","შეთავაზებები" to "offers","ჩატი" to "chat")[page]
+    if(gate!=null&&!featureEnabled(gate))Panel{Txt("ფუნქცია დროებით გამორთულია",13,Muted)}else when(page){
      "მთავარი"->HomePage({openRequest()},{page="გარაჟი"},{page="შეთავაზებები"},live,if(demo)"დემო მომხმარებელი" else com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.displayName.orEmpty())
      "მოთხოვნები"->{
       Txt("ჩემი მოთხოვნები",23,Ink,true);Spacer(Modifier.height(16.dp))
@@ -169,13 +172,14 @@ class MainActivity:ComponentActivity(){
         Txt(req.part,15,Ink,true)
         Action("დეტალები",{selectedRequest=req},false)
         Spacer(Modifier.height(10.dp))
-        Txt("${req.status} · ${req.city} · ${live.offers.count { it.requestId==req.id }} შეთავაზება",11,Muted)
+        Txt("${statusLabel(req.status)} · ${req.city} · ${live.offers.count { it.requestId==req.id }} შეთავაზება",11,Muted)
        }
       }
       Action("+ ახალი მოთხოვნა",{openRequest()})
      }
      "შეთავაზებები"->{
       Txt("შეთავაზებები",23,Ink,true);Spacer(Modifier.height(16.dp))
+      if(!demo)CustomerOrders()
       if(live.offers.isEmpty())Panel { Txt("შეთავაზებები ჯერ არ არის",13,Muted) }
       live.offers.filterNot{archives.containsKey("offers_"+it.id)}.forEach { offer->Panel {
        Txt(offer.shopName,14,Ink,true)
@@ -201,7 +205,7 @@ class MainActivity:ComponentActivity(){
       } }
       Action("+ ავტომობილის დამატება",{if(demo)demo=false else garageCreate=true})
      }
-     "ჩატი"->{if(demo)Panel { Txt("მხარდაჭერის ჩატი ხელმისაწვდომია ანგარიშში შესვლის შემდეგ.",12,Muted) } else SupportChat()}
+     "ჩატი"->{if(demo)Panel { Txt("მხარდაჭერის ჩატი ხელმისაწვდომია ანგარიშში შესვლის შემდეგ.",12,Muted) } else ChatInbox(live.offers){selectedShopChat=it}}
      "SOS / დაგეგმილი"->{
       Txt("ევაკუატორი",23,Ink,true);Spacer(Modifier.height(16.dp))
       Action("+ გამოძახება",{if(demo)demo=false else towCreate=true})
@@ -211,7 +215,7 @@ class MainActivity:ComponentActivity(){
       towRequests.forEach { tow->Panel {
        Txt(if(tow.mode=="sos")"SOS გამოძახება" else "ქალაქთაშორისი",15,Ink,true)
        Txt("${tow.origin} → ${tow.destination}",12,Muted)
-       Txt("სტატუსი: ${tow.status}",12,Ink)
+       Txt("სტატუსი: ${statusLabel(tow.status)}",12,Ink)
        if(tow.price.isNotBlank())Txt("ფასი: ${tow.price} ₾",12,Ink,true)
        if(tow.status=="offered")Action("შეთავაზების დადასტურება",{
         towStore.changeStatus(tow.id,"confirmed"){towActionError=it.orEmpty()}
@@ -310,7 +314,7 @@ class MainActivity:ComponentActivity(){
  live.requests.filterNot { it.status in listOf("closed","completed","cancelled","hidden","archived") }.take(3).forEach { req->Panel {
   Txt("${req.brand} ${req.model} · ${req.year}",11,Muted)
   Txt(req.part,15,Ink,true);Spacer(Modifier.height(12.dp))
-  Txt("${req.status} · ${live.offers.count { it.requestId==req.id }} შეთავაზება",11,Color(0xFF3E7D52))
+  Txt("${statusLabel(req.status)} · ${live.offers.count { it.requestId==req.id }} შეთავაზება",11,Color(0xFF3E7D52))
  } }
  Action("ჩემი გარაჟი",garage,false)
 }

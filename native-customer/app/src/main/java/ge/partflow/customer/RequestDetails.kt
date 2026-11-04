@@ -16,6 +16,7 @@ import com.google.firebase.firestore.FirebaseFirestore
   Text(request.description,color=Pf.ink,fontSize=14.sp,lineHeight=23.sp)
   Text(listOf(request.engine,request.category,request.city,request.vin).filter{it.isNotBlank()}.joinToString(" · "),color=Pf.muted,fontSize=12.sp)
   Text(if(request.status=="open")"აქტიური" else if(request.acceptedOfferId!=null)"დადასტურებული" else "დახურული",color=Pf.muted,fontSize=12.sp)
+  request.photos.forEach{RequestPhotoView(it)}
   ShopMap(request)
   Text("შეთავაზებები",color=Pf.ink,fontSize=18.sp)
   offers.filter{it.requestId==request.id}.forEach{offer->PfCard(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){

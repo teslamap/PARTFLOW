@@ -23,12 +23,12 @@ class CustomerUiTest {
   compose.onNodeWithText("✎  ხელით დამატება").performClick()
   compose.onAllNodesWithText("აირჩიე")[0].performClick()
   compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).performTextInput("Renault")
-  compose.onNodeWithText("Renault").performClick()
+  compose.onNode(hasText("Renault") and !hasSetTextAction()).performClick()
   compose.onNodeWithText("Renault").assertIsDisplayed()
   screenshot("garage-manual")
   compose.onNodeWithText("აირჩიე").performClick()
   compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).performTextInput("Duster")
-  compose.onNodeWithText("Duster").performClick()
+  compose.onNode(hasText("Duster") and !hasSetTextAction()).performClick()
   compose.onNodeWithText("Duster").assertIsDisplayed()
  }
  @Test fun requestPrefillsGarageVehicle(){
@@ -43,7 +43,7 @@ class CustomerUiTest {
   compose.onNodeWithText("ქალაქთაშორისი").performClick()
   compose.onAllNodesWithText("ბათუმი")[0].performClick()
   compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).performTextInput("თბილისი")
-  compose.onNodeWithText("თბილისი").performClick()
+  compose.onNode(hasText("თბილისი") and !hasSetTextAction()).performClick()
   compose.onNodeWithText("თბილისი").assertIsDisplayed()
   screenshot("towing")
  }

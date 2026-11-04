@@ -8,7 +8,7 @@ import com.google.firebase.firestore.Query
 data class CustomerRequest(
  val id:String,val brand:String,val model:String,val year:String,
  val part:String,val status:String,val city:String,val budget:String,
- val acceptedOfferId:String?,val description:String="",val engine:String="",val category:String="",val vin:String=""
+ val acceptedOfferId:String?,val description:String="",val engine:String="",val category:String="",val vin:String="",val photos:List<String> = emptyList()
 )
 data class CustomerOffer(
  val id:String,val requestId:String,val shopName:String,val price:String,
@@ -32,7 +32,7 @@ class CustomerData(private val db:FirebaseFirestore=FirebaseFirestore.getInstanc
      CustomerRequest(d.id,d.getString("brand").orEmpty(),d.getString("model").orEmpty(),
       d.get("year")?.toString().orEmpty(),d.getString("part").orEmpty(),
       d.getString("status").orEmpty(),d.getString("city").orEmpty(),
-      d.get("budget")?.toString().orEmpty(),d.getString("acceptedOfferId"),d.getString("description").orEmpty(),d.getString("engine").orEmpty(),d.getString("category").orEmpty(),d.getString("vin").orEmpty())
+      d.get("budget")?.toString().orEmpty(),d.getString("acceptedOfferId"),d.getString("description").orEmpty(),d.getString("engine").orEmpty(),d.getString("category").orEmpty(),d.getString("vin").orEmpty(),(d.get("photos") as? List<*>)?.filterIsInstance<String>().orEmpty())
     }?.sortedByDescending { it.id }?:emptyList()
     publish()
    }

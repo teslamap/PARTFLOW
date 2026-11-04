@@ -44,6 +44,7 @@ val CustomerCities=listOf("თბილისი","ბათუმი","ქუ�
    if(user?.isEmailVerified==false)PfOutlineButton(enabled=!busy,onClick={busy=true;user.sendEmailVerification().addOnCompleteListener{busy=false;message=if(it.isSuccessful)"დადასტურების წერილი გაგზავნილია." else "წერილი ვერ გაიგზავნა."}}){Text("ელფოსტის დადასტურება")}
    PfOutlineButton(enabled=!busy,onClick={val email=user?.email?:return@PfOutlineButton;busy=true;NativeAuth.reset(email){busy=false;message=it?:"პაროლის აღდგენის ბმული გაგზავნილია."}}){Text("პაროლის აღდგენა")}
   }}
+  PrivateContact()
   if(message.isNotBlank())Text(message,color=Pf.muted,fontSize=12.sp)
   PfOutlineButton(onSignOut){Text("ანგარიშიდან გასვლა")}
  }
@@ -70,6 +71,11 @@ val CustomerCities=listOf("თბილისი","ბათუმი","ქუ�
    if(!reviewing)reviewing=true else {busy=true;CustomerActions.accept(offer,(terms["version"] as? Number)?.toLong()?:0){busy=false;error=it.orEmpty();reviewing=false}}
   }){Text(if(busy)"მიმდინარეობს…" else if(reviewing)"დიახ, ვადასტურებ" else "პირობების გადამოწმება")}
   if(reviewing)PfTextButton({reviewing=false}){Text("გაუქმება")}
+  PfTextButton(enabled=!busy,onClick={
+   busy=true
+   FirebaseFirestore.getInstance().collection("pf_confirmations").document(offer.id).update(mapOf("status" to "declined","updatedAt" to FieldValue.serverTimestamp())).addOnCompleteListener{busy=false;error=if(it.isSuccessful)"" else "უარის გაგზავნა ვერ მოხერხდა."}
+  }){Text("პირობებზე უარის თქმა",color=Pf.muted)}
+
  }
  if(error.isNotBlank())Text(error,color=Color(0xFFB54730),fontSize=11.sp)
 }

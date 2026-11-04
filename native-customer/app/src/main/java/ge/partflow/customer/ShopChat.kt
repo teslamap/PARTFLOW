@@ -9,7 +9,7 @@ import androidx.compose.ui.unit.dp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.*
 
-data class ShopMessage(val sender:String,val text:String)
+data class ShopMessage(val sender:String,val text:String,val name:String="",val kind:String="message")
 @Composable fun ShopChat(offer:CustomerOffer,onClose:()->Unit){
  if(!featureEnabled("chat")){Text("ფუნქცია დროებით გამორთულია.");return}
  val db=remember { FirebaseFirestore.getInstance() }
@@ -24,20 +24,20 @@ data class ShopMessage(val sender:String,val text:String)
    if(e!=null)error="შეთავაზება ვერ ჩაიტვირთა."
    else shopId=doc?.getString("shopId").orEmpty()
   }
-  val msgListener=db.collection("pf_messages").whereEqualTo("offerId",offer.id)
+  val msgListener=db.collection("pf_messages").whereEqualTo("ownerId",uid).whereEqualTo("offerId",offer.id)
    .addSnapshotListener { snap,e->
     if(e!=null)error="მაღაზიასთან ჩატი ვერ ჩაიტვირთა."
     else messages=snap?.documents?.sortedBy { it.getTimestamp("createdAt")?.seconds?:0L }?.map {
-     ShopMessage(it.getString("senderId").orEmpty(),it.getString("text").orEmpty())
+     ShopMessage(it.getString("senderId").orEmpty(),it.getString("text").orEmpty(),it.getString("senderName").orEmpty(),it.getString("kind")?:"message")
     }.orEmpty()
    }
   onDispose { offerListener.remove();msgListener.remove() }
  }
  Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
-  Text(offer.shopName,style=MaterialTheme.typography.titleLarge)
+  PfHeading(offer.shopName,"მაღაზიასთან საუბარი",onClose)
   Column(Modifier.fillMaxWidth().heightIn(max=350.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(6.dp)) {
   messages.forEach { m->
-   ChatBubble(m.sender==uid,if(m.sender==uid)"თქვენ" else offer.shopName,m.text)
+   ChatBubble(m.sender==uid,if(m.sender==uid)"თქვენ" else if(m.kind.startsWith("admin"))"ადმინისტრატორი · "+m.name else offer.shopName,m.text)
   }
   }
   if(messages.isEmpty())Text("შეტყობინებები ჯერ არ არის.",style=MaterialTheme.typography.bodySmall)

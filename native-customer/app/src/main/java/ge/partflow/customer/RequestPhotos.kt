@@ -17,9 +17,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.*
 import java.io.ByteArrayOutputStream
 
-@Composable fun RequestPhotos(photos:List<String>,onChange:(List<String>)->Unit,onError:(String)->Unit){
+@Composable fun RequestPhotos(photos:List<String>,onChange:(List<String>)->Unit,onError:(String)->Unit,onBusy:(Boolean)->Unit={}){
  val context=LocalContext.current
  var busy by remember{mutableStateOf(false)}
+ LaunchedEffect(busy){onBusy(busy)}
  val picker=rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()){uris->
   if(photos.size+uris.size>4)onError("შეგიძლია დაამატო მაქსიმუმ 4 ფოტო.")
   else if(uris.isNotEmpty()){
@@ -48,7 +49,7 @@ import java.io.ByteArrayOutputStream
   photos.forEachIndexed{i,p->Row(horizontalArrangement=Arrangement.spacedBy(12.dp)){
    val bitmap=remember(p){val bytes=Base64.decode(p.substringAfter(','),Base64.DEFAULT);BitmapFactory.decodeByteArray(bytes,0,bytes.size)}
    if(bitmap!=null)Image(bitmap.asImageBitmap(),"ნაწილის ფოტო ${i+1}",Modifier.size(80.dp))
-   PfTextButton({onChange(photos.filterIndexed{n,_->n!=i})}){Text("წაშლა",color=Pf.muted)}
+   PfTextButton(enabled=!busy,onClick={onChange(photos.filterIndexed{n,_->n!=i})}){Text("წაშლა",color=Pf.muted)}
   }}
  }
 }
@@ -56,4 +57,12 @@ private fun java.io.InputStream.readBytesLimited(max:Int):ByteArray{
  val out=ByteArrayOutputStream();val buffer=ByteArray(8192);var n=read(buffer)
  while(n!=-1){check(out.size()+n<=max);out.write(buffer,0,n);n=read(buffer)}
  return out.toByteArray()
+}
+
+@Composable fun RequestPhotoView(value:String){
+ var bitmap by remember(value){mutableStateOf<Bitmap?>(null)}
+ LaunchedEffect(value){
+  bitmap=try{val bytes=Base64.decode(value.substringAfter(','),Base64.DEFAULT);BitmapFactory.decodeByteArray(bytes,0,bytes.size)}catch(_:Exception){null}
+ }
+ bitmap?.let{Image(it.asImageBitmap(),"ნაწილის ფოტო",Modifier.fillMaxWidth().heightIn(max=260.dp))}
 }

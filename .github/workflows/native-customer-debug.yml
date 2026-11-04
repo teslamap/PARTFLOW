@@ -10,6 +10,8 @@ concurrency:
   group: native-customer-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  regression:
+    uses: ./.github/workflows/test.yml
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -22,6 +24,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+          cache-read-only: false
       - name: Assemble and lint native app
         working-directory: native-customer
         run: gradle --no-daemon assembleDebug lintDebug assembleDebugAndroidTest

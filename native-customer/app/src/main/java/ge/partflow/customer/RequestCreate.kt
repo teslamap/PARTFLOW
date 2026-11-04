@@ -31,23 +31,29 @@ private val cities=listOf("თბილისი","ბათუმი","ქუ�
  var city by remember { mutableStateOf("") };var condition by remember { mutableStateOf("ნებისმიერი") }
  var budget by remember { mutableStateOf("") };var busy by remember { mutableStateOf(false) }
  var error by remember { mutableStateOf("") }
+ var preparingPhotos by remember { mutableStateOf(false) }
+ var customCategories by remember { mutableStateOf(emptyList<String>()) }
+ DisposableEffect(Unit){
+  val l=FirebaseFirestore.getInstance().collection("pf_categories").addSnapshotListener{s,e->if(e==null)customCategories=s?.documents?.mapNotNull{it.getString("name")}.orEmpty()}
+  onDispose{l.remove()}
+ }
  var photos by remember { mutableStateOf(emptyList<String>()) }
  Column(Modifier.fillMaxWidth().background(Color(0xFFF7F8FA)).verticalScroll(rememberScrollState()).padding(20.dp),
   verticalArrangement=Arrangement.spacedBy(9.dp)){
   PfHeading("ახალი მოთხოვნა","შესაბამისი მაღაზიების შეთავაზებები",onClose)
+  Entry("ნაწილის დასახელება",part,{part=it.take(120)})
   Choose("მარკა",vehicles.keys.sorted(),brand){brand=it;model=""}
   Choose("მოდელი",vehicles[brand].orEmpty(),model){model=it}
   Entry("წელი",year,{year=it},true);Entry("ძრავა",engine,{engine=it})
   Entry("VIN (არასავალდებულო)",vin,{vin=it.uppercase().take(17)})
-  Choose("კატეგორია",categories,category){category=it}
-  Entry("ნაწილის დასახელება",part,{part=it.take(120)})
+  Choose("კატეგორია",(categories+customCategories).distinct().sorted(),category){category=it}
   Entry("აღწერა",description,{description=it.take(2000)})
   Choose("ქალაქი",cities,city){city=it}
   Choose("მდგომარეობა",listOf("ნებისმიერი","ახალი","მეორადი"),condition){condition=it}
   Entry("ბიუჯეტი ₾ (არასავალდებულო)",budget,{budget=it},true)
-  RequestPhotos(photos,{photos=it},{error=it})
+  RequestPhotos(photos,{photos=it},{error=it},{preparingPhotos=it})
   if(error.isNotBlank())Text(error,color=Color(0xFFB54730))
-  PfButton(enabled=!busy,onClick={
+  PfButton(enabled=!busy&&!preparingPhotos,onClick={
    val y=year.toIntOrNull();val b=if(budget.isBlank())null else budget.toDoubleOrNull()
    val uid=FirebaseAuth.getInstance().currentUser?.uid
    error=when{

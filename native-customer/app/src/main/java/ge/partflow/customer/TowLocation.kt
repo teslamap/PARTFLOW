@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
  var listener by remember{mutableStateOf<LocationListener?>(null)}
  val handler=remember{Handler(Looper.getMainLooper())}
  fun locate(){
+  if(context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED&&context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED){onError("მდებარეობაზე წვდომა არ არის დაშვებული.");return}
   try{
    val provider=if(manager.isProviderEnabled(LocationManager.GPS_PROVIDER))LocationManager.GPS_PROVIDER else LocationManager.NETWORK_PROVIDER
    locating=true
@@ -28,7 +29,8 @@ import androidx.compose.ui.platform.LocalContext
    }
    listener=active;manager.requestLocationUpdates(provider,0L,0f,active,Looper.getMainLooper())
    handler.postDelayed({if(listener===active){manager.removeUpdates(active);listener=null;locating=false;onError("მდებარეობა ვერ განისაზღვრა. ჩართე GPS და სცადე ხელახლა.")}},20000)
-  }catch(_:Exception){locating=false;onError("ჩართე მდებარეობა და მიეცი აპს წვდომა.")}
+  }catch(_:SecurityException){locating=false;listener=null;onError("მდებარეობის წვდომა გაუქმებულია.")}
+  catch(_:Exception){locating=false;listener=null;onError("ჩართე მდებარეობა და მიეცი აპს წვდომა.")}
  }
  val permission=rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()){result->if(result.values.any{it})locate()else onError("მდებარეობის წვდომა აუცილებელია SOS გამოძახებისთვის.")}
  DisposableEffect(Unit){onDispose{listener?.let{manager.removeUpdates(it)};handler.removeCallbacksAndMessages(null)}}
