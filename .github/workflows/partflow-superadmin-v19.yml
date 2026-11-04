@@ -23,7 +23,7 @@ jobs:
           set -euo pipefail
           mkdir -p superadmin-native
           base64 --decode superadmin-build/v19-source.b64 > /tmp/native-v19.tar.xz
-          echo "2865c288fa65b250f85d88157f6639cd210477e061ce4fbdc4cebe7d45c08619  /tmp/native-v19.tar.xz" | sha256sum --check -
+          echo "6c65b4e14300eb643f38f72b11ec311843c37605d5712ccd315f95907bd41916  /tmp/native-v19.tar.xz" | sha256sum --check -
           tar -xJf /tmp/native-v19.tar.xz -C superadmin-native
       - uses: actions/setup-java@v4
         with:
