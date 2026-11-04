@@ -5,6 +5,11 @@ on:
     paths:
       - 'native/superadmin/**'
       - '.github/workflows/superadmin-native-build.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'native/superadmin/**'
+      - '.github/workflows/superadmin-native-build.yml'
   workflow_dispatch:
 jobs:
   android:
