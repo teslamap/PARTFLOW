@@ -33,10 +33,10 @@ data class SupportMessage(val id:String,val senderId:String,val text:String)
   }
   onDispose { a.remove();b.remove() }
  }
- Column(Modifier.fillMaxSize().padding(16.dp)){
+ Column(Modifier.fillMaxWidth().padding(16.dp)){
   Text("მხარდაჭერის ჩატი",style=MaterialTheme.typography.titleLarge)
   Spacer(Modifier.height(10.dp))
-  Column(Modifier.weight(1f).verticalScroll(rememberScrollState())){
+  Column(Modifier.fillMaxWidth()){
    messages.forEach { message->
     Card(Modifier.fillMaxWidth().padding(vertical=4.dp)){
      Column(Modifier.padding(12.dp)){
