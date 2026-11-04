@@ -171,6 +171,7 @@ class MainActivity:ComponentActivity(){
       } }
       Action("+ ავტომობილის დამატება",{if(!demo)garageCreate=true})
      }
+     "ჩატი"->{SupportChat()}
      "SOS / დაგეგმილი"->{
       Txt("ევაკუატორი",23,Ink,true);Spacer(Modifier.height(16.dp))
       if(towError!=null)Txt(towError!!,11,Color(0xFFB54730))
