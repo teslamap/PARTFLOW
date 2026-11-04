@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.*
@@ -55,6 +54,13 @@ data class ShopMessage(val sender:String,val text:String)
    val message=db.collection("pf_messages").document()
    db.runTransaction { tx->
     val old=tx.get(activity)
+    val offerDoc=tx.get(db.collection("pf_offers").document(offer.id))
+    val requestDoc=tx.get(db.collection("pf_requests").document(offer.requestId))
+    if(offerDoc.getString("ownerId")!=owner||offerDoc.getString("shopId")!=recipient||
+     offerDoc.getString("requestId")!=offer.requestId||
+     requestDoc.getString("status")=="hidden"||
+     (requestDoc.getString("status")!="open"&&requestDoc.getString("acceptedOfferId")!=offer.id))
+     throw IllegalStateException("Conversation is not available")
     val version=if(old.exists())(old.getLong("version")?:0L)+1L else 1L
     val previousShop=old.getBoolean("shopReplied")?:false
     val fields=mapOf<String,Any>(
