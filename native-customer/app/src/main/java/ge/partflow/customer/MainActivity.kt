@@ -227,6 +227,11 @@ class MainActivity:ComponentActivity(){
    Spacer(Modifier.weight(1f).fillMaxHeight().clickable{drawer=false})
   }
  }
+ if(selectedShopChat!=null&&!demo&&logged) Dialog(onDismissRequest={selectedShopChat=null}) {
+  Box(Modifier.fillMaxWidth().fillMaxHeight(.88f).clip(RoundedCornerShape(20.dp)).background(Bg)) {
+   ShopChat(selectedShopChat!!,onClose={selectedShopChat=null})
+  }
+ }
  if(towCreate&&!demo&&logged) Dialog(onDismissRequest={towCreate=false}) {
   Box(Modifier.fillMaxWidth().fillMaxHeight(.88f).clip(RoundedCornerShape(20.dp)).background(Bg)) { TowForm(onClose={towCreate=false}) }
  }
