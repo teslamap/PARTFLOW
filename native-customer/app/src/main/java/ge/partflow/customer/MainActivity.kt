@@ -53,6 +53,13 @@ class MainActivity:ComponentActivity(){
 @Composable private fun CustomerApp(){
  var logged by remember { mutableStateOf(com.google.firebase.auth.FirebaseAuth.getInstance().currentUser!=null) }
  var authBusy by remember { mutableStateOf(false) }
+ var live by remember { mutableStateOf(CustomerSnapshot()) }
+ val store=remember { CustomerData() }
+ val uid=if(logged)com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid else null
+ DisposableEffect(uid) {
+  if(uid!=null)store.observe(uid){live=it} else live=CustomerSnapshot()
+  onDispose { store.close() }
+ }
  var authError by remember { mutableStateOf("") }
  var email by remember { mutableStateOf("") }
  var password by remember { mutableStateOf("") }
@@ -122,16 +129,31 @@ class MainActivity:ComponentActivity(){
    } else {
     if(demo) { Txt("დემო ვერსია",11,Muted);Spacer(Modifier.height(12.dp)) }
     when(page){
-     "მთავარი"->HomePage({page="მოთხოვნები"},{page="გარაჟი"})
+     "მთავარი"->HomePage({page="მოთხოვნები"},{page="გარაჟი"},live)
      "მოთხოვნები"->{
       Txt("ჩემი მოთხოვნები",23,Ink,true);Spacer(Modifier.height(16.dp))
-      Panel { Row(verticalAlignment=Alignment.CenterVertically){Box(Modifier.size(52.dp).clip(RoundedCornerShape(13.dp)).background(Color(0xFFEFF2F4)),contentAlignment=Alignment.Center){Txt("🚘",23)}
-       Spacer(Modifier.width(12.dp));Column { Txt("Toyota Prius · 2015",11,Muted);Txt("წინა მარცხენა ფარი",13,Ink,true) } }
-       Spacer(Modifier.height(14.dp));Txt("აქტიური     •     1 შეთავაზება     •     300 ₾",11,Muted)
+      if(live.error!=null)Txt(live.error!!,11,Color(0xFFB54730))
+      if(live.requests.isEmpty())Panel { Txt("მოთხოვნები ჯერ არ გაქვს",14,Ink,true);Txt("ახალი მოთხოვნის დამატება ამჟამად მუშავდება.",11,Muted) }
+      live.requests.forEach { req->
+       Panel {
+        Txt(listOf(req.brand,req.model,req.year).filter { it.isNotBlank() }.joinToString(" · "),11,Muted)
+        Txt(req.part,15,Ink,true)
+        Spacer(Modifier.height(10.dp))
+        Txt("${req.status} · ${req.city} · ${live.offers.count { it.requestId==req.id }} შეთავაზება",11,Muted)
+       }
       }
       Action("+ ახალი მოთხოვნა",{detail=true})
      }
-     "შეთავაზებები"->{Txt("შეთავაზებები",23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("Auto Parts Tbilisi",14,Ink,true);Txt("წინა მარცხენა ფარი",11,Muted);Spacer(Modifier.height(10.dp));Txt("250 ₾",20,Color(0xFFB9602E),true);Txt("მეორადი · თბილისი • ადგილზე",11,Muted);Action("ჩატის გახსნა",{})}}
+     "შეთავაზებები"->{
+      Txt("შეთავაზებები",23,Ink,true);Spacer(Modifier.height(16.dp))
+      if(live.offers.isEmpty())Panel { Txt("შეთავაზებები ჯერ არ არის",13,Muted) }
+      live.offers.forEach { offer->Panel {
+       Txt(offer.shopName,14,Ink,true)
+       Txt(live.requests.find { it.id==offer.requestId }?.part.orEmpty(),11,Muted)
+       Spacer(Modifier.height(10.dp));Txt("${offer.price} ₾",20,Color(0xFFB9602E),true)
+       Txt("${offer.condition} · ${offer.delivery}",11,Muted)
+      } }
+     }
      "გარაჟი"->{Txt("ჩემი გარაჟი",23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("ავტომობილის დამატება",15,Ink,true);Txt("VIN-კოდით ან ხელით",11,Muted);Action("+ ავტომობილის დამატება",{detail=true})}}
      "პროფილი"->{Txt("პროფილი",23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("დემო მომხმარებელი",16,Ink,true);Txt("შენი ავტომობილი. შენი ნაწილი.",11,Muted);Action(if(demo)"დემოდან გამოსვლა" else "ანგარიშიდან გასვლა",{if(!demo)NativeAuth.signOut();demo=false;page="მთავარი"},false)}}
      else->{Txt(page,23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("ამ განყოფილების სრული Native ფუნქციონალი ჯერ დასამუშავებელია.",12,Muted)}}
@@ -176,7 +198,7 @@ class MainActivity:ComponentActivity(){
    colors=OutlinedTextFieldDefaults.colors(focusedBorderColor=Orange,unfocusedBorderColor=Color(0xFFDFE4E8),focusedContainerColor=White,unfocusedContainerColor=White))
  }
 }
-@Composable private fun HomePage(requests:()->Unit,garage:()->Unit){
+@Composable private fun HomePage(requests:()->Unit,garage:()->Unit,live:CustomerSnapshot){
  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Column{Txt("მოგესალმები,",10,Muted);Txt("ნიკა",20,Ink,true)};Txt("✦",18,Orange)}
  Spacer(Modifier.height(20.dp))
  Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(23.dp)).background(Ink).padding(23.dp)){
@@ -187,11 +209,16 @@ class MainActivity:ComponentActivity(){
  }
  Spacer(Modifier.height(18.dp))
  Row(horizontalArrangement=Arrangement.spacedBy(12.dp)){
-  Box(Modifier.weight(1f)){Stat("1","ჩემი მოთხოვნები",requests)}
-  Box(Modifier.weight(1f)){Stat("1","შეთავაზებები",requests)}
+  Box(Modifier.weight(1f)){Stat(live.requests.size.toString(),"ჩემი მოთხოვნები",requests)}
+  Box(Modifier.weight(1f)){Stat(live.offers.size.toString(),"შეთავაზებები",requests)}
  }
  Spacer(Modifier.height(24.dp));Txt("ბოლო მოთხოვნები",18,Ink,true);Spacer(Modifier.height(12.dp))
- Panel { Txt("Toyota Prius · 2015",11,Muted);Txt("წინა მარცხენა ფარი",15,Ink,true);Spacer(Modifier.height(12.dp));Txt("აქტიური  ·  1 შეთავაზება",11,Color(0xFF3E7D52)) }
+ if(live.requests.isEmpty())Panel { Txt("მოთხოვნები ჯერ არ გაქვს",12,Muted) }
+ live.requests.take(3).forEach { req->Panel {
+  Txt("${req.brand} ${req.model} · ${req.year}",11,Muted)
+  Txt(req.part,15,Ink,true);Spacer(Modifier.height(12.dp))
+  Txt("${req.status} · ${live.offers.count { it.requestId==req.id }} შეთავაზება",11,Color(0xFF3E7D52))
+ } }
  Action("ჩემი გარაჟი",garage,false)
 }
 @Composable private fun Stat(number:String,label:String,onClick:()->Unit){
