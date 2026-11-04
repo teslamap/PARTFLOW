@@ -43,10 +43,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p superadmin-build
-          sed '1d;$d' native/superadmin/source-v19.tar.xz.base64.txt | tr -d '\r\n' | base64 -d > /tmp/superadmin.tar.xz
+          sed '1d;$d' native/superadmin/source-v20.tar.xz.base64.txt | tr -d '\r\n' | base64 -d > /tmp/superadmin.tar.xz
+          echo '2e9110a8a81e3928d7accbd273a14dee32896b45c14c30b47d3004d006a8e9ca  /tmp/superadmin.tar.xz' | sha256sum --check
           tar -xJf /tmp/superadmin.tar.xz -C superadmin-build
           test -f superadmin-build/app/build.gradle.kts
-          sed -i '/^private fun SuperadminApp()/i @OptIn(ExperimentalMaterial3Api::class)' superadmin-build/app/src/main/java/ge/partflow/superadmin/MainActivity.kt
           printf 'android.useAndroidX=true\norg.gradle.jvmargs=-Xmx3072m -Dfile.encoding=UTF-8\n' > superadmin-build/gradle.properties
       - name: Compile native APK
         working-directory: superadmin-build
