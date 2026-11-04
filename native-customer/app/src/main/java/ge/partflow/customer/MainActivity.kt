@@ -129,7 +129,7 @@ class MainActivity:ComponentActivity(){
    } else {
     if(demo) { Txt("დემო ვერსია",11,Muted);Spacer(Modifier.height(12.dp)) }
     when(page){
-     "მთავარი"->HomePage({page="მოთხოვნები"},{page="გარაჟი"},live)
+     "მთავარი"->HomePage({detail=true},{page="გარაჟი"},live)
      "მოთხოვნები"->{
       Txt("ჩემი მოთხოვნები",23,Ink,true);Spacer(Modifier.height(16.dp))
       if(live.error!=null)Txt(live.error!!,11,Color(0xFFB54730))
@@ -181,10 +181,8 @@ class MainActivity:ComponentActivity(){
   }
  }
  if(detail) Dialog(onDismissRequest={detail=false}) {
-  Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Bg).padding(22.dp)){
-   Txt("ახალი მოთხოვნა",19,Ink,true);Spacer(Modifier.height(12.dp))
-   Txt("სრული ფორმა დაემატება Firebase-ის მოქმედებების გადატანისას.",12,Muted)
-   Action("დახურვა",{detail=false})
+  Box(Modifier.fillMaxWidth().fillMaxHeight(.88f).clip(RoundedCornerShape(20.dp)).background(Bg)){
+   RequestCreate(onClose={detail=false})
   }
  }
  }
