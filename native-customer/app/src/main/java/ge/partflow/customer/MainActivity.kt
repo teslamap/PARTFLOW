@@ -26,7 +26,7 @@ private val Muted=Color(0xFF737C87)
 private val White=Color.White
 private val menu=listOf("მთავარი","მოთხოვნები","შეთავაზებები","გარაჟი","SOS / დაგეგმილი","მაღაზიების რუკა","ჩატი","არქივი","პროფილი")
 class MainActivity:ComponentActivity(){
- override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);window.statusBarColor=android.graphics.Color.rgb(247,248,250);window.navigationBarColor=android.graphics.Color.WHITE
+ override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);NativeAuth.initialize(this);window.statusBarColor=android.graphics.Color.rgb(247,248,250);window.navigationBarColor=android.graphics.Color.WHITE
   setContent { MaterialTheme { CustomerApp() } }
  }
 }
@@ -51,7 +51,18 @@ class MainActivity:ComponentActivity(){
   .background(White).border(1.dp,Line,RoundedCornerShape(17.dp)).padding(17.dp),content=content)
 }
 @Composable private fun CustomerApp(){
- var logged by remember { mutableStateOf(false) }
+ var logged by remember { mutableStateOf(com.google.firebase.auth.FirebaseAuth.getInstance().currentUser!=null) }
+ var authBusy by remember { mutableStateOf(false) }
+ var authError by remember { mutableStateOf("") }
+ var email by remember { mutableStateOf("") }
+ var password by remember { mutableStateOf("") }
+ var name by remember { mutableStateOf("") }
+ DisposableEffect(Unit) {
+  val auth=com.google.firebase.auth.FirebaseAuth.getInstance()
+  val listener=com.google.firebase.auth.FirebaseAuth.AuthStateListener { logged=it.currentUser!=null }
+  auth.addAuthStateListener(listener)
+  onDispose { auth.removeAuthStateListener(listener) }
+ }
  var demo by remember { mutableStateOf(false) }
  var page by remember { mutableStateOf("მთავარი") }
  var drawer by remember { mutableStateOf(false) }
@@ -82,17 +93,32 @@ class MainActivity:ComponentActivity(){
      }
     }
     Spacer(Modifier.height(20.dp))
-    if(mode=="რეგისტრაცია")Field("სახელი",false)
-    Field("ელფოსტა",false)
-    Field("პაროლი",true)
-    Action(if(mode=="შესვლა")"შესვლა" else "ანგარიშის შექმნა",{})
+    if(mode=="რეგისტრაცია")Field("სახელი",name,{name=it},false)
+    Field("ელფოსტა",email,{email=it},false)
+    if(mode!="აღდგენა")Field("პაროლი",password,{password=it},true)
+    if(authError.isNotBlank())Txt(authError,11,Color(0xFFB54730))
+    Action(if(authBusy)"მიმდინარეობს..." else when(mode){"რეგისტრაცია"->"ანგარიშის შექმნა";"აღდგენა"->"აღდგენის ბმულის გაგზავნა";else->"შესვლა"},{
+     if(!authBusy) {
+      authError=""
+      if(email.isBlank()||(mode!="აღდგენა"&&password.length<8)||(mode=="რეგისტრაცია"&&name.isBlank())) authError="შეავსე ველები. პაროლი მინიმუმ 8 სიმბოლოა."
+      else {
+       authBusy=true
+       val done:(String?)->Unit={ error->authBusy=false;authError=error?:"";if(error==null&&mode=="აღდგენა")authError="აღდგენის ბმული გაგზავნილია." }
+       when(mode) {
+        "რეგისტრაცია"->NativeAuth.register(name,email,password,done)
+        "აღდგენა"->NativeAuth.reset(email,done)
+        else->NativeAuth.signIn(email,password,done)
+       }
+      }
+     }
+    })
     Spacer(Modifier.height(14.dp))
     Box(Modifier.fillMaxWidth().clickable{mode="აღდგენა"},contentAlignment=Alignment.Center){Txt("პაროლი დაგავიწყდა?",11,Color(0xFFBB642F))}
     Spacer(Modifier.height(18.dp))
     Box(Modifier.fillMaxWidth().clickable{demo=true},contentAlignment=Alignment.Center){Txt("ჯერ დაათვალიერე აპი →",12)}
     Spacer(Modifier.height(22.dp));HorizontalDivider(color=Line)
     Spacer(Modifier.height(20.dp));Txt("✓  ერთი მოთხოვნა — შესაბამისი მაღაზიების შეთავაზებები",10,Muted)
-    Txt("სატესტო Native ეკრანი — ავტორიზაცია ჯერ არ არის დაკავშირებული.",10,Muted)
+    Txt("Firebase ავტორიზაცია დაკავშირებულია; მონაცემების ეკრანები ჯერ სატესტოა.",10,Muted)
    } else {
     if(demo) { Txt("დემო ვერსია",11,Muted);Spacer(Modifier.height(12.dp)) }
     when(page){
@@ -107,7 +133,7 @@ class MainActivity:ComponentActivity(){
      }
      "შეთავაზებები"->{Txt("შეთავაზებები",23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("Auto Parts Tbilisi",14,Ink,true);Txt("წინა მარცხენა ფარი",11,Muted);Spacer(Modifier.height(10.dp));Txt("250 ₾",20,Color(0xFFB9602E),true);Txt("მეორადი · თბილისი • ადგილზე",11,Muted);Action("ჩატის გახსნა",{})}}
      "გარაჟი"->{Txt("ჩემი გარაჟი",23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("ავტომობილის დამატება",15,Ink,true);Txt("VIN-კოდით ან ხელით",11,Muted);Action("+ ავტომობილის დამატება",{detail=true})}}
-     "პროფილი"->{Txt("პროფილი",23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("დემო მომხმარებელი",16,Ink,true);Txt("შენი ავტომობილი. შენი ნაწილი.",11,Muted);Action("დემოდან გამოსვლა",{demo=false;logged=false;page="მთავარი"},false)}}
+     "პროფილი"->{Txt("პროფილი",23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("დემო მომხმარებელი",16,Ink,true);Txt("შენი ავტომობილი. შენი ნაწილი.",11,Muted);Action(if(demo)"დემოდან გამოსვლა" else "ანგარიშიდან გასვლა",{if(!demo)NativeAuth.signOut();demo=false;page="მთავარი"},false)}}
      else->{Txt(page,23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("ამ განყოფილების სრული Native ფუნქციონალი ჯერ დასამუშავებელია.",12,Muted)}}
     }
    }
@@ -141,11 +167,10 @@ class MainActivity:ComponentActivity(){
  }
  }
 }
-@Composable private fun Field(label:String,secret:Boolean){
- var value by remember { mutableStateOf("") }
+@Composable private fun Field(label:String,value:String,onValueChange:(String)->Unit,secret:Boolean){
  Column(Modifier.fillMaxWidth().padding(bottom=17.dp)){
   Txt(label,11,Color(0xFF596570));Spacer(Modifier.height(8.dp))
-  OutlinedTextField(value=value,onValueChange={value=it},singleLine=true,
+  OutlinedTextField(value=value,onValueChange=onValueChange,singleLine=true,
    visualTransformation=if(secret)PasswordVisualTransformation() else VisualTransformation.None,
    modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(10.dp),
    colors=OutlinedTextFieldDefaults.colors(focusedBorderColor=Orange,unfocusedBorderColor=Color(0xFFDFE4E8),focusedContainerColor=White,unfocusedContainerColor=White))
