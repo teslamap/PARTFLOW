@@ -36,7 +36,7 @@ data class SupportMessage(val id:String,val senderId:String,val text:String)
  Column(Modifier.fillMaxWidth().padding(16.dp)){
   Text("მხარდაჭერის ჩატი",style=MaterialTheme.typography.titleLarge)
   Spacer(Modifier.height(10.dp))
-  Column(Modifier.fillMaxWidth()){
+  Column(Modifier.fillMaxWidth().heightIn(max=350.dp).verticalScroll(rememberScrollState())){
    messages.forEach { message->
     Card(Modifier.fillMaxWidth().padding(vertical=4.dp)){
      Column(Modifier.padding(12.dp)){
