@@ -86,7 +86,7 @@ class MainActivity:ComponentActivity(){
  var garageCreate by remember { mutableStateOf(false) }
  var towCreate by remember { mutableStateOf(false) }
  var selectedShopChat by remember { mutableStateOf<CustomerOffer?>(null) }
- BackHandler(drawer||detail||garageCreate||page!="მთავარი"){when{drawer->drawer=false;detail->detail=false;garageCreate->garageCreate=false;else->page="მთავარი"}}
+ BackHandler(drawer||detail||garageCreate||towCreate||selectedShopChat!=null||page!="მთავარი"){when{drawer->drawer=false;selectedShopChat!=null->selectedShopChat=null;towCreate->towCreate=false;detail->detail=false;garageCreate->garageCreate=false;else->page="მთავარი"}}
  Box(Modifier.fillMaxSize().background(Bg)){
  Column {
   Row(Modifier.fillMaxWidth().background(White).border(1.dp,Line).padding(horizontal=22.dp,vertical=18.dp),
