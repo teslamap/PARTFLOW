@@ -19,6 +19,15 @@ object NativeAuth {
   }
   return FirebaseAuth.getInstance()
  }
+ fun ensureMember(){
+  val user=FirebaseAuth.getInstance().currentUser?:return
+  val ref=com.google.firebase.firestore.FirebaseFirestore.getInstance().collection("pf_members").document(user.uid)
+  com.google.firebase.firestore.FirebaseFirestore.getInstance().runTransaction{tx->
+   val old=tx.get(ref)
+   if(!old.exists())tx.set(ref,mapOf("name" to user.displayName.orEmpty().ifBlank{"მომხმარებელი"},"role" to "customer","createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()))
+   null
+  }
+ }
  fun signIn(email:String,password:String,done:(String?)->Unit) {
   FirebaseAuth.getInstance().signInWithEmailAndPassword(email.trim(),password)
    .addOnCompleteListener { done(if(it.isSuccessful)null else error(it.exception)) }

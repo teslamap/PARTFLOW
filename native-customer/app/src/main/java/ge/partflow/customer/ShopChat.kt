@@ -11,6 +11,7 @@ import com.google.firebase.firestore.*
 
 data class ShopMessage(val sender:String,val text:String)
 @Composable fun ShopChat(offer:CustomerOffer,onClose:()->Unit){
+ if(!featureEnabled("chat")){Text("ფუნქცია დროებით გამორთულია.");return}
  val db=remember { FirebaseFirestore.getInstance() }
  val uid=FirebaseAuth.getInstance().currentUser?.uid
  var shopId by remember(offer.id){mutableStateOf("")}
@@ -36,17 +37,14 @@ data class ShopMessage(val sender:String,val text:String)
   Text(offer.shopName,style=MaterialTheme.typography.titleLarge)
   Column(Modifier.fillMaxWidth().heightIn(max=350.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(6.dp)) {
   messages.forEach { m->
-   Card(Modifier.fillMaxWidth()){Column(Modifier.padding(12.dp)){
-    Text(if(m.sender==uid)"თქვენ" else "მაღაზია",style=MaterialTheme.typography.labelMedium)
-    Text(m.text)
-   }}
+   ChatBubble(m.sender==uid,if(m.sender==uid)"თქვენ" else offer.shopName,m.text)
   }
   }
   if(messages.isEmpty())Text("შეტყობინებები ჯერ არ არის.",style=MaterialTheme.typography.bodySmall)
   if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
-  OutlinedTextField(input,{input=it.take(2000)},label={Text("შეტყობინება")},modifier=Modifier.fillMaxWidth())
-  Button(enabled=!busy&&uid!=null&&shopId.isNotBlank()&&input.trim().isNotBlank(),onClick={
-   val owner=uid?:return@Button
+  PfField(input,{input=it.take(2000)},label={Text("შეტყობინება")},modifier=Modifier.fillMaxWidth())
+  PfButton(enabled=!busy&&uid!=null&&shopId.isNotBlank()&&input.trim().isNotBlank(),onClick={
+   val owner=uid?:return@PfButton
    val recipient=shopId
    val body=input.trim()
    busy=true;error=""
@@ -82,6 +80,6 @@ data class ShopMessage(val sender:String,val text:String)
     if(result.isSuccessful)input="" else error="შეტყობინება ვერ გაიგზავნა."
    }
   },modifier=Modifier.fillMaxWidth()){Text(if(busy)"იგზავნება..." else "გაგზავნა")}
-  TextButton(onClick=onClose){Text("დახურვა")}
+  PfTextButton(onClick=onClose){Text("დახურვა")}
  }
 }

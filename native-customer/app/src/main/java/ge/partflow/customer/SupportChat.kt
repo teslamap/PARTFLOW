@@ -11,6 +11,7 @@ import com.google.firebase.firestore.*
 
 data class SupportMessage(val id:String,val senderId:String,val text:String)
 @Composable fun SupportChat(){
+ if(!featureEnabled("chat")){Text("ფუნქცია დროებით გამორთულია.");return}
  val uid=FirebaseAuth.getInstance().currentUser?.uid
  val db=remember { FirebaseFirestore.getInstance() }
  var messages by remember { mutableStateOf(emptyList<SupportMessage>()) }
@@ -38,17 +39,12 @@ data class SupportMessage(val id:String,val senderId:String,val text:String)
   Spacer(Modifier.height(10.dp))
   Column(Modifier.fillMaxWidth().heightIn(max=350.dp).verticalScroll(rememberScrollState())){
    messages.forEach { message->
-    Card(Modifier.fillMaxWidth().padding(vertical=4.dp)){
-     Column(Modifier.padding(12.dp)){
-      Text(if(message.senderId==uid)"თქვენ" else "მხარდაჭერა",style=MaterialTheme.typography.labelMedium)
-      Text(message.text)
-     }
-    }
+    ChatBubble(message.senderId==uid,if(message.senderId==uid)"თქვენ" else "მხარდაჭერა",message.text)
    }
   }
   if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
-  OutlinedTextField(value=text,onValueChange={text=it.take(2000)},label={Text("შეტყობინება")},modifier=Modifier.fillMaxWidth())
-  Button(enabled=!sending&&uid!=null&&text.trim().isNotEmpty(),onClick={
+  PfField(value=text,onValueChange={text=it.take(2000)},label={Text("შეტყობინება")},modifier=Modifier.fillMaxWidth())
+  PfButton(enabled=!sending&&uid!=null&&text.trim().isNotEmpty(),onClick={
    if(uid!=null){
     sending=true;error=""
     val thread=db.collection("pf_support_threads").document(uid)

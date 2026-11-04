@@ -1,6 +1,9 @@
 package ge.partflow.customer
 
 import androidx.compose.foundation.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -18,34 +21,21 @@ private val ink=Color(0xFF142332)
 private val accent=Color(0xFFF18B51)
 private val muted=Color(0xFF737C87)
 private val border=Color(0xFFE7EAED)
-private val brands=listOf("Audi","BMW","Chevrolet","Ford","Honda","Hyundai","Jeep","Kia","Lexus","Mazda","Mercedes","Mitsubishi","Nissan","Opel","Subaru","Tesla","Toyota","Volkswagen","Volvo")
-private val models=mapOf("Tesla" to listOf("Model 3","Model S","Model X","Model Y","Cybertruck"),"Toyota" to listOf("Prius","Camry","Corolla","RAV4","Land Cruiser"),"BMW" to listOf("3 Series","5 Series","X3","X5"),"Mercedes" to listOf("C-Class","E-Class","GLC","GLE"),"Nissan" to listOf("Bluebird","Note","Leaf","X-Trail"))
+private val brands=VehicleCatalog.keys.toList()
+private val models=VehicleCatalog
 @Composable private fun WizardLabel(text:String){Text(text,color=ink,fontSize=13.sp,fontWeight=FontWeight.SemiBold)}
 @Composable private fun WizardInput(label:String,value:String,onChange:(String)->Unit,placeholder:String="",numeric:Boolean=false){
  Column(verticalArrangement=Arrangement.spacedBy(6.dp)){
   WizardLabel(label)
-  OutlinedTextField(value=value,onValueChange=onChange,placeholder={Text(placeholder,color=muted)},singleLine=true,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(12.dp),keyboardOptions=KeyboardOptions(keyboardType=if(numeric)KeyboardType.Number else KeyboardType.Text),colors=OutlinedTextFieldDefaults.colors(focusedBorderColor=accent,unfocusedBorderColor=border,focusedContainerColor=Color.White,unfocusedContainerColor=Color.White))
+  PfField(value=value,onValueChange=onChange,placeholder={Text(placeholder,color=muted)},singleLine=true,modifier=Modifier.fillMaxWidth(),keyboardOptions=KeyboardOptions(keyboardType=if(numeric)KeyboardType.Number else KeyboardType.Text))
  }
 }
-@Composable private fun WizardChoice(label:String,value:String,options:List<String>,onChange:(String)->Unit){
- var expanded by remember { mutableStateOf(false) }
- Column(verticalArrangement=Arrangement.spacedBy(6.dp)){
-  WizardLabel(label)
-  Box {
-   OutlinedButton(onClick={expanded=true},modifier=Modifier.fillMaxWidth().height(54.dp),shape=RoundedCornerShape(12.dp),colors=ButtonDefaults.outlinedButtonColors(containerColor=Color.White,contentColor=ink),border=BorderStroke(1.dp,border)){
-    Text(value.ifBlank { "აირჩიე" },modifier=Modifier.weight(1f),maxLines=1)
-    Text("⌄")
-   }
-   DropdownMenu(expanded=expanded,onDismissRequest={expanded=false},modifier=Modifier.heightIn(max=320.dp).background(Color.White)){
-    options.forEach { option->DropdownMenuItem(text={Text(option,color=ink)},onClick={onChange(option);expanded=false}) }
-   }
-  }
- }
-}
+@Composable private fun WizardChoice(label:String,value:String,options:List<String>,onChange:(String)->Unit){PfChoice(label,value,options,onChange)}
 @Composable private fun WizardButton(label:String,onClick:()->Unit,enabled:Boolean=true,primary:Boolean=true){
- Button(onClick=onClick,enabled=enabled,modifier=Modifier.fillMaxWidth().height(52.dp),shape=RoundedCornerShape(12.dp),colors=ButtonDefaults.buttonColors(containerColor=if(primary)accent else Color.White,contentColor=ink),border=if(primary)null else BorderStroke(1.dp,border)){Text(label,fontWeight=FontWeight.Bold)}
+ if(primary)PfButton(onClick,enabled=enabled){Text(label)} else PfOutlineButton(onClick,enabled=enabled){Text(label)}
 }
 @Composable fun GarageCreate(onClose:()->Unit){
+ if(!featureEnabled("garage")){Text("ფუნქცია დროებით გამორთულია.");return}
  var step by remember { mutableIntStateOf(0) }
  var method by remember { mutableStateOf("manual") }
  var brand by remember { mutableStateOf("") }
@@ -59,6 +49,10 @@ private val models=mapOf("Tesla" to listOf("Model 3","Model S","Model X","Model 
  var error by remember { mutableStateOf("") }
  var confirmed by remember { mutableStateOf(false) }
  val store=remember { GarageData() }
+ val context=LocalContext.current
+ fun decode(){busy=true;error="";VehicleRecognition.decode(vin){car,message->busy=false;if(car!=null){brand=car.brand;model=car.model;year=car.year;engine=car.engine;trim=car.trim;fuel=car.fuel;step=2;error=if(car.warning)"მონაცემები არასრულია — გადაამოწმე და შეავსე." else ""}else error=message.orEmpty()}}
+ val photo=rememberLauncherForActivityResult(ActivityResultContracts.GetContent()){uri->if(uri!=null){busy=true;VehicleRecognition.scan(context,uri){code,message->busy=false;if(code!=null){vin=code;method="vin";step=1;error="VIN ამოცნობილია. გააგრძელე მონაცემების ამოცნობა."}else error=message.orEmpty()}}}
+
  Column(Modifier.fillMaxWidth().fillMaxHeight().background(Color(0xFFF7F8FA)).verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
   Row(verticalAlignment=Alignment.CenterVertically){
    Column(Modifier.weight(1f)){
@@ -66,22 +60,24 @@ private val models=mapOf("Tesla" to listOf("Model 3","Model S","Model X","Model 
     Spacer(Modifier.height(8.dp))
     Text(when(step){0->"როგორ გსურთ ავტომობილის დამატება?";1->"VIN-კოდი";else->"შეამოწმე ავტომობილის მონაცემები"},fontSize=21.sp,fontWeight=FontWeight.Bold,color=ink,lineHeight=28.sp)
    }
-   TextButton(onClick=onClose,enabled=!busy){Text("✕",color=ink,fontSize=21.sp)}
+   PfTextButton(onClick=onClose,enabled=!busy){Text("✕",color=ink,fontSize=21.sp)}
   }
   HorizontalDivider(color=border)
   when(step){
    0->{
     Text("აირჩიე ავტომობილის დამატების მეთოდი",fontSize=13.sp,color=muted)
-    WizardButton("▣  ტექპასპორტის ფოტოდან",onClick={error="ფოტოდან ამოცნობა Native ვერსიაში ჯერ არ არის ჩართული. აირჩიე VIN ან ხელით დამატება."},primary=false)
+    WizardButton("▣  ტექპასპორტის ფოტოდან",onClick={photo.launch("image/*")},enabled=!busy,primary=false)
+    Text("VIN ამოიცნობა მოწყობილობაზე; ფოტო არ აიტვირთება. დაფარე სახელი, პირადი ნომერი და მისამართი.",fontSize=11.sp,color=muted)
     WizardButton("⌗  VIN-კოდით დამატება",onClick={method="vin";step=1},primary=false)
     Text("17-სიმბოლოიანი კოდით ავტომობილის ამოცნობა",fontSize=11.sp,color=muted)
     WizardButton("✎  ხელით დამატება",onClick={method="manual";step=2},primary=false)
     Text("მარკა, მოდელი, წელი, ძრავი და სხვა მონაცემები",fontSize=11.sp,color=muted)
    }
    1->{
-    WizardInput("VIN-კოდი",vin,{vin=it.uppercase().filter { c->c.isDigit()||c in 'A'..'Z' }.take(17)},"მაგ. JTDBR32E...")
+    WizardInput("VIN-კოდი",vin,{vin=it.uppercase().filter { c->c in '0'..'9'||c in 'A'..'Z' && c !in "IOQ" }.take(17)},"მაგ. JTDBR32E...")
     Text("${vin.length}/17 სიმბოლო",fontSize=11.sp,color=muted)
-    WizardButton("მონაცემების გადამოწმება",onClick={step=2;error="VIN-ის ავტომატური ამოცნობა ჯერ არ არის ჩართული. შეავსე და გადაამოწმე მონაცემები ხელით."},enabled=vin.length==17)
+    WizardButton(if(busy)"მიმდინარეობს..." else "VIN-ით ამოცნობა",onClick={decode()},enabled=!busy&&vin.length==17)
+    Text("კოდი გადაიცემა NHTSA vPIC-ს. არასრული პასუხი ხელით გადაამოწმე.",fontSize=11.sp,color=muted)
     WizardButton("ხელით დამატება",onClick={method="manual";step=2},primary=false)
    }
    else->{
@@ -92,10 +88,7 @@ private val models=mapOf("Tesla" to listOf("Model 3","Model S","Model X","Model 
     WizardInput("კომპლექტაცია",trim,{trim=it.take(80)},"არასავალდებულო")
     WizardInput("საწვავი",fuel,{fuel=it.take(50)},"არასავალდებულო")
     WizardInput("VIN-კოდი",vin,{vin=it.uppercase().filter { c->c.isDigit()||c in 'A'..'Z' }.take(17)},"არასავალდებულო · 17 სიმბოლო")
-    Row(verticalAlignment=Alignment.CenterVertically){
-     Checkbox(checked=confirmed,onCheckedChange={confirmed=it},colors=CheckboxDefaults.colors(checkedColor=accent))
-     Text("ვადასტურებ, რომ მონაცემები გადავამოწმე.",fontSize=12.sp,color=ink)
-    }
+    PfCheck(confirmed,{confirmed=it},"ვადასტურებ, რომ მონაცემები გადავამოწმე.")
     WizardButton(if(busy)"ინახება..." else "✓  მანქანის შენახვა",enabled=!busy&&confirmed,onClick={
      val y=year.toIntOrNull()
      error=when{

@@ -1,0 +1,32 @@
+package ge.partflow.customer
+
+val VehicleCatalog:Map<String,List<String>> = sortedMapOf(
+"Toyota" to listOf("Prius","Camry","Corolla","RAV4","Land Cruiser","Aqua","Yaris","Vitz","Highlander","Hilux","C-HR","Avensis","Wish","Noah","Sienna","4Runner","Prado","Passo","Ractis","ist"),
+"Mercedes" to listOf("C-Class","E-Class","S-Class","A-Class","B-Class","CLA","CLS","GLA","GLC","GLE","GLS","ML","Sprinter","Vito"),
+"BMW" to listOf("1 Series","2 Series","3 Series","4 Series","5 Series","6 Series","7 Series","X1","X3","X4","X5","X6","X7","M3","M5"),
+"Honda" to listOf("Fit","Civic","CR-V","Accord","HR-V","Odyssey","Jazz","Stepwgn","Vezel","Insight"),
+"Hyundai" to listOf("Elantra","Sonata","Tucson","Santa Fe","Getz","Accent","i30","i40","Kona","Creta","Starex","H-1"),
+"Kia" to listOf("Optima","Sportage","Sorento","Rio","Picanto","Cerato","Forte","Niro","Soul","Carnival","Ceed"),
+"Nissan" to listOf("Leaf","X-Trail","Juke","Qashqai","Note","Tiida","March","Serena","Teana","Pathfinder","Murano","Patrol","Rogue","Altima"),
+"Ford" to listOf("Fusion","Focus","Escape","Explorer","Mustang","Transit","Fiesta","Mondeo","Edge","F-150"),
+"Volkswagen" to listOf("Golf","Passat","Tiguan","Jetta","Polo","Touareg","Caddy","Transporter","Sharan","Touran"),
+"Lexus" to listOf("CT","IS","ES","GS","LS","NX","RX","GX","LX","UX"),
+"Subaru" to listOf("Forester","Outback","Impreza","Legacy","XV / Crosstrek","Tribeca","Levorg"),
+"Tesla" to listOf("Model 3","Model Y","Model S","Model X"),
+"Mazda" to listOf("Mazda 2","Mazda 3","Mazda 6","CX-3","CX-5","CX-7","CX-9","Demio","Axela","Premacy"),
+"Mitsubishi" to listOf("Outlander","Pajero","Lancer","ASX","Colt","Delica","L200"),
+"Chevrolet" to listOf("Cruze","Malibu","Equinox","Trax","Spark","Captiva","Camaro","Silverado"),
+"Jeep" to listOf("Grand Cherokee","Cherokee","Wrangler","Compass","Renegade"),
+"Renault" to listOf("Megane","Fluence","Duster","Kangoo","Logan","Clio"),
+"Opel" to listOf("Astra","Corsa","Insignia","Zafira","Mokka"),
+"Volvo" to listOf("S60","S80","S90","XC60","XC90","V40","V60"),
+"Porsche" to listOf("Cayenne","Macan","Panamera","911"),
+"Audi" to listOf("A3","A4","A6","A8","Q3","Q5","Q7","Q8"),
+"Peugeot" to listOf("206","207","308","408","3008","Partner"),
+"Suzuki" to listOf("Swift","Grand Vitara","Vitara","SX4","Jimny"),
+"Dacia" to listOf("Duster","Logan","Sandero","Lodgy"),
+"Skoda" to listOf("Octavia","Superb","Fabia","Rapid","Kodiaq"),
+"Infiniti" to listOf("FX35","FX37","QX50","QX60","QX70"),
+"Acura" to listOf("MDX","RDX","TLX","TSX"),
+"Land Rover" to listOf("Range Rover","Range Rover Sport","Discovery","Freelander","Defender")
+)

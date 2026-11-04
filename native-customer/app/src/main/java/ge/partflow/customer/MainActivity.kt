@@ -28,7 +28,7 @@ private val White=Color.White
 private val menu=listOf("მთავარი","მოთხოვნები","შეთავაზებები","გარაჟი","SOS / დაგეგმილი","მაღაზიების რუკა","ჩატი","არქივი","პროფილი")
 class MainActivity:ComponentActivity(){
  override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);NativeAuth.initialize(this);window.statusBarColor=android.graphics.Color.rgb(247,248,250);window.navigationBarColor=android.graphics.Color.WHITE
-  setContent { MaterialTheme { CustomerApp() } }
+  setContent { MaterialTheme(colorScheme=lightColorScheme(primary=Pf.orange,onPrimary=Pf.ink,background=Pf.bg,surface=Color.White,onSurface=Pf.ink)) { CustomerApp() } }
  }
 }
 @Composable private fun Txt(t:String,size:Int=13,color:Color=Ink,bold:Boolean=false,modifier:Modifier=Modifier){
@@ -83,11 +83,24 @@ class MainActivity:ComponentActivity(){
  var drawer by remember { mutableStateOf(false) }
  var mode by remember { mutableStateOf("შესვლა") }
  var detail by remember { mutableStateOf(false) }
+ var requestVehicle by remember { mutableStateOf<GarageVehicle?>(null) }
+ var selectedRequest by remember { mutableStateOf<CustomerRequest?>(null) }
+ var query by remember { mutableStateOf("") }
+ var filter by remember { mutableStateOf("ყველა") }
+ var actionError by remember { mutableStateOf("") }
+ var archives by remember { mutableStateOf(emptyMap<String,Map<String,Any>>()) }
+ DisposableEffect(uid){
+  val db=com.google.firebase.firestore.FirebaseFirestore.getInstance()
+  val a=uid?.let{db.collection("pf_archives").document(it).collection("panels").document("mobile-customer").collection("items").addSnapshotListener{s,e->if(e==null)archives=s?.documents?.associate{it.id to it.data.orEmpty()}.orEmpty()else actionError="არქივი ვერ ჩაიტვირთა."}}
+  if(uid==null){archives=emptyMap();towRequests=emptyList();towError=null}
+  onDispose{a?.remove()}
+ }
+ fun openRequest(){if(demo){demo=false}else{requestVehicle=null;detail=true}}
  var garageCreate by remember { mutableStateOf(false) }
  var towCreate by remember { mutableStateOf(false) }
  var selectedShopChat by remember { mutableStateOf<CustomerOffer?>(null) }
- BackHandler(drawer||detail||garageCreate||towCreate||selectedShopChat!=null||page!="მთავარი"){when{drawer->drawer=false;selectedShopChat!=null->selectedShopChat=null;towCreate->towCreate=false;detail->detail=false;garageCreate->garageCreate=false;else->page="მთავარი"}}
- Box(Modifier.fillMaxSize().background(Bg)){
+ BackHandler(selectedRequest!=null||drawer||detail||garageCreate||towCreate||selectedShopChat!=null||page!="მთავარი"){when{selectedRequest!=null->selectedRequest=null;drawer->drawer=false;selectedShopChat!=null->selectedShopChat=null;towCreate->towCreate=false;detail->detail=false;garageCreate->garageCreate=false;else->page="მთავარი"}}
+ Box(Modifier.fillMaxSize().background(Bg).systemBarsPadding().imePadding()){
  Column {
   Row(Modifier.fillMaxWidth().background(White).border(1.dp,Line).padding(horizontal=22.dp,vertical=18.dp),
    verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(13.dp)){
@@ -136,34 +149,44 @@ class MainActivity:ComponentActivity(){
     Box(Modifier.fillMaxWidth().clickable{demo=true},contentAlignment=Alignment.Center){Txt("ჯერ დაათვალიერე აპი →",12)}
     Spacer(Modifier.height(22.dp));HorizontalDivider(color=Line)
     Spacer(Modifier.height(20.dp));Txt("✓  ერთი მოთხოვნა — შესაბამისი მაღაზიების შეთავაზებები",10,Muted)
-    Txt("Firebase ავტორიზაცია დაკავშირებულია; მონაცემების ეკრანები ჯერ სატესტოა.",10,Muted)
+    Txt("შენი მოთხოვნები და გარაჟი დაცულია პირად ანგარიშში.",10,Muted)
    } else {
     if(demo) { Txt("დემო ვერსია",11,Muted);Spacer(Modifier.height(12.dp)) }
+    if(actionError.isNotBlank())Txt(actionError,12,Color(0xFFB54730))
     when(page){
-     "მთავარი"->HomePage({if(!demo)detail=true},{page="გარაჟი"},{page="შეთავაზებები"},live,if(demo)"დემო მომხმარებელი" else com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.displayName.orEmpty())
+     "მთავარი"->HomePage({openRequest()},{page="გარაჟი"},{page="შეთავაზებები"},live,if(demo)"დემო მომხმარებელი" else com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.displayName.orEmpty())
      "მოთხოვნები"->{
       Txt("ჩემი მოთხოვნები",23,Ink,true);Spacer(Modifier.height(16.dp))
       if(live.error!=null)Txt(live.error!!,11,Color(0xFFB54730))
       if(live.requests.none { it.status !in listOf("closed","completed","cancelled","hidden","archived") })Panel { Txt("აქტიური მოთხოვნები ჯერ არ გაქვს",14,Ink,true);Txt("შექმენი ახალი მოთხოვნა ქვემოთ მოცემული ღილაკით.",11,Muted) }
-      live.requests.filterNot { it.status in listOf("closed","completed","cancelled","hidden","archived") }.forEach { req->
+      PfField(query,{query=it},placeholder={Text("ძებნა · ნაწილი ან ავტომობილი",color=Muted)},singleLine=true)
+      Spacer(Modifier.height(12.dp))
+      Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){listOf("ყველა","აქტიური","დახურული").forEach{v->PfChip(filter==v,{filter=v},{Text(v)})}}
+      Spacer(Modifier.height(12.dp))
+      live.requests.filter { !archives.containsKey("requests_"+it.id)&&(filter=="ყველა"||filter=="აქტიური"&&it.status=="open"||filter=="დახურული"&&it.status=="closed")&&("${it.part} ${it.brand} ${it.model}").contains(query,true) }.forEach { req->
        Panel {
         Txt(listOf(req.brand,req.model,req.year).filter { it.isNotBlank() }.joinToString(" · "),11,Muted)
         Txt(req.part,15,Ink,true)
+        Action("დეტალები",{selectedRequest=req},false)
         Spacer(Modifier.height(10.dp))
         Txt("${req.status} · ${req.city} · ${live.offers.count { it.requestId==req.id }} შეთავაზება",11,Muted)
        }
       }
-      Action("+ ახალი მოთხოვნა",{if(!demo)detail=true})
+      Action("+ ახალი მოთხოვნა",{openRequest()})
      }
      "შეთავაზებები"->{
       Txt("შეთავაზებები",23,Ink,true);Spacer(Modifier.height(16.dp))
       if(live.offers.isEmpty())Panel { Txt("შეთავაზებები ჯერ არ არის",13,Muted) }
-      live.offers.forEach { offer->Panel {
+      live.offers.filterNot{archives.containsKey("offers_"+it.id)}.forEach { offer->Panel {
        Txt(offer.shopName,14,Ink,true)
        Txt(live.requests.find { it.id==offer.requestId }?.part.orEmpty(),11,Muted)
        Spacer(Modifier.height(10.dp));Txt("${offer.price} ₾",20,Color(0xFFB9602E),true)
        Txt("${offer.condition} · ${offer.delivery}",11,Muted)
-       Action("მაღაზიასთან ჩატი",{if(!demo)selectedShopChat=offer},false)
+       Txt(offer.note,12,Muted)
+       if(offer.serviceAvailable)Txt("მომსახურება: ${offer.servicePrice} ₾",12,Muted)
+       OfferConfirmation(offer)
+       Action("არქივში გადატანა",{CustomerActions.archive("offers",offer.id,offer.shopName){actionError=it.orEmpty()}},false)
+       Action("მაღაზიასთან ჩატი",{if(demo)demo=false else selectedShopChat=offer},false)
       } }
      }
      "გარაჟი"->{
@@ -173,13 +196,15 @@ class MainActivity:ComponentActivity(){
       garage.forEach { car->Panel {
        Txt("${car.brand} ${car.model} · ${car.year}",15,Ink,true)
        Txt(listOf(car.engine,car.fuel,car.vin).filter { it.isNotBlank() }.joinToString(" · "),11,Muted)
+       Action("ამ მანქანისთვის ნაწილის მოთხოვნა",{requestVehicle=car;detail=true})
+       GarageDelete(car){actionError=it.orEmpty()}
       } }
-      Action("+ ავტომობილის დამატება",{if(!demo)garageCreate=true})
+      Action("+ ავტომობილის დამატება",{if(demo)demo=false else garageCreate=true})
      }
      "ჩატი"->{if(demo)Panel { Txt("მხარდაჭერის ჩატი ხელმისაწვდომია ანგარიშში შესვლის შემდეგ.",12,Muted) } else SupportChat()}
      "SOS / დაგეგმილი"->{
       Txt("ევაკუატორი",23,Ink,true);Spacer(Modifier.height(16.dp))
-      Action("+ გამოძახება",{if(!demo)towCreate=true})
+      Action("+ გამოძახება",{if(demo)demo=false else towCreate=true})
       if(towError!=null)Txt(towError!!,11,Color(0xFFB54730))
       if(towActionError.isNotBlank())Txt(towActionError,11,Color(0xFFB54730))
       if(towRequests.isEmpty())Panel { Txt("გამოძახებები ჯერ არ არის",13,Muted) }
@@ -203,16 +228,14 @@ class MainActivity:ComponentActivity(){
       } }
      }
      "არქივი"->{
-      Txt("არქივი",23,Ink,true);Spacer(Modifier.height(16.dp))
-      val archived=live.requests.filter { it.status in listOf("closed","completed","cancelled","hidden","archived") }
-      if(archived.isEmpty())Panel { Txt("დაარქივებული მოთხოვნები ჯერ არ არის",13,Muted) }
-      archived.forEach { req->Panel {
-       Txt(req.part,15,Ink,true)
-       Txt(listOf(req.brand,req.model,req.year).filter { it.isNotBlank() }.joinToString(" · "),11,Muted)
-       Txt("სტატუსი: ${req.status} · ${req.city}",11,Muted)
-      } }
+      PfHeading("არქივი","შენი პირადი ჩანაწერები")
+      if(archives.isEmpty())Panel{Txt("არქივი ჯერ ცარიელია",13,Muted)}
+      archives.values.forEach{item->Panel{Txt(item["label"]?.toString().orEmpty(),15,Ink,true)
+       Action("აღდგენა",{CustomerActions.archive(item["type"].toString(),item["targetId"].toString(),item["label"].toString(),true){actionError=it.orEmpty()}},false)
+      }}
      }
-     "პროფილი"->{Txt("პროფილი",23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt(if(demo)"დემო მომხმარებელი" else com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.displayName?.ifBlank { "მომხმარებელი" }?:"მომხმარებელი",16,Ink,true);Txt(if(demo)"სატესტო რეჟიმი" else com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.email.orEmpty(),11,Muted);Action(if(demo)"დემოდან გამოსვლა" else "ანგარიშიდან გასვლა",{if(!demo)NativeAuth.signOut();demo=false;page="მთავარი"},false)}}
+     "მაღაზიების რუკა"->{if(demo)Panel{Txt("რუკისთვის შედი ანგარიშში",13,Muted);Action("შესვლა",{demo=false})}else ShopMap()}
+     "პროფილი"->{if(demo)Panel{Txt("დემო ანგარიში",16,Ink,true);Action("შესვლა",{demo=false})}else ProfileEditor{NativeAuth.signOut();demo=false;page="მთავარი"}}
      else->{Txt(page,23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("ამ განყოფილების სრული Native ფუნქციონალი ჯერ დასამუშავებელია.",12,Muted)}}
     }
    }
@@ -237,6 +260,9 @@ class MainActivity:ComponentActivity(){
    Spacer(Modifier.weight(1f).fillMaxHeight().clickable{drawer=false})
   }
  }
+ if(selectedRequest!=null) Dialog(onDismissRequest={selectedRequest=null}) {
+  Box(Modifier.fillMaxWidth().fillMaxHeight(.9f).clip(RoundedCornerShape(22.dp)).background(Bg)){RequestDetails(live.requests.find{it.id==selectedRequest?.id}?:selectedRequest!!,live.offers,{selectedShopChat=it;selectedRequest=null},{selectedRequest=null})}
+ }
  if(selectedShopChat!=null&&!demo&&logged) Dialog(onDismissRequest={selectedShopChat=null}) {
   Box(Modifier.fillMaxWidth().fillMaxHeight(.88f).clip(RoundedCornerShape(20.dp)).background(Bg)) {
    ShopChat(selectedShopChat!!,onClose={selectedShopChat=null})
@@ -252,7 +278,7 @@ class MainActivity:ComponentActivity(){
  }
  if(detail&&!demo&&logged) Dialog(onDismissRequest={detail=false}) {
   Box(Modifier.fillMaxWidth().fillMaxHeight(.88f).clip(RoundedCornerShape(20.dp)).background(Bg)){
-   RequestCreate(onClose={detail=false})
+   RequestCreate(onClose={detail=false},vehicle=requestVehicle)
   }
  }
  }
@@ -260,10 +286,9 @@ class MainActivity:ComponentActivity(){
 @Composable private fun Field(label:String,value:String,onValueChange:(String)->Unit,secret:Boolean){
  Column(Modifier.fillMaxWidth().padding(bottom=17.dp)){
   Txt(label,11,Color(0xFF596570));Spacer(Modifier.height(8.dp))
-  OutlinedTextField(value=value,onValueChange=onValueChange,singleLine=true,
+  PfField(value=value,onValueChange=onValueChange,singleLine=true,
    visualTransformation=if(secret)PasswordVisualTransformation() else VisualTransformation.None,
-   modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(10.dp),
-   colors=OutlinedTextFieldDefaults.colors(focusedBorderColor=Orange,unfocusedBorderColor=Color(0xFFDFE4E8),focusedContainerColor=White,unfocusedContainerColor=White))
+   modifier=Modifier.fillMaxWidth())
  }
 }
 @Composable private fun HomePage(requests:()->Unit,garage:()->Unit,offers:()->Unit,live:CustomerSnapshot,name:String){
