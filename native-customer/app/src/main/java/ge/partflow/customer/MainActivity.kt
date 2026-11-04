@@ -129,7 +129,7 @@ class MainActivity:ComponentActivity(){
    } else {
     if(demo) { Txt("დემო ვერსია",11,Muted);Spacer(Modifier.height(12.dp)) }
     when(page){
-     "მთავარი"->HomePage({detail=true},{page="გარაჟი"},live)
+     "მთავარი"->HomePage({if(!demo)detail=true},{page="გარაჟი"},live,if(demo)"დემო მომხმარებელი" else com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.displayName.orEmpty())
      "მოთხოვნები"->{
       Txt("ჩემი მოთხოვნები",23,Ink,true);Spacer(Modifier.height(16.dp))
       if(live.error!=null)Txt(live.error!!,11,Color(0xFFB54730))
@@ -142,7 +142,7 @@ class MainActivity:ComponentActivity(){
         Txt("${req.status} · ${req.city} · ${live.offers.count { it.requestId==req.id }} შეთავაზება",11,Muted)
        }
       }
-      Action("+ ახალი მოთხოვნა",{detail=true})
+      Action("+ ახალი მოთხოვნა",{if(!demo)detail=true})
      }
      "შეთავაზებები"->{
       Txt("შეთავაზებები",23,Ink,true);Spacer(Modifier.height(16.dp))
@@ -154,7 +154,7 @@ class MainActivity:ComponentActivity(){
        Txt("${offer.condition} · ${offer.delivery}",11,Muted)
       } }
      }
-     "გარაჟი"->{Txt("ჩემი გარაჟი",23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("ავტომობილის დამატება",15,Ink,true);Txt("VIN-კოდით ან ხელით",11,Muted);Action("+ ავტომობილის დამატება",{detail=true})}}
+     "გარაჟი"->{Txt("ჩემი გარაჟი",23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("ავტომობილის დამატება",15,Ink,true);Txt("VIN-კოდით ან ხელით",11,Muted);Action("+ ავტომობილის დამატება",{})}}
      "პროფილი"->{Txt("პროფილი",23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("დემო მომხმარებელი",16,Ink,true);Txt("შენი ავტომობილი. შენი ნაწილი.",11,Muted);Action(if(demo)"დემოდან გამოსვლა" else "ანგარიშიდან გასვლა",{if(!demo)NativeAuth.signOut();demo=false;page="მთავარი"},false)}}
      else->{Txt(page,23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("ამ განყოფილების სრული Native ფუნქციონალი ჯერ დასამუშავებელია.",12,Muted)}}
     }
@@ -180,7 +180,7 @@ class MainActivity:ComponentActivity(){
    Spacer(Modifier.weight(1f).fillMaxHeight().clickable{drawer=false})
   }
  }
- if(detail) Dialog(onDismissRequest={detail=false}) {
+ if(detail&&!demo&&logged) Dialog(onDismissRequest={detail=false}) {
   Box(Modifier.fillMaxWidth().fillMaxHeight(.88f).clip(RoundedCornerShape(20.dp)).background(Bg)){
    RequestCreate(onClose={detail=false})
   }
@@ -196,8 +196,8 @@ class MainActivity:ComponentActivity(){
    colors=OutlinedTextFieldDefaults.colors(focusedBorderColor=Orange,unfocusedBorderColor=Color(0xFFDFE4E8),focusedContainerColor=White,unfocusedContainerColor=White))
  }
 }
-@Composable private fun HomePage(requests:()->Unit,garage:()->Unit,live:CustomerSnapshot){
- Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Column{Txt("მოგესალმები,",10,Muted);Txt("ნიკა",20,Ink,true)};Txt("✦",18,Orange)}
+@Composable private fun HomePage(requests:()->Unit,garage:()->Unit,live:CustomerSnapshot,name:String){
+ Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Column{Txt("მოგესალმები,",10,Muted);Txt(name.ifBlank { "მომხმარებელი" },20,Ink,true)};Txt("✦",18,Orange)}
  Spacer(Modifier.height(20.dp))
  Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(23.dp)).background(Ink).padding(23.dp)){
   Txt("შენი ავტომობილი. შენი ნაწილი.",10,Color(0xFFF4AA7D))
