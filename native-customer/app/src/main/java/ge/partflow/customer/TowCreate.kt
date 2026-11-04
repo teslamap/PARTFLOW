@@ -17,6 +17,7 @@ object TowCreate {
    origin.isBlank()||destination.isBlank()||vehicle.isBlank()||city.isBlank()||destinationCity.isBlank()->"შეავსე სავალდებულო ველები."
    !Regex("[+]9955[0-9]{8}").matches(phone)->"ტელეფონის ფორმატი არასწორია."
    condition !in listOf("rolls","blocked","accident")->"მდგომარეობა არასწორია."
+   notes.length>1000||origin.length>300||destination.length>300||vehicle.length>160->"ტექსტი დასაშვებ სიგრძეს აჭარბებს."
    mode=="sos"&&(lat==null||lng==null||lat !in -90.0..90.0||lng !in -180.0..180.0)->"მდებარეობა არასწორია."
    mode=="intercity"&&(pickup==null||pickup.time<=System.currentTimeMillis())->"მიუთითე მომავალი თარიღი."
    else->null
