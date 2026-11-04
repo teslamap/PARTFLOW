@@ -202,6 +202,16 @@ class MainActivity:ComponentActivity(){
         },false)
       } }
      }
+     "არქივი"->{
+      Txt("არქივი",23,Ink,true);Spacer(Modifier.height(16.dp))
+      val archived=live.requests.filter { it.status in listOf("closed","completed","cancelled","hidden","archived") }
+      if(archived.isEmpty())Panel { Txt("დაარქივებული მოთხოვნები ჯერ არ არის",13,Muted) }
+      archived.forEach { req->Panel {
+       Txt(req.part,15,Ink,true)
+       Txt(listOf(req.brand,req.model,req.year).filter { it.isNotBlank() }.joinToString(" · "),11,Muted)
+       Txt("სტატუსი: ${req.status} · ${req.city}",11,Muted)
+      } }
+     }
      "პროფილი"->{Txt("პროფილი",23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("დემო მომხმარებელი",16,Ink,true);Txt("შენი ავტომობილი. შენი ნაწილი.",11,Muted);Action(if(demo)"დემოდან გამოსვლა" else "ანგარიშიდან გასვლა",{if(!demo)NativeAuth.signOut();demo=false;page="მთავარი"},false)}}
      else->{Txt(page,23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("ამ განყოფილების სრული Native ფუნქციონალი ჯერ დასამუშავებელია.",12,Muted)}}
     }
