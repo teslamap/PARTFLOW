@@ -29,8 +29,25 @@ import java.util.Locale
   Text("ევაკუატორის გამოძახება",style=MaterialTheme.typography.titleLarge)
   Row { FilterChip(mode=="sos",{mode="sos"},label={Text("SOS")});Spacer(Modifier.width(8.dp))
    FilterChip(mode=="intercity",{mode="intercity"},label={Text("ქალაქთაშორისი")}) }
-  OutlinedTextField(city,{city=it},label={Text("ქალაქი")},modifier=Modifier.fillMaxWidth())
-  OutlinedTextField(destCity,{destCity=it},label={Text("დანიშნულების ქალაქი")},modifier=Modifier.fillMaxWidth())
+  val cities=listOf("თბილისი","ბათუმი","ქუთაისი","რუსთავი","გორი","ზუგდიდი","ფოთი","თელავი","ქობულეთი","ოზურგეთი","მცხეთა","ახალციხე","სენაკი","ზესტაფონი","წყალტუბო","ხაშური","ბორჯომი","მარტვილი","სამტრედია","ხელვაჩაური","ქედა","შუახევი","ხულო")
+  var fromExpanded by remember { mutableStateOf(false) }
+  var toExpanded by remember { mutableStateOf(false) }
+  ExposedDropdownMenuBox(expanded=fromExpanded,onExpandedChange={fromExpanded=it}){
+   OutlinedTextField(value=city,onValueChange={},readOnly=true,label={Text("ქალაქი")},
+    trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(expanded=fromExpanded)},
+    modifier=Modifier.menuAnchor().fillMaxWidth())
+   ExposedDropdownMenu(expanded=fromExpanded,onDismissRequest={fromExpanded=false}){
+    cities.forEach { c->DropdownMenuItem(text={Text(c)},onClick={city=c;fromExpanded=false}) }
+   }
+  }
+  ExposedDropdownMenuBox(expanded=toExpanded,onExpandedChange={toExpanded=it}){
+   OutlinedTextField(value=destCity,onValueChange={},readOnly=true,label={Text("დანიშნულების ქალაქი")},
+    trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(expanded=toExpanded)},
+    modifier=Modifier.menuAnchor().fillMaxWidth())
+   ExposedDropdownMenu(expanded=toExpanded,onDismissRequest={toExpanded=false}){
+    cities.forEach { c->DropdownMenuItem(text={Text(c)},onClick={destCity=c;toExpanded=false}) }
+   }
+  }
   OutlinedTextField(origin,{origin=it},label={Text("საიდან")},modifier=Modifier.fillMaxWidth())
   OutlinedTextField(dest,{dest=it},label={Text("სად")},modifier=Modifier.fillMaxWidth())
   OutlinedTextField(vehicle,{vehicle=it},label={Text("ავტომობილი")},modifier=Modifier.fillMaxWidth())
