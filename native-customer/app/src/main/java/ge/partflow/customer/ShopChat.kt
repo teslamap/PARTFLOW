@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.*
@@ -34,12 +35,15 @@ data class ShopMessage(val sender:String,val text:String)
  }
  Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
   Text(offer.shopName,style=MaterialTheme.typography.titleLarge)
+  Column(Modifier.fillMaxWidth().heightIn(max=350.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(6.dp)) {
   messages.forEach { m->
    Card(Modifier.fillMaxWidth()){Column(Modifier.padding(12.dp)){
     Text(if(m.sender==uid)"თქვენ" else "მაღაზია",style=MaterialTheme.typography.labelMedium)
     Text(m.text)
    }}
   }
+  }
+  if(messages.isEmpty())Text("შეტყობინებები ჯერ არ არის.",style=MaterialTheme.typography.bodySmall)
   if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
   OutlinedTextField(input,{input=it.take(2000)},label={Text("შეტყობინება")},modifier=Modifier.fillMaxWidth())
   Button(enabled=!busy&&uid!=null&&shopId.isNotBlank()&&input.trim().isNotBlank(),onClick={
@@ -52,7 +56,6 @@ data class ShopMessage(val sender:String,val text:String)
    db.runTransaction { tx->
     val old=tx.get(activity)
     val version=if(old.exists())(old.getLong("version")?:0L)+1L else 1L
-    val previousCustomer=old.getBoolean("customerReplied")?:false
     val previousShop=old.getBoolean("shopReplied")?:false
     val fields=mapOf<String,Any>(
      "offerId" to offer.id,"requestId" to offer.requestId,"ownerId" to owner,
