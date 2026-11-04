@@ -38,71 +38,26 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Register or locate PARTFLOW Android Firebase app when CI credentials exist
-        id: firebase_app
-        shell: bash
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-          FIREBASE_SA_PROJECT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MENIO_8DE8F }}
-          FIREBASE_SA_GENERIC: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
-          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
-        run: |
-          set -euo pipefail
-          if [ -z "${FIREBASE_TOKEN}" ] && [ -z "${FIREBASE_SA_PROJECT}" ] && [ -z "${FIREBASE_SA_GENERIC}" ] && [ -z "${GCP_SA_KEY}" ] && [ -z "${GOOGLE_CREDENTIALS}" ]; then
-            echo "No Firebase Management authorization in GitHub Actions; cannot register an Android app with only the public web API key."
-            exit 0
-          fi
-          echo "Firebase CI management authorization detected; inspecting existing Android registrations."
-          for sa in FIREBASE_SA_PROJECT FIREBASE_SA_GENERIC GCP_SA_KEY GOOGLE_CREDENTIALS; do
-            if [ -n "${!sa}" ]; then
-              printf '%s' "${!sa}" > /tmp/partflow-google-auth.json
-              export GOOGLE_APPLICATION_CREDENTIALS=/tmp/partflow-google-auth.json
-              break
-            fi
-          done
-          npm install --global firebase-tools --silent
-          firebase apps:list ANDROID --project menio-8de8f --json > /tmp/partflow-android-apps.json
-          node - <<'NODE' > /tmp/partflow-app-id
-          const j = require('/tmp/partflow-android-apps.json');
-          const apps = Array.isArray(j.result) ? j.result : Array.isArray(j.apps) ? j.apps : [];
-          const a = apps.find(a => a.packageName === 'ge.partflow.superadmin' || a.displayName === 'PARTFLOW Superadmin Native');
-          if (a && /^1:429553713786:android:[a-f0-9]+$/i.test(a.appId || '')) process.stdout.write(a.appId);
-          NODE
-          appid="$(cat /tmp/partflow-app-id)"
-          if [ -z "$appid" ]; then
-            echo "No matching Android app found; creating ge.partflow.superadmin."
-            firebase apps:create ANDROID "PARTFLOW Superadmin Native" --package-name ge.partflow.superadmin --project menio-8de8f --json > /tmp/partflow-create-app.json
-            node - <<'NODE' > /tmp/partflow-app-id
-          const j = require('/tmp/partflow-create-app.json');
-          const v = j.result?.appId || j.appId || j.result?.response?.appId || '';
-          if (!/^1:429553713786:android:[a-f0-9]+$/i.test(v)) process.exit(2);
-          process.stdout.write(v);
-          NODE
-            appid="$(cat /tmp/partflow-app-id)"
-          fi
-          echo "Firebase Android App registered: $appid"
-          echo "app_id=$appid" >> "$GITHUB_OUTPUT"
       - name: Unpack isolated Android sources
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p superadmin-build
-          sed '1d;$d' native/superadmin/source-v20.tar.xz.base64.txt | tr -d '\r\n' | base64 -d > /tmp/superadmin.tar.xz
-          echo '2e9110a8a81e3928d7accbd273a14dee32896b45c14c30b47d3004d006a8e9ca  /tmp/superadmin.tar.xz' | sha256sum --check
+          sed '1d;$d' native/superadmin/source-v21.tar.xz.base64.txt | tr -d '\r\n' | base64 -d > /tmp/superadmin.tar.xz
+          echo '7050268dc7ef5174825483b7e82e375a93765791ae0a42c51e6c9887aa9b245b  /tmp/superadmin.tar.xz' | sha256sum --check
           tar -xJf /tmp/superadmin.tar.xz -C superadmin-build
           test -f superadmin-build/app/build.gradle.kts
           printf 'android.useAndroidX=true\norg.gradle.jvmargs=-Xmx3072m -Dfile.encoding=UTF-8\n' > superadmin-build/gradle.properties
       - name: Compile native APK
         working-directory: superadmin-build
         env:
-          PARTFLOW_FIREBASE_ANDROID_APP_ID: ${{ steps.firebase_app.outputs.app_id || secrets.PARTFLOW_FIREBASE_ANDROID_APP_ID }}
+          PARTFLOW_FIREBASE_ANDROID_APP_ID: ''
           PARTFLOW_FIREBASE_API_KEY: ${{ secrets.PARTFLOW_FIREBASE_API_KEY }}
         run: gradle --no-daemon --stacktrace :app:assembleDebug
       - name: Upload compiled APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: partflow-superadmin-native-debug
+          name: partflow-superadmin-native-rest-v21-debug
           path: superadmin-build/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
