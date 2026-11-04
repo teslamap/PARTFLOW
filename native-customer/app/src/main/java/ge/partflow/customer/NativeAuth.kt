@@ -13,7 +13,7 @@ object NativeAuth {
   if(FirebaseApp.getApps(context).isEmpty()) {
    val options=FirebaseOptions.Builder()
     .setApplicationId("1:429553713786:android:d48cc58d5f40b8a64db1c3")
-    .setApiKey("AIzaSyDghOTPxpYXBGijyZMJTL3SxTazB881YMo")
+    .setApiKey("AIzaSyA5MJFbCbj2IwKDEt23m_FmXYTDnGTQ2u8")
     .setProjectId("menio-8de8f").build()
    FirebaseApp.initializeApp(context,options)
   }
