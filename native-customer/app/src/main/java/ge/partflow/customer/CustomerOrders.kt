@@ -8,7 +8,7 @@ import androidx.compose.ui.unit.*
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.*
 
-fun statusLabel(value:String)=mapOf("open" to "აქტიური","closed" to "დახურული","hidden" to "შეჩერებული","confirmed" to "დადასტურებული","preparing" to "მომზადება","shipped" to "გაგზავნილი","delivered" to "მიწოდებული","completed" to "დასრულებული","cancelled" to "გაუქმებული","searching" to "მძღოლის ძებნა","offered" to "შეთავაზება მიღებულია","pending" to "მოლოდინში")[value]?:value
+fun statusLabel(value:String)=mapOf("open" to "აქტიური","closed" to "დახურული","hidden" to "შეჩერებული","confirmed" to "დადასტურებული","preparing" to "მომზადება","shipped" to "გაგზავნილი","delivered" to "მიწოდებული","completed" to "დასრულებული","cancelled" to "გაუქმებული","searching" to "მძღოლის ძებნა","offered" to "შეთავაზება მიღებულია","pending" to "მოლოდინში","en_route" to "მძღოლი გზაშია","transporting" to "გადაყვანა მიმდინარეობს")[value]?:value
 @Composable fun CustomerOrders(requests:List<CustomerRequest> = emptyList()){
  if(!featureEnabled("orders"))return
  val uid=FirebaseAuth.getInstance().currentUser?.uid?:return

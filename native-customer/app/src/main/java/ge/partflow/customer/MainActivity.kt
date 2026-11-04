@@ -27,7 +27,7 @@ private val Muted=Color(0xFF737C87)
 private val White=Color.White
 private val menu=listOf("მთავარი","მოთხოვნები","შეთავაზებები","გარაჟი","SOS / დაგეგმილი","მაღაზიების რუკა","ჩატი","არქივი","პროფილი")
 class MainActivity:ComponentActivity(){
- override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);NativeAuth.initialize(this);window.statusBarColor=android.graphics.Color.rgb(247,248,250);window.navigationBarColor=android.graphics.Color.WHITE
+ override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);NativeAuth.initialize(this);androidx.core.view.WindowInsetsControllerCompat(window,window.decorView).apply{isAppearanceLightStatusBars=true;isAppearanceLightNavigationBars=true};window.statusBarColor=android.graphics.Color.rgb(247,248,250);window.navigationBarColor=android.graphics.Color.WHITE
   setContent { MaterialTheme(colorScheme=lightColorScheme(primary=Pf.orange,onPrimary=Pf.ink,background=Pf.bg,surface=Color.White,onSurface=Pf.ink)) { CustomerApp() } }
  }
 }
@@ -111,7 +111,7 @@ class MainActivity:ComponentActivity(){
    if(logged||demo) Box(Modifier.size(44.dp).clip(RoundedCornerShape(13.dp)).border(1.dp,Line,RoundedCornerShape(13.dp)).clickable{drawer=true},contentAlignment=Alignment.Center){Txt("☰",22)}
    Brand()
    Spacer(Modifier.weight(1f))
-   if(logged||demo)Txt(page,10,Muted)
+   if(logged||demo)Text(page,Modifier.widthIn(max=100.dp),color=Muted,fontSize=10.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
   }
   Column(Modifier.fillMaxSize().verticalScroll(mainScroll).padding(horizontal=22.dp,vertical=26.dp)){
    if(!logged&&!demo){
@@ -216,24 +216,7 @@ class MainActivity:ComponentActivity(){
       if(towError!=null)Txt(towError!!,11,Color(0xFFB54730))
       if(towActionError.isNotBlank())Txt(towActionError,11,Color(0xFFB54730))
       if(towRequests.isEmpty())Panel { Txt("გამოძახებები ჯერ არ არის",13,Muted) }
-      towRequests.forEach { tow->Panel {
-       Txt(if(tow.mode=="sos")"SOS გამოძახება" else "ქალაქთაშორისი",15,Ink,true)
-       Txt("${tow.origin} → ${tow.destination}",12,Muted)
-       Txt("სტატუსი: ${statusLabel(tow.status)}",12,Ink)
-       if(tow.price.isNotBlank())Txt("ფასი: ${tow.price} ₾",12,Ink,true)
-       if(tow.status=="offered")Action("შეთავაზების დადასტურება",{
-        towStore.changeStatus(tow.id,"confirmed"){towActionError=it.orEmpty()}
-       })
-       if(tow.status=="searching"||tow.status=="offered"||tow.status=="confirmed")
-        Action("გამოძახების გაუქმება",{
-         towStore.changeStatus(tow.id,"cancelled"){towActionError=it.orEmpty()}
-        },false)
-       if(tow.mode=="sos"&&tow.scope=="city"&&tow.status=="searching"&&
-        tow.createdAt>0L&&System.currentTimeMillis()-tow.createdAt>=900000L)
-        Action("ძებნის გაფართოება სხვა ქალაქებში",{
-         towStore.expand(tow.id){towActionError=it.orEmpty()}
-        },false)
-      } }
+      towRequests.forEach{CustomerTowCard(it,towStore)}
      }
      "არქივი"->{
       PfHeading("არქივი","შენი პირადი ჩანაწერები")

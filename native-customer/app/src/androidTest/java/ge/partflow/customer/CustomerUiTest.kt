@@ -14,14 +14,16 @@ import java.io.File
 class CustomerUiTest {
  @get:Rule val compose=createComposeRule()
  @Before fun init(){NativeAuth.initialize(InstrumentationRegistry.getInstrumentation().targetContext)}
- private fun screenshot(name:String){
+ private fun screenshot(name:String,dialog:Boolean=false){
   val directory=File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null),"evidence").apply{mkdirs()}
-  File(directory,"$name.png").outputStream().use{compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG,100,it)}
+  File(directory,"$name.png").outputStream().use{(if(dialog)compose.onNode(isDialog())else compose.onRoot()).captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG,100,it)}
  }
  @Test fun garageUsesSearchableBrandedCatalog(){
   compose.setContent{MaterialTheme{GarageCreate({})}}
+  screenshot("garage-methods")
   compose.onNodeWithText("✎  ხელით დამატება").performClick()
   compose.onAllNodesWithText("აირჩიე")[0].performClick()
+  screenshot("garage-brand-picker",true)
   compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).performTextInput("Renault")
   compose.onNode(hasText("Renault") and !hasSetTextAction()).performClick()
   compose.onNodeWithText("Renault").assertIsDisplayed()

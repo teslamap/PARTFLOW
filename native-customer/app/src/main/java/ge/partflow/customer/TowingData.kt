@@ -4,7 +4,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 
-data class TowRequest(val id:String,val mode:String,val origin:String,val destination:String,val status:String,val price:String,val scope:String,val createdAt:Long)
+data class TowRequest(val id:String,val mode:String,val origin:String,val destination:String,val status:String,val price:String,val scope:String,val createdAt:Long,val driverName:String="",val driverPhone:String="",val vehicle:String="",val pickupAt:Long=0)
 class TowingData(private val db:FirebaseFirestore=FirebaseFirestore.getInstance()){
  private var registration:ListenerRegistration?=null
  fun observe(update:(List<TowRequest>,String?)->Unit){
@@ -17,7 +17,7 @@ class TowingData(private val db:FirebaseFirestore=FirebaseFirestore.getInstance(
     update(snapshot?.documents?.map { d->TowRequest(d.id,d.getString("mode").orEmpty(),
      d.getString("origin").orEmpty(),d.getString("destination").orEmpty(),
      d.getString("status").orEmpty(),d.get("quote")?.toString().orEmpty(),
-     d.getString("scope").orEmpty(),d.getTimestamp("createdAt")?.toDate()?.time?:0L) }.orEmpty(),null)
+     d.getString("scope").orEmpty(),d.getTimestamp("createdAt")?.toDate()?.time?:0L,d.getString("driverName").orEmpty(),d.getString("driverPhone").orEmpty(),d.getString("vehicle").orEmpty(),d.getTimestamp("pickupAt")?.toDate()?.time?:0L) }.orEmpty(),null)
    }
  }
  fun changeStatus(id:String,status:String,done:(String?)->Unit){

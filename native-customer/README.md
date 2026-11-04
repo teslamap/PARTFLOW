@@ -12,18 +12,18 @@ The existing web app, Firebase rules, indexes and other roles are preserved.
   Certificate photos and raw recognized text are never uploaded.
 - Owner-scoped Firestore request/offer listeners, request search and status filtering,
   details, JPEG photo attachment/viewing, custom category loading, close and private archive/restore.
-- Shop chat inbox and support chat; shop messages use both ownerId and offerId filters.
+- Shop chat inbox and support chat with reopening of closed conversations; shop messages use both ownerId and offerId filters.
   Negotiated confirmation acceptance atomically updates the confirmation/request and
   creates the order plus immutable event. Decline, customer order completion,
-  cancellation and dispute opening follow the existing commerce protocol.
+  cancellation, event history and dispute opening follow the existing commerce protocol.
 - Native OpenStreetMap shop map, approved-shop reads, selected-shop-only scope after
   acceptance, explicit approximate city-center pins and external route opening.
 - SOS location permission and GPS capture, intercity date/time selectors, towing
-  history, quote confirmation/cancellation and search expansion.
+  history, driver contact, quote confirmation/cancellation, completion and search expansion.
 - Profile name/city, private contact where enabled, email verification/reset and sign-out.
   Server feature flags gate garage, offers, orders, chat and private contact UI.
 - Android CI runs assembleDebug, lintDebug and UI tests on an Android 29 emulator,
-  installs and launches the standalone APK, verifies its signature and publishes
+  installs and launches the standalone APK, captures navigation/form evidence, verifies its signature and publishes
   the APK directly as a prerelease asset. Existing web/security regressions run separately.
 
 ## Verification and limitations

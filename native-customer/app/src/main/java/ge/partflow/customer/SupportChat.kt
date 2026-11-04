@@ -15,6 +15,7 @@ data class SupportMessage(val id:String,val senderId:String,val text:String)
  val uid=FirebaseAuth.getInstance().currentUser?.uid
  val db=remember { FirebaseFirestore.getInstance() }
  var messages by remember { mutableStateOf(emptyList<SupportMessage>()) }
+ var threadOpen by remember { mutableStateOf(true) }
  var session by remember { mutableIntStateOf(1) }
  var text by remember { mutableStateOf("") }
  var error by remember { mutableStateOf("") }
@@ -24,7 +25,7 @@ data class SupportMessage(val id:String,val senderId:String,val text:String)
   val thread=db.collection("pf_support_threads").document(uid)
   val a=thread.addSnapshotListener { doc,e->
    if(e!=null)error="მხარდაჭერის ჩატი ვერ ჩაიტვირთა."
-   else if(doc!=null&&doc.exists())session=doc.getLong("session")?.toInt()?:1
+   else if(doc!=null&&doc.exists()){session=doc.getLong("session")?.toInt()?:1;threadOpen=doc.getString("status")=="open"}
   }
   val b=thread.collection("messages").addSnapshotListener { snap,e->
    if(e!=null)error="შეტყობინებები ვერ ჩაიტვირთა."
@@ -43,8 +44,17 @@ data class SupportMessage(val id:String,val senderId:String,val text:String)
    }
   }
   if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
+  if(!threadOpen){
+   Text("საუბარი დახურულია.")
+   PfOutlineButton(enabled=!sending,onClick={
+    if(uid!=null){sending=true;val thread=db.collection("pf_support_threads").document(uid)
+     db.runTransaction{tx->val old=tx.get(thread);if(old.getString("status")!="open")tx.update(thread,mapOf("status" to "open","session" to ((old.getLong("session")?:0L)+1),"updatedAt" to FieldValue.serverTimestamp()));null}
+      .addOnCompleteListener{sending=false;error=if(it.isSuccessful)"" else "საუბრის გახსნა ვერ მოხერხდა."}
+    }
+   }){Text("მხარდაჭერასთან ახალი საუბარი")}
+  }
   PfField(value=text,onValueChange={text=it.take(2000)},label={Text("შეტყობინება")},modifier=Modifier.fillMaxWidth())
-  PfButton(enabled=!sending&&uid!=null&&text.trim().isNotEmpty(),onClick={
+  PfButton(enabled=threadOpen&&!sending&&uid!=null&&text.trim().isNotEmpty(),onClick={
    if(uid!=null){
     sending=true;error=""
     val thread=db.collection("pf_support_threads").document(uid)
