@@ -54,11 +54,14 @@ class MainActivity:ComponentActivity(){
  var logged by remember { mutableStateOf(com.google.firebase.auth.FirebaseAuth.getInstance().currentUser!=null) }
  var authBusy by remember { mutableStateOf(false) }
  var live by remember { mutableStateOf(CustomerSnapshot()) }
+ var garage by remember { mutableStateOf(emptyList<GarageVehicle>()) }
+ var garageError by remember { mutableStateOf<String?>(null) }
+ val garageStore=remember { GarageData() }
  val store=remember { CustomerData() }
  val uid=if(logged)com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid else null
  DisposableEffect(uid) {
-  if(uid!=null)store.observe(uid){live=it} else live=CustomerSnapshot()
-  onDispose { store.close() }
+  if(uid!=null){store.observe(uid){live=it};garageStore.observe(uid){cars,error->garage=cars;garageError=error}} else {live=CustomerSnapshot();garage=emptyList();garageError=null}
+  onDispose { store.close();garageStore.close() }
  }
  var authError by remember { mutableStateOf("") }
  var email by remember { mutableStateOf("") }
@@ -154,7 +157,16 @@ class MainActivity:ComponentActivity(){
        Txt("${offer.condition} · ${offer.delivery}",11,Muted)
       } }
      }
-     "გარაჟი"->{Txt("ჩემი გარაჟი",23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("ავტომობილის დამატება",15,Ink,true);Txt("VIN-კოდით ან ხელით",11,Muted);Action("+ ავტომობილის დამატება",{})}}
+     "გარაჟი"->{
+      Txt("ჩემი გარაჟი",23,Ink,true);Spacer(Modifier.height(16.dp))
+      if(garageError!=null)Txt(garageError!!,11,Color(0xFFB54730))
+      if(garage.isEmpty())Panel { Txt("ავტომობილი ჯერ არ დაგიმატებია",13,Muted) }
+      garage.forEach { car->Panel {
+       Txt("${car.brand} ${car.model} · ${car.year}",15,Ink,true)
+       Txt(listOf(car.engine,car.fuel,car.vin).filter { it.isNotBlank() }.joinToString(" · "),11,Muted)
+      } }
+      Txt("ავტომობილის დამატების ფორმა მუშავდება.",11,Muted)
+     }
      "პროფილი"->{Txt("პროფილი",23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("დემო მომხმარებელი",16,Ink,true);Txt("შენი ავტომობილი. შენი ნაწილი.",11,Muted);Action(if(demo)"დემოდან გამოსვლა" else "ანგარიშიდან გასვლა",{if(!demo)NativeAuth.signOut();demo=false;page="მთავარი"},false)}}
      else->{Txt(page,23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("ამ განყოფილების სრული Native ფუნქციონალი ჯერ დასამუშავებელია.",12,Muted)}}
     }
