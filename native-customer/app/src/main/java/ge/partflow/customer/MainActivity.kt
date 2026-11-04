@@ -85,6 +85,7 @@ class MainActivity:ComponentActivity(){
  var detail by remember { mutableStateOf(false) }
  var garageCreate by remember { mutableStateOf(false) }
  var towCreate by remember { mutableStateOf(false) }
+ var selectedShopChat by remember { mutableStateOf<CustomerOffer?>(null) }
  BackHandler(drawer||detail||garageCreate||page!="მთავარი"){when{drawer->drawer=false;detail->detail=false;garageCreate->garageCreate=false;else->page="მთავარი"}}
  Box(Modifier.fillMaxSize().background(Bg)){
  Column {
@@ -162,6 +163,7 @@ class MainActivity:ComponentActivity(){
        Txt(live.requests.find { it.id==offer.requestId }?.part.orEmpty(),11,Muted)
        Spacer(Modifier.height(10.dp));Txt("${offer.price} ₾",20,Color(0xFFB9602E),true)
        Txt("${offer.condition} · ${offer.delivery}",11,Muted)
+       Action("მაღაზიასთან ჩატი",{if(!demo)selectedShopChat=offer},false)
       } }
      }
      "გარაჟი"->{
