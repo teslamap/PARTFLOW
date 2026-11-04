@@ -46,6 +46,7 @@ jobs:
           sed '1d;$d' native/superadmin/source-v19.tar.xz.base64.txt | tr -d '\r\n' | base64 -d > /tmp/superadmin.tar.xz
           tar -xJf /tmp/superadmin.tar.xz -C superadmin-build
           test -f superadmin-build/app/build.gradle.kts
+          sed -i '/^private fun SuperadminApp()/i @OptIn(ExperimentalMaterial3Api::class)' superadmin-build/app/src/main/java/ge/partflow/superadmin/MainActivity.kt
           printf 'android.useAndroidX=true\norg.gradle.jvmargs=-Xmx3072m -Dfile.encoding=UTF-8\n' > superadmin-build/gradle.properties
       - name: Compile native APK
         working-directory: superadmin-build
