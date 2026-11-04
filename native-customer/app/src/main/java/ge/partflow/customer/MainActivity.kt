@@ -78,7 +78,8 @@ class MainActivity:ComponentActivity(){
  var drawer by remember { mutableStateOf(false) }
  var mode by remember { mutableStateOf("შესვლა") }
  var detail by remember { mutableStateOf(false) }
- BackHandler(drawer||detail||page!="მთავარი"){when{drawer->drawer=false;detail->detail=false;else->page="მთავარი"}}
+ var garageCreate by remember { mutableStateOf(false) }
+ BackHandler(drawer||detail||garageCreate||page!="მთავარი"){when{drawer->drawer=false;detail->detail=false;garageCreate->garageCreate=false;else->page="მთავარი"}}
  Box(Modifier.fillMaxSize().background(Bg)){
  Column {
   Row(Modifier.fillMaxWidth().background(White).border(1.dp,Line).padding(horizontal=22.dp,vertical=18.dp),
@@ -165,7 +166,7 @@ class MainActivity:ComponentActivity(){
        Txt("${car.brand} ${car.model} · ${car.year}",15,Ink,true)
        Txt(listOf(car.engine,car.fuel,car.vin).filter { it.isNotBlank() }.joinToString(" · "),11,Muted)
       } }
-      Txt("ავტომობილის დამატების ფორმა მუშავდება.",11,Muted)
+      Action("+ ავტომობილის დამატება",{if(!demo)garageCreate=true})
      }
      "პროფილი"->{Txt("პროფილი",23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("დემო მომხმარებელი",16,Ink,true);Txt("შენი ავტომობილი. შენი ნაწილი.",11,Muted);Action(if(demo)"დემოდან გამოსვლა" else "ანგარიშიდან გასვლა",{if(!demo)NativeAuth.signOut();demo=false;page="მთავარი"},false)}}
      else->{Txt(page,23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("ამ განყოფილების სრული Native ფუნქციონალი ჯერ დასამუშავებელია.",12,Muted)}}
@@ -190,6 +191,11 @@ class MainActivity:ComponentActivity(){
     Spacer(Modifier.height(30.dp));HorizontalDivider(color=Line);Txt("შენი ავტომობილი. შენი ნაწილი.",10,Muted)
    }
    Spacer(Modifier.weight(1f).fillMaxHeight().clickable{drawer=false})
+  }
+ }
+ if(garageCreate&&!demo&&logged) Dialog(onDismissRequest={garageCreate=false}) {
+  Box(Modifier.fillMaxWidth().fillMaxHeight(.88f).clip(RoundedCornerShape(20.dp)).background(Bg)){
+   GarageCreate(onClose={garageCreate=false})
   }
  }
  if(detail&&!demo&&logged) Dialog(onDismissRequest={detail=false}) {
