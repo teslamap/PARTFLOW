@@ -58,6 +58,7 @@ class MainActivity:ComponentActivity(){
  var garageError by remember { mutableStateOf<String?>(null) }
  var towRequests by remember { mutableStateOf(emptyList<TowRequest>()) }
  var towError by remember { mutableStateOf<String?>(null) }
+ var towActionError by remember { mutableStateOf("") }
  val towStore=remember { TowingData() }
  val garageStore=remember { GarageData() }
  val store=remember { CustomerData() }
@@ -177,12 +178,25 @@ class MainActivity:ComponentActivity(){
       Txt("ევაკუატორი",23,Ink,true);Spacer(Modifier.height(16.dp))
       Action("+ გამოძახება",{if(!demo)towCreate=true})
       if(towError!=null)Txt(towError!!,11,Color(0xFFB54730))
+      if(towActionError.isNotBlank())Txt(towActionError,11,Color(0xFFB54730))
       if(towRequests.isEmpty())Panel { Txt("გამოძახებები ჯერ არ არის",13,Muted) }
       towRequests.forEach { tow->Panel {
        Txt(if(tow.mode=="sos")"SOS გამოძახება" else "ქალაქთაშორისი",15,Ink,true)
        Txt("${tow.origin} → ${tow.destination}",12,Muted)
        Txt("სტატუსი: ${tow.status}",12,Ink)
        if(tow.price.isNotBlank())Txt("ფასი: ${tow.price} ₾",12,Ink,true)
+       if(tow.status=="offered")Action("შეთავაზების დადასტურება",{
+        towStore.changeStatus(tow.id,"confirmed"){towActionError=it.orEmpty()}
+       })
+       if(tow.status=="searching"||tow.status=="offered"||tow.status=="confirmed")
+        Action("გამოძახების გაუქმება",{
+         towStore.changeStatus(tow.id,"cancelled"){towActionError=it.orEmpty()}
+        },false)
+       if(tow.mode=="sos"&&tow.scope=="city"&&tow.status=="searching"&&
+        tow.createdAt>0L&&System.currentTimeMillis()-tow.createdAt>=900000L)
+        Action("ძებნის გაფართოება სხვა ქალაქებში",{
+         towStore.expand(tow.id){towActionError=it.orEmpty()}
+        },false)
       } }
      }
      "პროფილი"->{Txt("პროფილი",23,Ink,true);Spacer(Modifier.height(16.dp));Panel{Txt("დემო მომხმარებელი",16,Ink,true);Txt("შენი ავტომობილი. შენი ნაწილი.",11,Muted);Action(if(demo)"დემოდან გამოსვლა" else "ანგარიშიდან გასვლა",{if(!demo)NativeAuth.signOut();demo=false;page="მთავარი"},false)}}
