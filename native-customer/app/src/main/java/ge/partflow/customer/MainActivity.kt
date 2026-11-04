@@ -176,7 +176,7 @@ class MainActivity:ComponentActivity(){
       } }
       Action("+ ავტომობილის დამატება",{if(!demo)garageCreate=true})
      }
-     "ჩატი"->{SupportChat()}
+     "ჩატი"->{if(demo)Panel { Txt("მხარდაჭერის ჩატი ხელმისაწვდომია ანგარიშში შესვლის შემდეგ.",12,Muted) } else SupportChat()}
      "SOS / დაგეგმილი"->{
       Txt("ევაკუატორი",23,Ink,true);Spacer(Modifier.height(16.dp))
       Action("+ გამოძახება",{if(!demo)towCreate=true})
@@ -281,8 +281,8 @@ class MainActivity:ComponentActivity(){
   Box(Modifier.weight(1f)){Stat(live.offers.size.toString(),"შეთავაზებები",offers)}
  }
  Spacer(Modifier.height(24.dp));Txt("ბოლო მოთხოვნები",18,Ink,true);Spacer(Modifier.height(12.dp))
- if(live.requests.isEmpty())Panel { Txt("მოთხოვნები ჯერ არ გაქვს",12,Muted) }
- live.requests.take(3).forEach { req->Panel {
+ if(live.requests.none { it.status !in listOf("closed","completed","cancelled","hidden","archived") })Panel { Txt("აქტიური მოთხოვნები ჯერ არ გაქვს",12,Muted) }
+ live.requests.filterNot { it.status in listOf("closed","completed","cancelled","hidden","archived") }.take(3).forEach { req->Panel {
   Txt("${req.brand} ${req.model} · ${req.year}",11,Muted)
   Txt(req.part,15,Ink,true);Spacer(Modifier.height(12.dp))
   Txt("${req.status} · ${live.offers.count { it.requestId==req.id }} შეთავაზება",11,Color(0xFF3E7D52))
