@@ -140,12 +140,12 @@ class MainActivity:ComponentActivity(){
    } else {
     if(demo) { Txt("დემო ვერსია",11,Muted);Spacer(Modifier.height(12.dp)) }
     when(page){
-     "მთავარი"->HomePage({if(!demo)detail=true},{page="გარაჟი"},live,if(demo)"დემო მომხმარებელი" else com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.displayName.orEmpty())
+     "მთავარი"->HomePage({if(!demo)detail=true},{page="გარაჟი"},{page="შეთავაზებები"},live,if(demo)"დემო მომხმარებელი" else com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.displayName.orEmpty())
      "მოთხოვნები"->{
       Txt("ჩემი მოთხოვნები",23,Ink,true);Spacer(Modifier.height(16.dp))
       if(live.error!=null)Txt(live.error!!,11,Color(0xFFB54730))
-      if(live.requests.isEmpty())Panel { Txt("მოთხოვნები ჯერ არ გაქვს",14,Ink,true);Txt("ახალი მოთხოვნის დამატება ამჟამად მუშავდება.",11,Muted) }
-      live.requests.forEach { req->
+      if(live.requests.none { it.status !in listOf("closed","completed","cancelled","hidden","archived") })Panel { Txt("აქტიური მოთხოვნები ჯერ არ გაქვს",14,Ink,true);Txt("შექმენი ახალი მოთხოვნა ქვემოთ მოცემული ღილაკით.",11,Muted) }
+      live.requests.filterNot { it.status in listOf("closed","completed","cancelled","hidden","archived") }.forEach { req->
        Panel {
         Txt(listOf(req.brand,req.model,req.year).filter { it.isNotBlank() }.joinToString(" · "),11,Muted)
         Txt(req.part,15,Ink,true)
@@ -266,7 +266,7 @@ class MainActivity:ComponentActivity(){
    colors=OutlinedTextFieldDefaults.colors(focusedBorderColor=Orange,unfocusedBorderColor=Color(0xFFDFE4E8),focusedContainerColor=White,unfocusedContainerColor=White))
  }
 }
-@Composable private fun HomePage(requests:()->Unit,garage:()->Unit,live:CustomerSnapshot,name:String){
+@Composable private fun HomePage(requests:()->Unit,garage:()->Unit,offers:()->Unit,live:CustomerSnapshot,name:String){
  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Column{Txt("მოგესალმები,",10,Muted);Txt(name.ifBlank { "მომხმარებელი" },20,Ink,true)};Txt("✦",18,Orange)}
  Spacer(Modifier.height(20.dp))
  Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(23.dp)).background(Ink).padding(23.dp)){
@@ -278,7 +278,7 @@ class MainActivity:ComponentActivity(){
  Spacer(Modifier.height(18.dp))
  Row(horizontalArrangement=Arrangement.spacedBy(12.dp)){
   Box(Modifier.weight(1f)){Stat(live.requests.size.toString(),"ჩემი მოთხოვნები",requests)}
-  Box(Modifier.weight(1f)){Stat(live.offers.size.toString(),"შეთავაზებები",requests)}
+  Box(Modifier.weight(1f)){Stat(live.offers.size.toString(),"შეთავაზებები",offers)}
  }
  Spacer(Modifier.height(24.dp));Txt("ბოლო მოთხოვნები",18,Ink,true);Spacer(Modifier.height(12.dp))
  if(live.requests.isEmpty())Panel { Txt("მოთხოვნები ჯერ არ გაქვს",12,Muted) }
