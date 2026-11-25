@@ -18,6 +18,11 @@ try{
  await assertSucceeds(setDoc(doc(near,'pf_offers/fresh_near'),offer('fresh','near')));
  await assertSucceeds(setDoc(doc(far,'pf_offers/old_far'),offer('old','far')));
  await assertSucceeds(setDoc(doc(far,'pf_offers/legacy_far'),offer('legacy','far')));
+ // A disabled offers flag must block direct Firestore writes, not only reads/UI.
+ await env.withSecurityRulesDisabled(async c=>setDoc(doc(c.firestore(),'pf_settings/control'),{flags:{offers:'OFF'}}));
+ await assertFails(setDoc(doc(near,'pf_offers/old_near'),offer('old','near')));
+ await env.withSecurityRulesDisabled(async c=>setDoc(doc(c.firestore(),'pf_settings/control'),{flags:{offers:'ON'}}));
+ await assertSucceeds(setDoc(doc(near,'pf_offers/old_near'),offer('old','near')));
  await assertFails(updateDoc(doc(far,'pf_requests/fresh'),{expandedAt:serverTimestamp()}));
  await assertFails(updateDoc(doc(buyer,'pf_requests/fresh'),{expandedAt:Timestamp.fromMillis(0)}));
  await assertFails(updateDoc(doc(buyer,'pf_requests/fresh'),{expandedAt:serverTimestamp(),city:'ბათუმი'}));

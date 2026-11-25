@@ -10,6 +10,7 @@ const unique=values=>[...new Map(values.flat().map(v=>[v.id,v])).values()];
 export function subscribePanelData(db,identity,next,error,{panel='customer'}={}){
  const isShop=panel==='shop',isCustomer=['customer','mobile-customer'].includes(panel),adminPanel=panel==='superadmin';
  let stopped=false,generation=0,profile=null,shop=null,profileReady=false,shopReady=!isShop,signature='',children=[];
+ function rootError(e){if(stopped)return;generation++;children.forEach(stop=>stop());children=[];signature='';profileReady=false;shopReady=!isShop;profile=null;shop=null;next({user:identity,shop:null,categories:CATEGORIES,requests:[],offers:[],archives:[],shops:[],users:[]});error(e)}
  const own=c=>doc(db,'pf_'+c,identity.id);
  function rebuild(){
   if(stopped||!profileReady||!shopReady)return;
@@ -42,8 +43,8 @@ export function subscribePanelData(db,identity,next,error,{panel='customer'}={})
    pending.add(key);
    let stop=()=>{},timer,attempt=0;
    function connect(){
-    if(!current())return;pending.add(key);
-    stop=onSnapshot(query(collection(db,'pf_'+c),...filters,orderBy('createdAt','desc'),limit(300)),s=>{if(!current())return;attempt=0;pending.delete(key);receive(s.docs.map(d=>row(d.id,d.data())));reconcile();emit()},e=>{if(!current())return;pending.delete(key);error(e);if(['failed-precondition','unavailable','deadline-exceeded'].includes(e.code))timer=setTimeout(connect,Math.min(30000,1500*2**Math.min(attempt++,5)));});
+    if(!current())return;
+    stop=onSnapshot(query(collection(db,'pf_'+c),...filters,orderBy('createdAt','desc'),limit(300)),s=>{if(!current())return;attempt=0;pending.delete(key);receive(s.docs.map(d=>row(d.id,d.data())));reconcile();emit()},e=>{if(!current())return;pending.delete(key);receive([]);reconcile();emit();error(e);if(['failed-precondition','unavailable','deadline-exceeded'].includes(e.code))timer=setTimeout(connect,Math.min(30000,1500*2**Math.min(attempt++,5)));});
    }
    connect();children.push(()=>{stop();clearTimeout(timer)});
   }
@@ -74,8 +75,8 @@ export function subscribePanelData(db,identity,next,error,{panel='customer'}={})
   reconcile();emit();
  }
  const roots=[
-  onSnapshot(own('members'),s=>{if(stopped)return;profile=s.exists()?row(s.id,s.data()):{...identity,role:'customer'};profileReady=true;rebuild()},e=>{if(!stopped)error(e)})
+  onSnapshot(own('members'),s=>{if(stopped)return;profile=s.exists()?row(s.id,s.data()):{...identity,role:'customer'};profileReady=true;rebuild()},rootError)
  ];
- if(isShop)roots.push(onSnapshot(own('shops'),s=>{if(stopped)return;shop=s.exists()?s.data():null;shopReady=true;rebuild()},e=>{if(!stopped)error(e)}));
+ if(isShop)roots.push(onSnapshot(own('shops'),s=>{if(stopped)return;shop=s.exists()?s.data():null;shopReady=true;rebuild()},rootError));
  return()=>{stopped=true;generation++;roots.forEach(stop=>stop());children.forEach(stop=>stop())};
 }
