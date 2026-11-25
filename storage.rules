@@ -1,0 +1,18 @@
+rules_version = '2';
+service firebase.storage {
+ match /b/{bucket}/o {
+  match /requestPhotos/{uid}/{id}/{name} {
+   function signed(){return request.auth!=null && request.auth.token.firebase.sign_in_provider!='anonymous';}
+   function requestDoc(){return firestore.get(/databases/(default)/documents/pf_requests/$(id)).data;}
+   function shop(){return firestore.get(/databases/(default)/documents/pf_shops/$(request.auth.uid)).data;}
+   function matches(d,s){return s.status=='approved' && s.get('businessType','parts_shop')!='auto_service' && (s.rulesMap.get(d.brand+'~'+d.model+'~'+d.category,false)||s.rulesMap.get(d.brand+'~*~'+d.category,false)||s.rulesMap.get('*~*~'+d.category,false)||s.rulesMap.get(d.brand+'~'+d.model+'~*',false)||s.rulesMap.get(d.brand+'~*~*',false)||s.rulesMap.get('*~*~*',false));}
+   function shopRead(d){let s=shop();return d.status in ['open','closed'] && matches(d,s) && (d.get('audience','city')=='national'||d.city==s.city);}
+   function participantRead(d){return d.ownerId==uid && (shopRead(d)||firestore.exists(/databases/(default)/documents/pf_offers/$(id+'_'+request.auth.uid)));}
+   allow get: if signed() && name.matches('[0-3]\\.jpg') && (request.auth.uid==uid || (request.auth.token.get('superadmin',false)==true&&request.auth.token.get('email_verified',false)==true) || participantRead(requestDoc()));
+   allow list: if false;
+   allow create: if signed() && request.auth.uid==uid && id.matches('[A-Za-z0-9_-]{1,128}') && name.matches('[0-3]\\.jpg') && request.resource.size>0 && request.resource.size<=135000 && request.resource.contentType=='image/jpeg' && !firestore.exists(/databases/(default)/documents/pf_requests/$(id));
+   allow update: if false;
+   allow delete: if signed() && request.auth.uid==uid && !firestore.exists(/databases/(default)/documents/pf_requests/$(id));
+  }
+ }
+}

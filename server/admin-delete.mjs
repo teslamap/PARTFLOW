@@ -1,3 +1,4 @@
+import {isSuperadmin} from './admin-identity.mjs';
 import {FieldValue} from 'firebase-admin/firestore';
 
 // Privileged, resumable deletion. Never execute from the browser with Firestore rules relaxed.
@@ -49,12 +50,11 @@ export function createAdminDeletion({db,auth}){
   // Auth is last. If this fails, the job remains pending for a retry.
   try{await auth.deleteUser(uid)}catch(e){if(e.code!=='auth/user-not-found')throw e}
  }
- async function execute({actor,targetType,targetId,confirmation}){
+ async function execute({actor,token,targetType,targetId,confirmation}){
   if(!safe(actor)||!safe(targetId)||!['account','shop','service','driver','chat','support','towRequest'].includes(targetType))throw Error('Invalid deletion target');
   if(actor===targetId||targetType==='account'&&targetId===actor)throw Error('Cannot delete your own admin account');
   if(confirmation!=='DELETE '+targetId)throw Error('Deletion confirmation mismatch');
-  const actorProfile=await col('members').doc(actor).get();
-  if(actorProfile.data()?.role!=='superadmin')throw Error('Superadmin required');
+  if(!await isSuperadmin(db,token||{uid:actor}))throw Error('Superadmin required');
   if(targetType==='account'){
    const target=await col('members').doc(targetId).get();
    if(target.data()?.role==='superadmin')throw Error('Cannot delete superadmin accounts');

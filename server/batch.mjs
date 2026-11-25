@@ -1,3 +1,4 @@
+import {isSuperadmin} from './admin-identity.mjs';
 import {createHash} from 'node:crypto';
 import {FieldValue,Timestamp} from 'firebase-admin/firestore';
 import {BATCH_DEFAULTS,batchPolicy,billingMonth,check,key,text,city,money,monthlyQuote,transportInput} from './batch-policy.mjs';
@@ -9,7 +10,7 @@ export function createBatch({db,auth}){
  const config=ref('config','current');
  async function policy(tx){return batchPolicy((await (tx?tx.get(config):config.get())).data()?.policy||BATCH_DEFAULTS)}
  async function gate(name,tx){const control=await (tx?tx.get(db.doc('pf_settings/control')):db.doc('pf_settings/control').get());check(control.data()?.flags?.maintenance!=='ON',503,'Maintenance enabled');const p=await policy(tx);check(p[name]===true,403,'Feature disabled');return p}
- async function admin(token,tx){check(token?.email_verified===true,403,'Verified superadmin required');const m=await (tx?tx.get(db.doc('pf_members/'+key(token.uid))):db.doc('pf_members/'+key(token.uid)).get());check(m.data()?.role==='superadmin'||token.email==='suloanani1@gmail.com',403,'Superadmin required')}
+ async function admin(token,tx){check(token?.email_verified===true,403,'Verified superadmin required');check(await isSuperadmin(db,token,tx),403,'Superadmin required')}
  async function shop(uid,tx){const s=await (tx?tx.get(db.doc('pf_shops/'+key(uid))):db.doc('pf_shops/'+key(uid)).get());check(s.data()?.status==='approved',403,'Approved shop required');return s.data()}
  async function driver(uid,tx){const s=await (tx?tx.get(ref('drivers',uid)):ref('drivers',uid).get());check(s.data()?.registered===true,403,'Registered driver required');return s.data()}
  async function list(q){return rows(await q.limit(100).get())}

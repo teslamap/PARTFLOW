@@ -75,7 +75,7 @@ export function subscribePanelData(db,identity,next,error,{panel='customer',page
   reconcile();emit();
  }
  const roots=[
-  onSnapshot(own('members'),s=>{if(stopped)return;profile=s.exists()?row(s.id,s.data()):{...identity,role:'customer'};profileReady=true;rebuild()},rootError)
+  onSnapshot(own('members'),s=>{if(stopped)return;profile=s.exists()?row(s.id,s.data()):{...identity,role:'customer'};if(identity.claimsOnly===true)profile.role=identity.role;profileReady=true;rebuild()},rootError)
  ];
  if(isShop)roots.push(onSnapshot(own('shops'),s=>{if(stopped)return;shop=s.exists()?s.data():null;shopReady=true;rebuild()},rootError));
  return()=>{stopped=true;generation++;roots.forEach(stop=>stop());children.forEach(stop=>stop())};
