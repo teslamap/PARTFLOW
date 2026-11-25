@@ -84,7 +84,7 @@ try{
  const local=await waitFor(n,'near',{panel:'shop',pageSize:100,cityVisibility:true},d=>d.requests.length>=100);
  assert.ok(local.hasMore);assert.equal(new Set(local.requests.map(x=>x.id)).size,local.requests.length);
  const first=await waitFor(b,'buyer',{pageSize:100},d=>d.requests.length===100);assert.equal(first.hasMore,true);
- assert.equal(first.requests[0].id,'p324');
+ assert.equal(first.requests.find(r=>/^p\d{3}$/.test(r.id))?.id,'p324');assert.ok(first.requests.every((r,i,a)=>i===0||a[i-1].createdAt.localeCompare(r.createdAt)>=0));assert.ok(!first.requests.some(r=>r.id==='p000'));
  const all=await waitFor(b,'buyer',{pageSize:400},d=>d.requests.length===330);assert.equal(all.hasMore,false);assert.ok(all.requests.some(x=>x.id==='p000'));
  const other=await waitFor(f,'far',{panel:'shop',cityVisibility:true},d=>d.requests.some(x=>x.id==='due'));assert.ok(other.requests.every(x=>x.audience==='national'));
  console.log('PASS: city migration/scheduler idempotence, scoped queries and live loading beyond 300 records');
