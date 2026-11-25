@@ -43,6 +43,7 @@ jobs:
           VITE_CITY_VISIBILITY_V2: ${{ vars.PARTFLOW_CITY_VISIBILITY_V2 }}
           VITE_SHARED_ASSETS: 'true'
           VITE_STORAGE_PHOTOS: ${{ vars.PARTFLOW_STORAGE_PHOTOS }}
+          VITE_MARKETPLACE_EXTRAS: ${{ vars.PARTFLOW_MARKETPLACE_EXTRAS }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

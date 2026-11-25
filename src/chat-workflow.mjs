@@ -1,4 +1,5 @@
 import {collection,doc,runTransaction,serverTimestamp,setDoc} from 'firebase/firestore';
+import {activeQuote} from './marketplace-policy.mjs';
 
 export function chatClosed(request,offerId){return !request||request.status==='hidden'||(request.status==='closed'&&request.acceptedOfferId!==offerId)}
 const ref=(db,c,id)=>doc(db,'pf_'+c,id);
@@ -25,6 +26,7 @@ export async function requestConfirmation(db,uid,offerId,terms){
  if(!Number.isFinite(price)||price<=0||price>1000000||!Number.isFinite(servicePrice)||servicePrice<0||servicePrice>1000000||!['ახალი','მეორადი'].includes(terms.condition)||!delivery||delivery.length>120||!note||note.length>1000)throw Error('შეამოწმე ნაწილის/მომსახურების ფასი, მდგომარეობა და მიწოდების პირობები');
  await runTransaction(db,async tx=>{
   const os=await tx.get(ref(db,'offers',offerId));if(!os.exists())throw Error('შეთავაზება ვერ მოიძებნა');const o=os.data();
+  if(!activeQuote(o))throw Error('შეთავაზების ვადა ამოიწურა. ჯერ განაახლე ვადა.');
   const rs=await tx.get(ref(db,'requests',o.requestId)),shop=await tx.get(ref(db,'shops',uid)),activity=await tx.get(ref(db,'chat_activity',offerId)),current=await tx.get(ref(db,'confirmations',offerId));
   if(shop.data()?.status!=='approved')throw Error('დადასტურების გასაგზავნად მაღაზია დამტკიცებული უნდა იყოს');
   if(o.shopId!==uid||rs.data()?.status!=='open')throw Error('მოთხოვნა დახურულია ან უფლება არ გაქვს');

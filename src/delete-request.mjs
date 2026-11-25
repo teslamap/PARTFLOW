@@ -26,6 +26,7 @@ export async function deleteRequestFully(db,uid,id){
   for(const member of members.docs)for(const panel of ['customer','mobile-customer','shop','admin','superadmin']){
    const path=['pf_archives',member.id,'panels',panel,'items'];
    await drain(path,[where('type','==','requests'),where('targetId','==',id)]);
+   if(panel==='shop')await removeBatch([doc(db,'pf_watchlists',member.id,'requests',id)]);
    // Offers are paged separately so no large IN query or UI 300-row limit applies.
    let offerCursor;
    for(;;){const offers=await getDocs(query(collection(db,'pf_offers'),where('requestId','==',id),orderBy(documentId()),...(offerCursor?[startAfter(offerCursor)]:[]),limit(5)));
@@ -38,6 +39,8 @@ export async function deleteRequestFully(db,uid,id){
  }while(cursor);
  for(const c of ['pf_chat_admins','pf_chat_activity','pf_confirmations'])await drain([c],[where('requestId','==',id)]);
  await drain(['pf_messages'],[where('requestId','==',id)]);
+ await drain(['pf_market_reports'],[where('requestId','==',id)]);
+ await removeBatch([doc(db,'pf_shop_reviews',id)]);
  await drain(['pf_orders',id,'events']);
  await removeBatch([doc(db,'pf_orders',id)]);
  await drain(['pf_offers'],[where('requestId','==',id)]);
