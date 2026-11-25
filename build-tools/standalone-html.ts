@@ -2,7 +2,7 @@ import {writeFileSync,readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import type {Plugin} from 'vite';
 const names:Record<string,string>={customer:'მომხმარებელი',towing:'ევაკუატორი',shop:'ავტომაღაზია',admin:'ადმინი',superadmin:'სუპერადმინი','mobile-customer':'მობილური მომხმარებელი'};
-export function standaloneHTML():Plugin {
+export function standaloneHTML(shared=false):Plugin {
   let root='';
   return {name:'partflow-complete-html',enforce:'post',configResolved(c){root=c.root},
     configureServer(server){server.middlewares.use((req,_res,next)=>{if(req.url&&/^\/(customer|shop|admin|superadmin|mobile-customer|services|towing|index)\.html(?:\?|$)/.test(req.url))req.url='/entries'+req.url;next();});},
@@ -12,6 +12,7 @@ export function standaloneHTML():Plugin {
         if(asset.type!=='asset'||!key.endsWith('.html'))continue;
         const filename=key.split('/').pop()!,role=filename.replace('.html','');
         let html=String(asset.source);
+        if(shared){html=html.replace(/\b(src|href)="\.\.\//g,'$1="./');delete bundle[key];this.emitFile({type:'asset',fileName:filename,source:html});continue;}
         html=html.replace(/<script\b[^>]*src="([^"]+)"[^>]*><\/script>/g,(_tag,url)=>{
           const chunk=bundle[url.replace(/^\//,'')];
           if(!chunk||chunk.type!=='chunk')throw Error('Missing application bundle: '+url);
@@ -46,6 +47,6 @@ export function standaloneHTML():Plugin {
         this.emitFile({type:'asset',fileName:filename,source:html});
       }
     },
-    writeBundle(options,bundle){for(const asset of Object.values(bundle)){if(asset.type==='asset'&&asset.fileName.endsWith('.html'))writeFileSync(resolve(root,asset.fileName),String(asset.source));}},
+    writeBundle(options,bundle){if(shared)return;for(const asset of Object.values(bundle)){if(asset.type==='asset'&&asset.fileName.endsWith('.html'))writeFileSync(resolve(root,asset.fileName),String(asset.source));}},
   };
 }

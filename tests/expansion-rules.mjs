@@ -36,5 +36,12 @@ try{
  await assertSucceeds(setDoc(doc(buyer,'pf_requests/new'),{...r,createdAt:serverTimestamp()}));
  await assertSucceeds(setDoc(doc(buyer,'pf_garage/buyer/vehicles/car'),{brand:'Toyota',model:'Prius',year:2018,engine:'უცნობია',vin:'',trim:'',fuel:'',plate:'AB123CD',createdAt:serverTimestamp()}));
  await assertFails(setDoc(doc(buyer,'pf_garage/buyer/vehicles/private'),{brand:'Toyota',model:'Prius',year:2018,engine:'უცნობია',vin:'',trim:'',fuel:'',ownerName:'PRIVATE',createdAt:serverTimestamp()}));
+ await env.withSecurityRulesDisabled(async c=>{const db=c.firestore();await setDoc(doc(db,'pf_settings/cityVisibility'),{enabled:true});await setDoc(doc(db,'pf_requests/private'),{...r,audience:'city'});await setDoc(doc(db,'pf_requests/national'),{...r,audience:'national'});});
+ await assertFails(getDoc(doc(far,'pf_requests/private')));
+ await assertSucceeds(getDoc(doc(near,'pf_requests/private')));
+ await assertSucceeds(getDoc(doc(far,'pf_requests/national')));
+ await assertFails(updateDoc(doc(buyer,'pf_requests/private'),{audience:'national'}));
+ await assertSucceeds(updateDoc(doc(buyer,'pf_requests/private'),{audience:'national',expandedAt:serverTimestamp()}));
+ await assertSucceeds(getDoc(doc(far,'pf_requests/private')));
  console.log('PASS: server time/city offer enforcement, customer-only expansion, closed/forged denial, preserved offers, plate whitelist/private data denial');
 }finally{await env.cleanup()}

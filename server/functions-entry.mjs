@@ -1,4 +1,6 @@
 import {onRequest} from 'firebase-functions/v2/https';
+import {onSchedule} from 'firebase-functions/v2/scheduler';
+import {expandDue} from './city-visibility.mjs';
 import {initializeApp,getApps} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
 import {getFirestore} from 'firebase-admin/firestore';
@@ -15,3 +17,5 @@ export const partflowBatch=onRequest({region:'europe-west1',minInstances:0,maxIn
  const response=await service.handle(new Request('https://partflow.invalid'+req.path,{method:'POST',headers,body:req.rawBody}),{clientIp:req.ip||req.socket.remoteAddress});
  res.set('Cache-Control','no-store').status(response.status).type('application/json').send(await response.text());
 });
+
+export const expandCityRequests=onSchedule({schedule:'every 1 minutes',region:'europe-west1',maxInstances:1,timeoutSeconds:120},async()=>{await expandDue(getFirestore())});
