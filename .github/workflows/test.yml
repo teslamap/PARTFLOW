@@ -49,6 +49,7 @@ jobs:
           VITE_CITY_VISIBILITY_V2: 'true'
           VITE_CITY_EXPANSION: 'true'
           VITE_STORAGE_PHOTOS: 'true'
+          VITE_MARKETPLACE_EXTRAS: 'true'
         run: npm run build:mobile && node tests/shared-build.mjs
       - name: Browser smoke tests (no production network)
         run: |
