@@ -4,6 +4,7 @@ import {getMessaging} from 'firebase-admin/messaging';
 import {getStorage} from 'firebase-admin/storage';
 import {onDocumentCreated,onDocumentWritten} from 'firebase-functions/v2/firestore';
 import {pushTargets} from './payload.mjs';
+import {recordShopMetric} from './shop-metrics.mjs';
 initializeApp();
 const db=getFirestore(),messaging=getMessaging();
 // Deploy separately only when FCM/server prerequisites are configured. No client can
@@ -41,3 +42,6 @@ export const orderPush=onDocumentWritten({...options,document:'pf_orders/{id}'},
 export const confirmationPush=onDocumentWritten({...options,document:'pf_confirmations/{id}'},e=>{const after=e.data?.after;if(!after?.exists)return;const before=e.data.before;const d=after.data();if(before.exists&&before.data().version===d.version&&before.data().status===d.status)return;return deliver('confirmation',e.params.id,d,e.id)});
 
 export const cleanupRequestPhotos=onDocumentWritten({...options,document:'pf_requests/{id}'},async e=>{const before=e.data?.before,after=e.data?.after;if(!before?.exists||after?.exists)return;const d=before.data();if(!Array.isArray(d.photos)||!d.photos.some(p=>typeof p==='string'&&/^pf-storage:[0-3]$/.test(p)))return;const uid=d.ownerId,id=e.params.id;if(!/^[A-Za-z0-9_-]{1,128}$/.test(uid)||!/^[A-Za-z0-9_-]{1,128}$/.test(id))return;await getStorage().bucket().deleteFiles({prefix:'requestPhotos/'+uid+'/'+id+'/'});});
+
+export const shopOfferMetric=onDocumentCreated({...options,document:'pf_offers/{id}'},e=>e.data?recordShopMetric(db,'offer',e.params.id,e.data.data()):undefined);
+export const shopCompletedMetric=onDocumentWritten({...options,document:'pf_orders/{id}'},e=>{const after=e.data?.after;if(!after?.exists||after.data().status!=='completed')return;return recordShopMetric(db,'completed',e.params.id,after.data());});

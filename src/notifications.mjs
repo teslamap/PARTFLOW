@@ -10,7 +10,7 @@ export function buildNotifications({uid,requests=[],offers=[],orders=[],messages
  for(const o of orders)if((o.ownerId===uid||o.shopId===uid)&&(o.version>0||o.shopId===uid))notices.push({id:'order_'+o.id+'_'+o.version,label:'შეკვეთა: '+orderLabels[o.status]+(o.dispute==='open'?' · დავა':''),requestId:o.requestId,orderId:o.id,time:time(o.updatedAt||o.createdAt)});
  if(marketplace){
   if(shop?.id===uid)for(const r of shopPanelRequests(requests,shop,offers))if(r.status==='open'&&r.ownerId!==uid&&!offers.some(o=>o.requestId===r.id&&o.shopId===uid))notices.push({id:'match_'+r.id,label:'ახალი შესაბამისი მოთხოვნა · '+r.part,requestId:r.id,time:time(r.createdAt)});
-  for(const c of confirmations){const o=offers.find(o=>o.id===c.offerId);if(c.ownerId===uid&&c.status==='pending'&&o&&Number(c.price)<Number(o.price))notices.push({id:'price_'+c.id+'_'+c.version,label:'ფასი შემცირდა · '+(Number(o.price)-Number(c.price)).toFixed(2)+' ₾',requestId:c.requestId,offerId:c.offerId,time:time(c.updatedAt)})}
+  for(const c of confirmations){const o=offers.find(o=>o.id===c.offerId);if(c.ownerId===uid&&c.status==='pending'&&o&&requests.some(r=>r.id===c.requestId&&r.status==='open')&&Number(c.price)<Number(o.price))notices.push({id:'price_'+c.id+'_'+c.version,label:'ფასი შემცირდა · '+(Number(o.price)-Number(c.price)).toFixed(2)+' ₾',requestId:c.requestId,offerId:c.offerId,time:time(c.updatedAt)})}
  }
  return [...new Map(notices.filter(n=>typeof n.requestId==='string').map(n=>[n.id,n])).values()].sort((a,b)=>b.time-a.time||a.id.localeCompare(b.id));
 }
