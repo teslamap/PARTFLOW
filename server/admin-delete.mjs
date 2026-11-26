@@ -20,20 +20,20 @@ export function createAdminDeletion({db,auth}){
   if(request.exists&&request.data().acceptedOfferId===id){
    // Preserve the customer's request, but invalidate the deleted business's selection.
    await col('requests').doc(requestId).update({acceptedOfferId:null,status:'open'});
-   await ownDoc('orders',requestId);
+   await ownDoc('orders',requestId);await ownDoc('shop_reviews',requestId);
   }
  }
  async function removeRequest(id){
   for(;;){const offers=await col('offers').where('requestId','==',id).limit(40).get();if(offers.empty)break;for(const offer of offers.docs)await removeOffer(offer)}
   for(const name of ['messages','chat_activity','chat_admins','confirmations','tow_offers','tow_quotes','inbox','push_deliveries'])await drain(name,'requestId',id);
-  await ownDoc('orders',id);
+  await ownDoc('orders',id);await ownDoc('shop_reviews',id);await drain('market_reports','requestId',id);
   await ownDoc('requests',id);
   await ownDoc('deletions',id);
  }
  async function removeShop(id){
   for(;;){const offers=await col('offers').where('shopId','==',id).limit(40).get();if(offers.empty)break;for(const offer of offers.docs)await removeOffer(offer)}
   for(const name of ['service_orders','service_requests','service_staff','shop_services','service_catalog','package_audit','referral_scans'])for(const field of ['shopId','businessId','serviceId'])await drain(name,field,id);
-  await ownDoc('shops',id);
+  await ownDoc('shops',id);await drain('shop_reviews','shopId',id);await ownDoc('shop_metrics',id);
  }
  async function removePerson(uid){
   // All owned requests, including their offers, messages and orders.
@@ -45,6 +45,7 @@ export function createAdminDeletion({db,auth}){
    for(const field of ['ownerId','uid','userId','customerId','driverId','shopId','adminId','senderId','recipientId','inviterId','inviteeId','partnerId','createdBy','requestedBy'])await drain(name,field,uid);
   }
   for(const name of ['members','shops','tow_drivers','garage','archives','chat_reads','inbox','devices','support_threads','contacts','rewards','referrals','referral_codes','vouchers','ai_drafts','notifications','notification_receipts'])await ownDoc(name,uid);
+  await ownDoc('blocks',uid);await ownDoc('watchlists',uid);await drain('market_reports','authorId',uid);await drain('market_reports','subjectUid',uid);
   await ownDoc('support_threads','shop_'+uid);
   await ownDoc('support_threads','driver_'+uid);
   // Auth is last. If this fails, the job remains pending for a retry.

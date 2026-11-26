@@ -1,4 +1,5 @@
 import {doc,getDoc,runTransaction,serverTimestamp} from 'firebase/firestore';
+import {activeQuote,CANCEL_REASONS} from './marketplace-policy.mjs';
 
 export const orderLabels={confirmed:'დადასტურებული',preparing:'მომზადება',shipped:'გაგზავნილი',delivered:'მიწოდებული',completed:'დასრულებული',cancelled:'გაუქმებული'};
 export function nextStatuses(order,uid,isAdmin=false){
@@ -29,6 +30,7 @@ export async function confirmOrder(db,uid,offerId,expectedVersion){
   if(r?.ownerId!==uid||offer.ownerId!==uid)throw Error('წვდომა შეზღუდულია');
   if(order.exists()){if(order.data().offerId===offerId)return;throw Error('შეკვეთა უკვე არსებობს');}
   if(!(r.status==='open'||r.status==='closed'&&r.acceptedOfferId===offerId))throw Error('მოთხოვნა უკვე დახურულია');
+  if(r.status==='open'&&!activeQuote(offer))throw Error('შეთავაზების ვადა ამოიწურა. სთხოვე მაღაზიას განახლება.');
   if(r.status==='open'&&shop.data()?.status!=='approved')throw Error('მაღაზია ამ ეტაპზე დამტკიცებული არ არის');
   if(r.status==='open'&&(c?.status!=='pending'||expectedVersion!==undefined&&c.version!==expectedVersion))throw Error('დადასტურების მოთხოვნა შეიცვალა ან აღარ არის აქტიური');
   const now=serverTimestamp();
@@ -43,7 +45,7 @@ export async function confirmOrder(db,uid,offerId,expectedVersion){
   if(!existing.exists()||existing.data().ownerId!==uid||existing.data().offerId!==offerId)throw error;
  }
 }
-export async function changeOrder(db,uid,id,kind,note,{isAdmin=false}={}){
+export async function changeOrder(db,uid,id,kind,note,{isAdmin=false,cancelReason}={}){
  if(typeof note!=='string'||!note.trim()||note.trim().length>1000)throw Error('მიუთითე კომენტარი (1–1000 სიმბოლო)');
  const r=ref(db,'orders',id);
  await runTransaction(db,async tx=>{
@@ -52,7 +54,8 @@ export async function changeOrder(db,uid,id,kind,note,{isAdmin=false}={}){
   const version=o.version+1,now=serverTimestamp();
   const status=kind==='dispute'||kind==='resolve'?o.status:kind;
   const dispute=kind==='dispute'?'open':kind==='resolve'?'resolved':o.dispute;
-  tx.update(r,{status,dispute,version,updatedAt:now});
+  if(cancelReason!==undefined&&(kind!=='cancelled'||!Object.hasOwn(CANCEL_REASONS,cancelReason)))throw Error('გაუქმების მიზეზი არასწორია');
+  tx.update(r,{status,dispute,version,updatedAt:now,...(kind==='cancelled'&&cancelReason?{cancelReason}:{})});
   tx.set(doc(r,'events',String(version)),{actorId:uid,kind,status,dispute,note:note.trim(),version,createdAt:now});
  });
 }

@@ -3,7 +3,7 @@ import {MessageSquare,X} from 'lucide-react';
 import {CommerceHub} from './commerce-ui';
 import './mobile-chat.css';
 
-export function MobileChat({open,onClose,onOpen,data,demo,target,shop=false}:any){
+export function MobileChat({open,onClose,onOpen,data,demo,target,shop=false,onOpenRequest}:any){
  const id=shop?'shop-chat':'customer-chat',headerSelector=shop?'.app>main>header':'.mc-header';
  const dialog=useRef<HTMLDialogElement>(null),launcher=useRef<HTMLButtonElement>(null);
  useEffect(()=>{
@@ -25,7 +25,7 @@ export function MobileChat({open,onClose,onOpen,data,demo,target,shop=false}:any
   <button ref={launcher} type="button" className={'mc-chat-launcher'+(shop?' shop-chat-launcher':'')} aria-label="ჩატის გახსნა" aria-haspopup="dialog" aria-expanded={open} aria-controls={id} hidden={open} onClick={onOpen}><MessageSquare size={26}/></button>
   <dialog ref={dialog} id={id} className={'mc-chat-popup'+(shop?' shop-chat-popup':'')} aria-labelledby={id+'-title'} onCancel={e=>{e.preventDefault();onClose()}} onClose={()=>{onClose();launcher.current?.focus()}}>
    <div className="mc-chat-popup-head"><h2 id={id+'-title'}>ჩატი</h2><button type="button" className="mc-icon" aria-label="ჩატის დახურვა" onClick={onClose}><X size={22}/></button></div>
-   {open&&<CommerceHub data={data} demo={demo} target={target}/>}
+   {open&&<CommerceHub data={data} demo={demo} target={target} onOpenRequest={onOpenRequest}/>}
   </dialog>
  </>;
 }
