@@ -1,5 +1,6 @@
 import {createPanelSession} from './auth-session';
 import {getFirestore,connectFirestoreEmulator} from 'firebase/firestore';
+import {getStorage,connectStorageEmulator} from 'firebase/storage';
 import {FIREBASE_CONFIG} from './runtime-config.mjs';
 import {CustomProvider,initializeAppCheck,getToken} from 'firebase/app-check';
 import {shouldUseAndroidAppCheck} from './android-identity.mjs';
@@ -21,3 +22,6 @@ async function initializeAndroidAppCheck(){
 }
 export const db=getFirestore(app);
 if(emulated)connectFirestoreEmulator(db,'127.0.0.1',8080);
+
+export const storage=getStorage(app);
+if(emulated)connectStorageEmulator(storage,'127.0.0.1',9199);

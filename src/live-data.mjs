@@ -7,16 +7,17 @@ const unique=values=>[...new Map(values.flat().map(v=>[v.id,v])).values()];
 
 // All queries mirror the existing participant/approval-based security rules.
 // Rebuild listeners when role or shop specializations change, and detach on logout.
-export function subscribePanelData(db,identity,next,error,{panel='customer'}={}){
+export function subscribePanelData(db,identity,next,error,{panel='customer',pageSize=100,cityVisibility=false}={}){
  const isShop=panel==='shop',isCustomer=['customer','mobile-customer'].includes(panel),adminPanel=panel==='superadmin';
  let stopped=false,generation=0,profile=null,shop=null,profileReady=false,shopReady=!isShop,signature='',children=[];
+ function rootError(e){if(stopped)return;generation++;children.forEach(stop=>stop());children=[];signature='';profileReady=false;shopReady=!isShop;profile=null;shop=null;next({user:identity,shop:null,categories:CATEGORIES,requests:[],offers:[],archives:[],shops:[],users:[]});error(e)}
  const own=c=>doc(db,'pf_'+c,identity.id);
  function rebuild(){
   if(stopped||!profileReady||!shopReady)return;
   const key=JSON.stringify([profile,shop]);
   if(key===signature)return;signature=key;
   for(const stop of children)stop();children=[];const g=++generation;
-  const requestSets=new Map(),offerSets=new Map(),extras=new Map(),extraStops=new Map(),pending=new Set();
+  const requestSets=new Map(),offerSets=new Map(),extras=new Map(),extraStops=new Map(),pending=new Set(),full=new Map();
   let categories=CATEGORIES,archives=[],shops=[],users=[],building=true;
   const isAdmin=adminPanel&&profile?.role==='superadmin';
   if(adminPanel&&(!isAdmin||panel==='superadmin'&&profile?.role!=='superadmin')){next({user:{...identity,...profile},shop:null,categories:CATEGORIES,requests:[],offers:[],archives:[],shops:[],users:[]});error(new Error('ამ პანელის უფლება აღარ გაქვს.'));return;}
@@ -25,7 +26,7 @@ export function subscribePanelData(db,identity,next,error,{panel='customer'}={})
    if(!current()||building||pending.size)return;
    const requests=unique([...requestSets.values(),[...extras.values()]]).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
    const offers=unique([...offerSets.values()]).map(o=>{const r=requests.find(r=>r.id===o.requestId);return {...o,status:r?.acceptedOfferId?r.acceptedOfferId===o.id?'accepted':'declined':'pending'}});
-   next({user:{...identity,...profile},shop:shop?row(identity.id,shop):null,categories,requests,offers,archives,shops:unique([shops,shop?[row(identity.id,shop)]:[]]),users});
+   next({user:{...identity,...profile},shop:shop?row(identity.id,shop):null,categories,requests,offers,archives,shops:unique([shops,shop?[row(identity.id,shop)]:[]]),users,hasMore:[...full.values()].some(Boolean)});
   }
   function reconcile(){
    if(!current()||building||[...pending].some(k=>k.startsWith('requests:')))return;
@@ -42,8 +43,8 @@ export function subscribePanelData(db,identity,next,error,{panel='customer'}={})
    pending.add(key);
    let stop=()=>{},timer,attempt=0;
    function connect(){
-    if(!current())return;pending.add(key);
-    stop=onSnapshot(query(collection(db,'pf_'+c),...filters,orderBy('createdAt','desc'),limit(300)),s=>{if(!current())return;attempt=0;pending.delete(key);receive(s.docs.map(d=>row(d.id,d.data())));reconcile();emit()},e=>{if(!current())return;pending.delete(key);error(e);if(['failed-precondition','unavailable','deadline-exceeded'].includes(e.code))timer=setTimeout(connect,Math.min(30000,1500*2**Math.min(attempt++,5)));});
+    if(!current())return;
+    stop=onSnapshot(query(collection(db,'pf_'+c),...filters,orderBy('createdAt','desc'),limit(pageSize+1)),s=>{if(!current())return;attempt=0;pending.delete(key);full.set(key,s.docs.length>pageSize);receive(s.docs.slice(0,pageSize).map(d=>row(d.id,d.data())));reconcile();emit()},e=>{if(!current())return;pending.delete(key);full.delete(key);receive([]);reconcile();emit();error(e);if(['failed-precondition','unavailable','deadline-exceeded'].includes(e.code))timer=setTimeout(connect,Math.min(30000,1500*2**Math.min(attempt++,5)));});
    }
    connect();children.push(()=>{stop();clearTimeout(timer)});
   }
@@ -58,7 +59,7 @@ export function subscribePanelData(db,identity,next,error,{panel='customer'}={})
    const covers=(a,b)=>['brand','model','category'].every(k=>a[k]==='*'||a[k]===b[k]);
    const minimal=rules.filter((rule,i)=>!rules.some((other,j)=>j!==i&&covers(other,rule)&&(!covers(rule,other)||j<i)));
    for(const [i,rule] of minimal.entries()){
-    const filters=[where('status','in',['open','closed'])];for(const k of ['brand','model','category'])if(rule[k]!=='*')filters.push(where(k,'==',rule[k]));requests('match'+i,filters);
+    const filters=[where('status','in',['open','closed'])];for(const k of ['brand','model','category'])if(rule[k]!=='*')filters.push(where(k,'==',rule[k]));if(cityVisibility){requests('local'+i,[...filters,where('city','==',shop.city)]);requests('national'+i,[...filters,where('audience','==','national')]);}else requests('match'+i,filters);
    }
   }
   if(isAdmin||isCustomer)offers('owner',isAdmin?[]:[where('ownerId','==',identity.id)]);
@@ -74,8 +75,8 @@ export function subscribePanelData(db,identity,next,error,{panel='customer'}={})
   reconcile();emit();
  }
  const roots=[
-  onSnapshot(own('members'),s=>{if(stopped)return;profile=s.exists()?row(s.id,s.data()):{...identity,role:'customer'};profileReady=true;rebuild()},e=>{if(!stopped)error(e)})
+  onSnapshot(own('members'),s=>{if(stopped)return;profile=s.exists()?row(s.id,s.data()):{...identity,role:'customer'};if(identity.claimsOnly===true)profile.role=identity.role;profileReady=true;rebuild()},rootError)
  ];
- if(isShop)roots.push(onSnapshot(own('shops'),s=>{if(stopped)return;shop=s.exists()?s.data():null;shopReady=true;rebuild()},e=>{if(!stopped)error(e)}));
+ if(isShop)roots.push(onSnapshot(own('shops'),s=>{if(stopped)return;shop=s.exists()?s.data():null;shopReady=true;rebuild()},rootError));
  return()=>{stopped=true;generation++;roots.forEach(stop=>stop());children.forEach(stop=>stop())};
 }
